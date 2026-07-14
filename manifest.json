@@ -1,7 +1,7 @@
 {
     "name": "SE7VEN ENERGIA",
     "short_name": "SE7VEN",
-    "description": "Sistema de orçamentos da SE7VEN ENERGIA",
+    "description": "Sistema de orçamentos SE7VEN ENERGIA",
     "start_url": "index.html",
     "display": "standalone",
     "background_color": "#1a237e",
