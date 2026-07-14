@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SE7VEN ENERGIA - Orçamentos</title>
+    <title>SE7VEN ENERGIA - Elétrica</title>
     
-    <!-- META TAGS PARA APP -->
+    <!-- Meta Tags para PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SE7VEN">
@@ -13,105 +13,123 @@
     <meta name="theme-color" content="#1a237e">
     
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/26a1.png">
     <link rel="stylesheet" href="style.css">
     
     <style>
-        .logo-title {
-            color: #1a237e;
-            font-weight: 900;
-            letter-spacing: 2px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .logo-title img {
-            height: 35px;
-            width: auto;
-        }
-        .btn-whatsapp {
-            background: #25d366;
-            color: white;
-            border: none;
-            padding: 10px 20px;
+        /* Estilos das novas funções */
+        .calc-card {
+            background: #f8f9fa;
             border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #1a237e;
+        }
+        .calc-card label {
             font-weight: bold;
-            transition: all 0.3s;
+            display: block;
+            margin: 5px 0;
         }
-        .btn-whatsapp:active {
-            background: #128C7E;
-            transform: scale(0.95);
+        .calc-card input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
         }
-        .footer-actions {
-            display: flex;
-            gap: 10px;
+        .calc-card .resultado {
+            background: #e8eaf6;
+            padding: 10px;
+            border-radius: 4px;
             margin-top: 10px;
-            flex-wrap: wrap;
+            font-weight: bold;
+            color: #1a237e;
         }
-        .footer-actions button {
-            flex: 1;
-            min-width: 100px;
-        }
-        .status-bar {
+        .btn-calcular {
             background: #1a237e;
             color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 15px;
-            text-align: center;
-            font-weight: bold;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-top: 10px;
+            cursor: pointer;
         }
-        .status-bar.success {
+        .btn-backup {
             background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
         }
-        .status-bar.error {
-            background: #e74c3c;
-        }
-        .status-bar.warning {
+        .btn-restore {
             background: #f39c12;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
         }
-        .header-logo {
+        .btn-danger-small {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .tab-container {
             display: flex;
-            align-items: center;
-            gap: 12px;
+            gap: 5px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
         }
-        .header-logo img {
-            height: 40px;
-            width: auto;
+        .tab-btn {
+            padding: 8px 16px;
+            border: 1px solid #bdc3c7;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .tab-btn.active {
+            background: #1a237e;
+            color: white;
+            border-color: #1a237e;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .backup-info {
+            background: #e8f5e9;
+            padding: 10px;
             border-radius: 8px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        .backup-info strong {
+            color: #2e7d32;
+        }
+        .produto-eletrico {
+            border-left: 4px solid #f39c12;
         }
         @media (max-width: 480px) {
-            .item-orcamento {
-                flex-direction: column;
-                align-items: stretch;
+            .tab-btn {
+                font-size: 10px;
+                padding: 6px 10px;
             }
-            .item-orcamento select,
-            .item-orcamento input {
-                width: 100% !important;
-            }
-            .btn-remove-item {
-                align-self: flex-end;
-                margin-top: 5px;
-            }
-            .footer-actions button {
-                min-width: 80px;
-                font-size: 12px;
-                padding: 8px 12px;
-            }
-            .header-logo img {
-                height: 30px;
-            }
-            .logo-title {
-                font-size: 16px;
+            .calc-card input {
+                font-size: 14px;
             }
         }
     </style>
 </head>
 <body>
     <div id="app">
+        <!-- CABEÇALHO -->
         <header>
             <div class="header-logo" id="headerLogo">
                 <h1 class="logo-title">⚡ SE7VEN ENERGIA</h1>
@@ -119,24 +137,49 @@
             <button id="btnNovo" class="btn-primary">+ Novo</button>
         </header>
 
+        <!-- BARRA DE STATUS -->
         <div id="statusBar" class="status-bar">✅ Sistema pronto para uso</div>
 
-        <main>
-            <section id="clientes">
+        <!-- BACKUP INFO -->
+        <div class="backup-info" id="backupInfo">
+            <strong>💾 Backup Automático:</strong> Os dados são salvos automaticamente a cada alteração
+            <br>
+            <button class="btn-backup" onclick="exportarDados()">📤 Exportar Backup</button>
+            <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📥 Importar Backup</button>
+            <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
+        </div>
+
+        <!-- ABAS -->
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="abrirTab('tabClientes')">👤 Clientes</button>
+            <button class="tab-btn" onclick="abrirTab('tabProdutos')">📦 Produtos</button>
+            <button class="tab-btn" onclick="abrirTab('tabOrcamento')">📄 Orçamento</button>
+            <button class="tab-btn" onclick="abrirTab('tabCalculos')">🧮 Cálculos</button>
+        </div>
+
+        <!-- TAB CLIENTES -->
+        <div id="tabClientes" class="tab-content active">
+            <section>
                 <h2>👤 Clientes</h2>
                 <input type="text" id="buscaCliente" placeholder="🔍 Buscar cliente...">
                 <ul id="listaClientes"></ul>
                 <button id="btnAddCliente" class="btn-secondary">+ Adicionar Cliente</button>
             </section>
+        </div>
 
-            <section id="produtos">
+        <!-- TAB PRODUTOS -->
+        <div id="tabProdutos" class="tab-content">
+            <section>
                 <h2>📦 Produtos</h2>
                 <input type="text" id="buscaProduto" placeholder="🔍 Buscar produto...">
                 <ul id="listaProdutos"></ul>
                 <button id="btnAddProduto" class="btn-secondary">+ Adicionar Produto</button>
             </section>
+        </div>
 
-            <section id="orcamento">
+        <!-- TAB ORÇAMENTO -->
+        <div id="tabOrcamento" class="tab-content">
+            <section>
                 <h2>📄 Novo Orçamento</h2>
                 <select id="selCliente">
                     <option value="">Selecione um cliente</option>
@@ -151,6 +194,36 @@
                     </div>
                 </div>
                 <button id="btnAddItem" class="btn-secondary">+ Adicionar Item</button>
+                
+                <!-- Dados do Projeto Elétrico -->
+                <div style="margin-top:15px;padding:15px;background:#e8eaf6;border-radius:8px;">
+                    <h3>⚡ Dados do Projeto Elétrico</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div>
+                            <label>Distância (m):</label>
+                            <input type="number" id="distancia" placeholder="Distância em metros" value="50">
+                        </div>
+                        <div>
+                            <label>Tensão (V):</label>
+                            <select id="tensao">
+                                <option value="127">127V</option>
+                                <option value="220" selected>220V</option>
+                                <option value="380">380V</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Fator de Potência:</label>
+                            <input type="number" id="fp" placeholder="0.85" step="0.01" value="0.92">
+                        </div>
+                        <div>
+                            <label>Queda de Tensão Máxima (%):</label>
+                            <input type="number" id="quedaMax" placeholder="3%" value="3" step="0.5">
+                        </div>
+                    </div>
+                    <button class="btn-calcular" onclick="calcularProjeto()">📊 Calcular Projeto</button>
+                    <div id="resultadoProjeto" style="margin-top:10px;"></div>
+                </div>
+
                 <div id="totalOrcamento">
                     <strong>Total: R$ <span id="totalValor">0,00</span></strong>
                 </div>
@@ -160,7 +233,84 @@
                     <button id="btnWhatsApp" class="btn-whatsapp">💬 WhatsApp</button>
                 </div>
             </section>
-        </main>
+        </div>
+
+        <!-- TAB CÁLCULOS -->
+        <div id="tabCalculos" class="tab-content">
+            <section>
+                <h2>🧮 Calculadora Elétrica</h2>
+                
+                <!-- Dimensionamento de Cabos -->
+                <div class="calc-card">
+                    <h3>📏 Dimensionamento de Cabos</h3>
+                    <label>Corrente (A):</label>
+                    <input type="number" id="correnteCabos" placeholder="Corrente em Ampères">
+                    <label>Distância (m):</label>
+                    <input type="number" id="distanciaCabos" placeholder="Distância em metros" value="50">
+                    <label>Tensão (V):</label>
+                    <select id="tensaoCabos">
+                        <option value="127">127V</option>
+                        <option value="220" selected>220V</option>
+                        <option value="380">380V</option>
+                    </select>
+                    <button class="btn-calcular" onclick="dimensionarCabos()">Calcular Bitola</button>
+                    <div id="resultadoCabos" class="resultado"></div>
+                </div>
+
+                <!-- Queda de Tensão -->
+                <div class="calc-card">
+                    <h3>📉 Queda de Tensão</h3>
+                    <label>Corrente (A):</label>
+                    <input type="number" id="correnteQueda" placeholder="Corrente em Ampères">
+                    <label>Distância (m):</label>
+                    <input type="number" id="distanciaQueda" placeholder="Distância em metros" value="50">
+                    <label>Bitola do Cabo (mm²):</label>
+                    <input type="number" id="bitolaQueda" placeholder="Bitola em mm²">
+                    <label>Tensão (V):</label>
+                    <select id="tensaoQueda">
+                        <option value="127">127V</option>
+                        <option value="220" selected>220V</option>
+                        <option value="380">380V</option>
+                    </select>
+                    <button class="btn-calcular" onclick="calcularQuedaTensao()">Calcular Queda</button>
+                    <div id="resultadoQueda" class="resultado"></div>
+                </div>
+
+                <!-- Demanda de Energia -->
+                <div class="calc-card">
+                    <h3>💡 Demanda de Energia</h3>
+                    <label>Potência Total (W):</label>
+                    <input type="number" id="potenciaDemanda" placeholder="Potência em Watts">
+                    <label>Tensão (V):</label>
+                    <select id="tensaoDemanda">
+                        <option value="127">127V</option>
+                        <option value="220" selected>220V</option>
+                        <option value="380">380V</option>
+                    </select>
+                    <label>Fator de Potência:</label>
+                    <input type="number" id="fpDemanda" placeholder="0.85" step="0.01" value="0.92">
+                    <button class="btn-calcular" onclick="calcularDemanda()">Calcular Demanda</button>
+                    <div id="resultadoDemanda" class="resultado"></div>
+                </div>
+
+                <!-- Corrente Nominal -->
+                <div class="calc-card">
+                    <h3>⚡ Corrente Nominal</h3>
+                    <label>Potência (W):</label>
+                    <input type="number" id="potenciaCorrente" placeholder="Potência em Watts">
+                    <label>Tensão (V):</label>
+                    <select id="tensaoCorrente">
+                        <option value="127">127V</option>
+                        <option value="220" selected>220V</option>
+                        <option value="380">380V</option>
+                    </select>
+                    <label>Fator de Potência:</label>
+                    <input type="number" id="fpCorrente" placeholder="0.85" step="0.01" value="0.92">
+                    <button class="btn-calcular" onclick="calcularCorrenteNominal()">Calcular Corrente</button>
+                    <div id="resultadoCorrente" class="resultado"></div>
+                </div>
+            </section>
+        </div>
     </div>
 
     <!-- MODAL CLIENTE -->
@@ -185,6 +335,12 @@
             <h3>📦 Novo Produto</h3>
             <input type="text" id="nomeProduto" placeholder="Nome do produto *">
             <input type="number" id="precoProduto" placeholder="Preço *" step="0.01">
+            <select id="tipoProduto">
+                <option value="material">Material Elétrico</option>
+                <option value="servico">Serviço</option>
+                <option value="equipamento">Equipamento</option>
+                <option value="outro">Outro</option>
+            </select>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <button id="salvarProduto" class="btn-primary" style="flex: 1;">Salvar</button>
                 <button id="fecharModalProduto" class="btn-secondary" style="flex: 1;">Cancelar</button>
