@@ -1,0 +1,198 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SE7VEN ENERGIA - Orçamentos</title>
+    
+    <!-- META TAGS PARA APP -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SE7VEN">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1a237e">
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    
+    <style>
+        .logo-title {
+            color: #1a237e;
+            font-weight: 900;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-title img {
+            height: 35px;
+            width: auto;
+        }
+        .btn-whatsapp {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-whatsapp:active {
+            background: #128C7E;
+            transform: scale(0.95);
+        }
+        .footer-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .footer-actions button {
+            flex: 1;
+            min-width: 100px;
+        }
+        .status-bar {
+            background: #1a237e;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status-bar.success {
+            background: #27ae60;
+        }
+        .status-bar.error {
+            background: #e74c3c;
+        }
+        .status-bar.warning {
+            background: #f39c12;
+        }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-logo img {
+            height: 40px;
+            width: auto;
+            border-radius: 8px;
+        }
+        @media (max-width: 480px) {
+            .item-orcamento {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .item-orcamento select,
+            .item-orcamento input {
+                width: 100% !important;
+            }
+            .btn-remove-item {
+                align-self: flex-end;
+                margin-top: 5px;
+            }
+            .footer-actions button {
+                min-width: 80px;
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+            .header-logo img {
+                height: 30px;
+            }
+            .logo-title {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div class="header-logo" id="headerLogo">
+                <h1 class="logo-title">⚡ SE7VEN ENERGIA</h1>
+            </div>
+            <button id="btnNovo" class="btn-primary">+ Novo</button>
+        </header>
+
+        <div id="statusBar" class="status-bar">✅ Sistema pronto para uso</div>
+
+        <main>
+            <section id="clientes">
+                <h2>👤 Clientes</h2>
+                <input type="text" id="buscaCliente" placeholder="🔍 Buscar cliente...">
+                <ul id="listaClientes"></ul>
+                <button id="btnAddCliente" class="btn-secondary">+ Adicionar Cliente</button>
+            </section>
+
+            <section id="produtos">
+                <h2>📦 Produtos</h2>
+                <input type="text" id="buscaProduto" placeholder="🔍 Buscar produto...">
+                <ul id="listaProdutos"></ul>
+                <button id="btnAddProduto" class="btn-secondary">+ Adicionar Produto</button>
+            </section>
+
+            <section id="orcamento">
+                <h2>📄 Novo Orçamento</h2>
+                <select id="selCliente">
+                    <option value="">Selecione um cliente</option>
+                </select>
+                <div id="itensOrcamento">
+                    <div class="item-orcamento">
+                        <select class="selProduto">
+                            <option value="">Selecione um produto</option>
+                        </select>
+                        <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
+                        <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
+                    </div>
+                </div>
+                <button id="btnAddItem" class="btn-secondary">+ Adicionar Item</button>
+                <div id="totalOrcamento">
+                    <strong>Total: R$ <span id="totalValor">0,00</span></strong>
+                </div>
+                <div class="footer-actions">
+                    <button id="btnLimpar" class="btn-danger">🗑️ Limpar</button>
+                    <button id="btnGerarPDF" class="btn-primary">📄 Gerar PDF</button>
+                    <button id="btnWhatsApp" class="btn-whatsapp">💬 WhatsApp</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL CLIENTE -->
+    <div id="modalCliente" class="modal">
+        <div class="modal-content">
+            <h3>👤 Novo Cliente</h3>
+            <input type="text" id="nomeCliente" placeholder="Nome do cliente *">
+            <input type="tel" id="telefoneCliente" placeholder="Celular">
+            <input type="text" id="cpfCliente" placeholder="CPF/CNPJ">
+            <input type="text" id="enderecoCliente" placeholder="Endereço">
+            <input type="email" id="emailCliente" placeholder="Email">
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button id="salvarCliente" class="btn-primary" style="flex: 1;">Salvar</button>
+                <button id="fecharModalCliente" class="btn-secondary" style="flex: 1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PRODUTO -->
+    <div id="modalProduto" class="modal">
+        <div class="modal-content">
+            <h3>📦 Novo Produto</h3>
+            <input type="text" id="nomeProduto" placeholder="Nome do produto *">
+            <input type="number" id="precoProduto" placeholder="Preço *" step="0.01">
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button id="salvarProduto" class="btn-primary" style="flex: 1;">Salvar</button>
+                <button id="fecharModalProduto" class="btn-secondary" style="flex: 1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
