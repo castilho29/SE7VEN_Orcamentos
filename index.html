@@ -64,6 +64,11 @@
             padding: 15px;
             margin: 10px 0;
             border-left: 4px solid #1a237e;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .os-card:hover {
+            background: #e8eaf6;
         }
         .os-card .status {
             float: right;
@@ -93,6 +98,7 @@
         .btn-warning { background: #f39c12; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
         .btn-danger { background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
         .btn-info { background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn-whatsapp { background: #25d366; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         
         .historico-item {
             padding: 8px 12px;
@@ -103,9 +109,227 @@
         }
         .historico-item .data { font-size: 12px; color: #999; }
         
+        .backup-info {
+            background: #e8f5e9;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .backup-info strong { color: #2e7d32; font-size: 13px; }
+        .btn-backup { background: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-restore { background: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        
+        .tab-container {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            border: 1px solid #bdc3c7;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: #1a237e;
+            color: white;
+            border-color: #1a237e;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .calc-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #1a237e;
+        }
+        .calc-card label {
+            font-weight: bold;
+            display: block;
+            margin: 5px 0;
+        }
+        .calc-card input, .calc-card select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .calc-card .resultado {
+            background: #e8eaf6;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #1a237e;
+        }
+        .btn-calcular {
+            background: #1a237e;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        
+        .footer-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .footer-actions button {
+            flex: 1;
+            min-width: 80px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        
+        .item-orcamento {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 8px 0;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 3px solid #1a237e;
+        }
+        .item-orcamento select {
+            flex: 2;
+            min-width: 120px;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+        .item-orcamento input {
+            flex: 1;
+            min-width: 60px;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+        .btn-remove-item {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        #totalOrcamento {
+            margin: 15px 0;
+            padding: 12px;
+            background: #e8eaf6;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+            color: #1a237e;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-content h3 { color: #1a237e; margin-bottom: 15px; }
+        .modal-content input, .modal-content select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .modal-content button { margin: 5px 5px 5px 0; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+
+        .status-bar {
+            background: #1a237e;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status-bar.success { background: #27ae60; }
+        .status-bar.error { background: #e74c3c; }
+        .status-bar.warning { background: #f39c12; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(26, 35, 126, 0.15);
+        }
+        .header-logo { display: flex; align-items: center; gap: 12px; }
+        .header-logo img { height: 40px; width: auto; border-radius: 8px; }
+        .logo-title { color: #1a237e; font-weight: 900; letter-spacing: 1px; font-size: 20px; }
+        .btn-primary { background: #1a237e; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .btn-secondary { background: #ecf0f1; color: #2c3e50; border: 1px solid #bdc3c7; padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+
+        section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        h2 { font-size: 16px; margin-bottom: 10px; color: #1a237e; border-bottom: 2px solid #1a237e; padding-bottom: 8px; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #bdc3c7; border-radius: 8px; font-size: 16px; }
+        ul { list-style: none; margin: 10px 0; max-height: 200px; overflow-y: auto; }
+        li { padding: 10px; border-bottom: 1px solid #ecf0f1; display: flex; justify-content: space-between; align-items: center; }
+        li small { color: #7f8c8d; font-size: 12px; }
+
         @media (max-width: 480px) {
-            .stage-tab { font-size: 10px; padding: 8px; }
-            .stage-tab .badge { font-size: 16px; }
+            .item-orcamento { flex-direction: column; align-items: stretch; }
+            .item-orcamento select, .item-orcamento input { width: 100% !important; }
+            .btn-remove-item { align-self: flex-end; margin-top: 5px; }
+            .footer-actions button { min-width: 60px; font-size: 11px; padding: 6px 10px; }
+            .header-logo img { height: 30px; }
+            .logo-title { font-size: 16px; }
+            .tab-btn { font-size: 10px; padding: 6px 10px; }
+            .backup-info { flex-direction: column; align-items: stretch; }
         }
     </style>
 </head>
@@ -124,7 +348,7 @@
 
         <!-- PAINEL DE BACKUP -->
         <div class="backup-info">
-            <strong>💾 Backup Automático:</strong> Dados salvos automaticamente
+            <strong>💾 Backup Automático:</strong> Dados salvos a cada 5 minutos
             <button class="btn-backup" onclick="exportarDados()">📤 Exportar</button>
             <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📥 Importar</button>
             <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
@@ -140,9 +364,7 @@
             <button class="tab-btn" onclick="abrirTab('tabCalculos')">🧮 Cálculos</button>
         </div>
 
-        <!-- ========================================== -->
-        <!-- TAB CLIENTES                               -->
-        <!-- ========================================== -->
+        <!-- ======== TAB CLIENTES ======== -->
         <div id="tabClientes" class="tab-content active">
             <section>
                 <h2>👤 Clientes</h2>
@@ -152,9 +374,7 @@
             </section>
         </div>
 
-        <!-- ========================================== -->
-        <!-- TAB PRODUTOS                               -->
-        <!-- ========================================== -->
+        <!-- ======== TAB PRODUTOS ======== -->
         <div id="tabProdutos" class="tab-content">
             <section>
                 <h2>📦 Produtos</h2>
@@ -164,9 +384,7 @@
             </section>
         </div>
 
-        <!-- ========================================== -->
-        <!-- TAB ORÇAMENTO                              -->
-        <!-- ========================================== -->
+        <!-- ======== TAB ORÇAMENTO ======== -->
         <div id="tabOrcamento" class="tab-content">
             <section>
                 <h2>📄 Novo Orçamento</h2>
@@ -222,16 +440,15 @@
                 
                 <div class="footer-actions">
                     <button id="btnLimpar" class="btn-danger">🗑️ Limpar</button>
-                    <button id="btnSalvarOrcamento" class="btn-success">💾 Salvar Orçamento</button>
-                    <button id="btnGerarPDF" class="btn-primary">📄 Gerar PDF</button>
+                    <button id="btnSalvarOrcamento" class="btn-success">💾 Salvar</button>
+                    <button id="btnGerarPDF" class="btn-primary">📄 PDF</button>
+                    <button id="btnEnviarPDF" class="btn-whatsapp">📤 PDF+Whats</button>
                     <button id="btnWhatsApp" class="btn-whatsapp">💬 WhatsApp</button>
                 </div>
             </section>
         </div>
 
-        <!-- ========================================== -->
-        <!-- TAB ORDEM DE SERVIÇO                       -->
-        <!-- ========================================== -->
+        <!-- ======== TAB ORDEM DE SERVIÇO ======== -->
         <div id="tabOS" class="tab-content">
             <section>
                 <h2>🔧 Ordens de Serviço</h2>
@@ -254,9 +471,7 @@
             </section>
         </div>
 
-        <!-- ========================================== -->
-        <!-- TAB RECIBOS                                -->
-        <!-- ========================================== -->
+        <!-- ======== TAB RECIBOS ======== -->
         <div id="tabRecibos" class="tab-content">
             <section>
                 <h2>💰 Recibos</h2>
@@ -276,14 +491,11 @@
             </section>
         </div>
 
-        <!-- ========================================== -->
-        <!-- TAB CÁLCULOS                               -->
-        <!-- ========================================== -->
+        <!-- ======== TAB CÁLCULOS ======== -->
         <div id="tabCalculos" class="tab-content">
             <section>
                 <h2>🧮 Calculadora Elétrica</h2>
                 
-                <!-- Dimensionamento de Cabos -->
                 <div class="calc-card">
                     <h3>📏 Dimensionamento de Cabos</h3>
                     <label>Corrente (A):</label>
@@ -300,7 +512,6 @@
                     <div id="resultadoCabos" class="resultado"></div>
                 </div>
 
-                <!-- Queda de Tensão -->
                 <div class="calc-card">
                     <h3>📉 Queda de Tensão</h3>
                     <label>Corrente (A):</label>
@@ -319,7 +530,6 @@
                     <div id="resultadoQueda" class="resultado"></div>
                 </div>
 
-                <!-- Demanda de Energia -->
                 <div class="calc-card">
                     <h3>💡 Demanda de Energia</h3>
                     <label>Potência Total (W):</label>
@@ -339,27 +549,23 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MODAL CLIENTE                              -->
-    <!-- ========================================== -->
+    <!-- MODAL CLIENTE -->
     <div id="modalCliente" class="modal">
         <div class="modal-content">
             <h3>👤 Novo Cliente</h3>
             <input type="text" id="nomeCliente" placeholder="Nome do cliente *">
-            <input type="tel" id="telefoneCliente" placeholder="Celular">
+            <input type="tel" id="telefoneCliente" placeholder="Celular (ex: (93) 98102-7290)">
             <input type="text" id="cpfCliente" placeholder="CPF/CNPJ">
             <input type="text" id="enderecoCliente" placeholder="Endereço">
             <input type="email" id="emailCliente" placeholder="Email">
             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button id="salvarCliente" class="btn-primary" style="flex: 1;">Salvar</button>
-                <button id="fecharModalCliente" class="btn-secondary" style="flex: 1;">Cancelar</button>
+                <button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button>
+                <button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button>
             </div>
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MODAL PRODUTO                              -->
-    <!-- ========================================== -->
+    <!-- MODAL PRODUTO -->
     <div id="modalProduto" class="modal">
         <div class="modal-content">
             <h3>📦 Novo Produto</h3>
@@ -372,39 +578,35 @@
                 <option value="outro">Outro</option>
             </select>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button id="salvarProduto" class="btn-primary" style="flex: 1;">Salvar</button>
-                <button id="fecharModalProduto" class="btn-secondary" style="flex: 1;">Cancelar</button>
+                <button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button>
+                <button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button>
             </div>
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MODAL OS - DETALHES                        -->
-    <!-- ========================================== -->
+    <!-- MODAL OS - DETALHES -->
     <div id="modalOS" class="modal">
         <div class="modal-content" style="max-width:500px;">
             <h3>🔧 Detalhes da Ordem de Serviço</h3>
             <div id="detalhesOS"></div>
             <div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;">
-                <button id="btnAprovarOS" class="btn-success">✅ Aprovar</button>
-                <button id="btnIniciarOS" class="btn-warning">🔧 Iniciar</button>
-                <button id="btnConcluirOS" class="btn-success">✅ Concluir</button>
-                <button id="btnCancelarOS" class="btn-danger">❌ Cancelar</button>
-                <button id="btnEmitirRecibo" class="btn-primary">💰 Emitir Recibo</button>
+                <button id="btnAprovarOS" class="btn-success" style="display:none;">✅ Aprovar</button>
+                <button id="btnIniciarOS" class="btn-warning" style="display:none;">🔧 Iniciar</button>
+                <button id="btnConcluirOS" class="btn-success" style="display:none;">✅ Concluir</button>
+                <button id="btnCancelarOS" class="btn-danger" style="display:none;">❌ Cancelar</button>
+                <button id="btnEmitirRecibo" class="btn-primary" style="display:none;">💰 Recibo</button>
                 <button id="btnFecharOS" class="btn-secondary">Fechar</button>
             </div>
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MODAL RECIBO                               -->
-    <!-- ========================================== -->
+    <!-- MODAL RECIBO -->
     <div id="modalRecibo" class="modal">
         <div class="modal-content" style="max-width:500px;">
             <h3>💰 Recibo</h3>
             <div id="conteudoRecibo" class="recibo-area"></div>
             <div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;">
-                <button id="btnMarcarPago" class="btn-success">✅ Marcar como Pago</button>
+                <button id="btnMarcarPago" class="btn-success">✅ Marcar Pago</button>
                 <button id="btnImprimirRecibo" class="btn-primary">🖨️ Imprimir</button>
                 <button id="btnFecharRecibo" class="btn-secondary">Fechar</button>
             </div>
