@@ -11,11 +11,7 @@ const EMPRESA = {
     cnpj: '62.008.856/0001-60',
     endereco: 'Novo Progresso/PA',
     corPrimaria: '#1a237e',
-    formasPagamento: [
-        'Pix à vista',
-        'Cartão de Crédito (até 10x)',
-        'Boleto Bancário'
-    ],
+    formasPagamento: ['Pix à vista', 'Cartão de Crédito (até 10x)', 'Boleto Bancário'],
     observacoes: [
         'Este orçamento tem validade de 30 dias.',
         'Preços sujeitos a alterações sem aviso prévio.',
@@ -27,7 +23,7 @@ const EMPRESA = {
 const LOGO_URL = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/26a1.png';
 
 // ============================================
-// DADOS PRINCIPAIS
+// DADOS
 // ============================================
 let clientes = [];
 let produtos = [];
@@ -41,15 +37,14 @@ let reciboAtual = null;
 // ============================================
 function carregarDados() {
     try {
-        const clientesSalvos = localStorage.getItem('clientes');
-        const produtosSalvos = localStorage.getItem('produtos');
-        const osSalvos = localStorage.getItem('ordensServico');
-        const recibosSalvos = localStorage.getItem('recibos');
-        
-        if (clientesSalvos) clientes = JSON.parse(clientesSalvos);
-        if (produtosSalvos) produtos = JSON.parse(produtosSalvos);
-        if (osSalvos) ordensServico = JSON.parse(osSalvos);
-        if (recibosSalvos) recibos = JSON.parse(recibosSalvos);
+        const c = localStorage.getItem('clientes');
+        const p = localStorage.getItem('produtos');
+        const o = localStorage.getItem('ordensServico');
+        const r = localStorage.getItem('recibos');
+        if (c) clientes = JSON.parse(c);
+        if (p) produtos = JSON.parse(p);
+        if (o) ordensServico = JSON.parse(o);
+        if (r) recibos = JSON.parse(r);
         
         if (clientes.length === 0 && produtos.length === 0) {
             clientes = [
@@ -64,9 +59,7 @@ function carregarDados() {
             ];
             salvarDados();
         }
-    } catch (e) {
-        console.log('Erro ao carregar dados:', e);
-    }
+    } catch(e) { console.log('Erro ao carregar:', e); }
 }
 
 function salvarDados() {
@@ -76,10 +69,7 @@ function salvarDados() {
         localStorage.setItem('ordensServico', JSON.stringify(ordensServico));
         localStorage.setItem('recibos', JSON.stringify(recibos));
         return true;
-    } catch (e) {
-        console.log('Erro ao salvar:', e);
-        return false;
-    }
+    } catch(e) { console.log('Erro ao salvar:', e); return false; }
 }
 
 function gerarId() {
@@ -134,25 +124,20 @@ function importarDados(event) {
 }
 
 // ============================================
-// FUNÇÕES DE STATUS E MODAIS
+// FUNÇÕES GERAIS
 // ============================================
-function atualizarStatus(mensagem, tipo = 'success') {
-    const statusBar = document.getElementById('statusBar');
-    if (!statusBar) return;
-    statusBar.textContent = mensagem;
-    statusBar.className = 'status-bar';
-    if (tipo === 'success') statusBar.classList.add('success');
-    else if (tipo === 'error') statusBar.classList.add('error');
-    else if (tipo === 'warning') statusBar.classList.add('warning');
+function atualizarStatus(msg, tipo = 'success') {
+    const bar = document.getElementById('statusBar');
+    if (!bar) return;
+    bar.textContent = msg;
+    bar.className = 'status-bar';
+    if (tipo === 'success') bar.classList.add('success');
+    else if (tipo === 'error') bar.classList.add('error');
+    else if (tipo === 'warning') bar.classList.add('warning');
 }
 
-function abrirModal(id) {
-    document.getElementById(id).style.display = 'flex';
-}
-
-function fecharModal(id) {
-    document.getElementById(id).style.display = 'none';
-}
+function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
+function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
 
 function abrirTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -162,9 +147,7 @@ function abrirTab(tabId) {
 }
 
 function carregarLogo() {
-    const headerLogo = document.getElementById('headerLogo');
-    if (!headerLogo) return;
-    headerLogo.innerHTML = `<h1 class="logo-title">⚡ ${EMPRESA.nomeAbreviado}</h1>`;
+    document.getElementById('headerLogo').innerHTML = `<h1 class="logo-title">⚡ ${EMPRESA.nomeAbreviado}</h1>`;
 }
 
 // ============================================
@@ -194,12 +177,19 @@ function renderClientes() {
 }
 
 function adicionarCliente() {
+    const btn = document.getElementById('salvarCliente');
+    if (btn.dataset.index !== undefined && btn.dataset.index !== '') {
+        btn.click();
+        return;
+    }
+    
     const nome = document.getElementById('nomeCliente').value.trim();
     const telefone = document.getElementById('telefoneCliente').value.trim();
     const cpf = document.getElementById('cpfCliente').value.trim();
     const endereco = document.getElementById('enderecoCliente').value.trim();
     const email = document.getElementById('emailCliente').value.trim();
-    if (!nome) { alert('⚠️ Nome do cliente é obrigatório'); return; }
+    if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
+    
     clientes.push({ id: gerarId(), nome, email, telefone, cpf, endereco });
     salvarDados();
     document.getElementById('nomeCliente').value = '';
@@ -231,27 +221,46 @@ function editarCliente(index) {
     document.getElementById('cpfCliente').value = c.cpf || '';
     document.getElementById('enderecoCliente').value = c.endereco || '';
     document.getElementById('emailCliente').value = c.email || '';
-    abrirModal('modalCliente');
-    document.getElementById('salvarCliente').onclick = function() {
+    
+    document.querySelector('#modalCliente h3').textContent = '✏️ Editar Cliente';
+    const btn = document.getElementById('salvarCliente');
+    btn.textContent = '💾 Atualizar';
+    btn.style.background = '#f39c12';
+    btn.dataset.index = index;
+    
+    const novoBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(novoBtn, btn);
+    
+    novoBtn.addEventListener('click', function() {
+        const idx = parseInt(this.dataset.index);
         const nome = document.getElementById('nomeCliente').value.trim();
         const telefone = document.getElementById('telefoneCliente').value.trim();
         const cpf = document.getElementById('cpfCliente').value.trim();
         const endereco = document.getElementById('enderecoCliente').value.trim();
         const email = document.getElementById('emailCliente').value.trim();
         if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
-        clientes[index] = { ...clientes[index], nome, email, telefone, cpf, endereco };
+        
+        clientes[idx] = { ...clientes[idx], nome, email, telefone, cpf, endereco };
         salvarDados();
         document.getElementById('nomeCliente').value = '';
         document.getElementById('telefoneCliente').value = '';
         document.getElementById('cpfCliente').value = '';
         document.getElementById('enderecoCliente').value = '';
         document.getElementById('emailCliente').value = '';
+        
+        document.querySelector('#modalCliente h3').textContent = '👤 Novo Cliente';
+        this.textContent = 'Salvar';
+        this.style.background = '#1a237e';
+        this.dataset.index = '';
+        
         fecharModal('modalCliente');
         renderClientes();
         renderSelectClientes();
-        document.getElementById('salvarCliente').onclick = adicionarCliente;
         atualizarStatus(`✅ Cliente "${nome}" atualizado!`);
-    };
+    });
+    
+    abrirModal('modalCliente');
+    document.getElementById('nomeCliente').focus();
 }
 
 // ============================================
@@ -280,10 +289,17 @@ function renderProdutos() {
 }
 
 function adicionarProduto() {
+    const btn = document.getElementById('salvarProduto');
+    if (btn.dataset.index !== undefined && btn.dataset.index !== '') {
+        btn.click();
+        return;
+    }
+    
     const nome = document.getElementById('nomeProduto').value.trim();
     const preco = parseFloat(document.getElementById('precoProduto').value);
     const tipo = document.getElementById('tipoProduto').value;
     if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
+    
     produtos.push({ id: gerarId(), nome, preco, tipo });
     salvarDados();
     document.getElementById('nomeProduto').value = '';
@@ -310,22 +326,41 @@ function editarProduto(index) {
     document.getElementById('nomeProduto').value = p.nome;
     document.getElementById('precoProduto').value = p.preco;
     document.getElementById('tipoProduto').value = p.tipo || 'outro';
-    abrirModal('modalProduto');
-    document.getElementById('salvarProduto').onclick = function() {
+    
+    document.querySelector('#modalProduto h3').textContent = '✏️ Editar Produto';
+    const btn = document.getElementById('salvarProduto');
+    btn.textContent = '💾 Atualizar';
+    btn.style.background = '#f39c12';
+    btn.dataset.index = index;
+    
+    const novoBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(novoBtn, btn);
+    
+    novoBtn.addEventListener('click', function() {
+        const idx = parseInt(this.dataset.index);
         const nome = document.getElementById('nomeProduto').value.trim();
         const preco = parseFloat(document.getElementById('precoProduto').value);
         const tipo = document.getElementById('tipoProduto').value;
         if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
-        produtos[index] = { ...produtos[index], nome, preco, tipo };
+        
+        produtos[idx] = { ...produtos[idx], nome, preco, tipo };
         salvarDados();
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
+        
+        document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
+        this.textContent = 'Salvar';
+        this.style.background = '#1a237e';
+        this.dataset.index = '';
+        
         fecharModal('modalProduto');
         renderProdutos();
         renderSelectProdutos();
-        document.getElementById('salvarProduto').onclick = adicionarProduto;
         atualizarStatus(`✅ Produto "${nome}" atualizado!`);
-    };
+    });
+    
+    abrirModal('modalProduto');
+    document.getElementById('nomeProduto').focus();
 }
 
 // ============================================
@@ -368,10 +403,7 @@ function adicionarItem() {
     updateTotal();
 }
 
-function removerItem(btn) {
-    btn.parentElement.remove();
-    updateTotal();
-}
+function removerItem(btn) { btn.parentElement.remove(); updateTotal(); }
 
 function updateTotal() {
     let total = 0;
@@ -390,10 +422,7 @@ function limparOrcamento() {
     const div = document.createElement('div');
     div.className = 'item-orcamento';
     div.innerHTML = `
-        <select class="selProduto">
-            <option value="">Selecione um produto</option>
-            ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${p.preco.toFixed(2)}</option>`).join('')}
-        </select>
+        <select class="selProduto"><option value="">Selecione um produto</option>${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${p.preco.toFixed(2)}</option>`).join('')}</select>
         <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
     `;
@@ -407,7 +436,7 @@ function limparOrcamento() {
 }
 
 // ============================================
-// SALVAR ORÇAMENTO → OS
+// SALVAR ORÇAMENTO
 // ============================================
 function salvarOrcamento() {
     const cliente = document.getElementById('selCliente').value;
@@ -451,6 +480,97 @@ function salvarOrcamento() {
     listarOS();
     atualizarStatus(`✅ Orçamento salvo! Nº ${novaOS.numero}`);
     alert(`✅ Orçamento salvo!\nNº: ${novaOS.numero}\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
+    abrirTab('tabOS');
+}
+
+// ============================================
+// EDITAR ORDEM DE SERVIÇO
+// ============================================
+function editarOS(id) {
+    const os = ordensServico.find(o => o.id === id);
+    if (!os) return;
+    
+    document.getElementById('selCliente').value = os.cliente;
+    document.getElementById('itensOrcamento').innerHTML = '';
+    
+    os.itens.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item-orcamento';
+        div.innerHTML = `
+            <select class="selProduto">
+                <option value="">Selecione um produto</option>
+                ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}" ${p.nome === item.nome ? 'selected' : ''}>${p.nome} - R$ ${p.preco.toFixed(2)}</option>`).join('')}
+            </select>
+            <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="${item.qtd}">
+            <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
+        `;
+        document.getElementById('itensOrcamento').appendChild(div);
+        div.querySelector('.selProduto').addEventListener('change', updateTotal);
+        div.querySelector('.qtdProduto').addEventListener('input', updateTotal);
+    });
+    updateTotal();
+    
+    document.getElementById('distancia').value = os.distancia || 50;
+    document.getElementById('tensao').value = os.tensao || 220;
+    document.getElementById('fp').value = os.fp || 0.92;
+    
+    const btn = document.getElementById('btnSalvarOrcamento');
+    btn.textContent = '💾 Atualizar OS';
+    btn.style.background = '#f39c12';
+    btn.dataset.osId = id;
+    
+    const novoBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(novoBtn, btn);
+    
+    novoBtn.addEventListener('click', function() {
+        const osId = this.dataset.osId;
+        const idx = ordensServico.findIndex(o => o.id === osId);
+        if (idx === -1) { alert('❌ OS não encontrada!'); return; }
+        
+        const cliente = document.getElementById('selCliente').value;
+        if (!cliente) { alert('⚠️ Selecione um cliente!'); return; }
+        
+        const itens = [];
+        document.querySelectorAll('.item-orcamento').forEach(item => {
+            const select = item.querySelector('.selProduto');
+            const qtd = parseInt(item.querySelector('.qtdProduto').value) || 0;
+            const nome = select.value;
+            const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
+            if (nome && qtd > 0) itens.push({ nome, qtd, preco, subtotal: preco * qtd });
+        });
+        if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item!'); return; }
+        
+        const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
+        const clienteData = clientes.find(c => c.nome === cliente);
+        const distancia = parseFloat(document.getElementById('distancia').value) || 50;
+        const tensao = parseFloat(document.getElementById('tensao').value);
+        const fp = parseFloat(document.getElementById('fp').value) || 0.92;
+        
+        ordensServico[idx] = {
+            ...ordensServico[idx],
+            cliente, clienteData, itens, total,
+            distancia, tensao, fp
+        };
+        
+        salvarDados();
+        listarOS();
+        
+        this.textContent = '💾 Salvar Orçamento';
+        this.style.background = '#27ae60';
+        this.dataset.osId = '';
+        
+        const originalBtn = this.cloneNode(true);
+        this.parentNode.replaceChild(originalBtn, this);
+        originalBtn.addEventListener('click', salvarOrcamento);
+        
+        atualizarStatus(`✅ OS ${ordensServico[idx].numero} atualizada!`);
+        alert(`✅ OS ${ordensServico[idx].numero} atualizada!`);
+        abrirTab('tabOS');
+    });
+    
+    abrirTab('tabOrcamento');
+    document.getElementById('orcamento').scrollIntoView({ behavior: 'smooth' });
+    atualizarStatus(`✏️ Editando OS ${os.numero}`);
 }
 
 // ============================================
@@ -474,9 +594,16 @@ function listarOS(filtro = 'todos') {
     container.innerHTML = lista.map(os => {
         const st = statusMap[os.status] || statusMap['orcamento'];
         const data = new Date(os.dataCriacao).toLocaleDateString('pt-BR');
+        const podeEditar = os.status === 'orcamento' || os.status === 'aprovado';
         return `
-            <div class="os-card" onclick="abrirOS('${os.id}')">
-                <div><strong>${os.numero}</strong> <span class="status-badge ${st.class}">${st.label}</span></div>
+            <div class="os-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div><strong>${os.numero}</strong> <span class="status-badge ${st.class}">${st.label}</span></div>
+                    <div style="display:flex;gap:5px;">
+                        ${podeEditar ? `<button onclick="editarOS('${os.id}')" class="btn-secondary" style="padding:4px 8px;font-size:12px;">✏️ Editar</button>` : ''}
+                        <button onclick="abrirOS('${os.id}')" class="btn-primary" style="padding:4px 8px;font-size:12px;">👁️ Ver</button>
+                    </div>
+                </div>
                 <div><strong>Cliente:</strong> ${os.cliente}</div>
                 <div style="font-size:12px;color:#666;">${os.itens.length} itens | Total: R$ ${os.total.toFixed(2)} | ${data}</div>
             </div>
@@ -484,9 +611,7 @@ function listarOS(filtro = 'todos') {
     }).join('');
 }
 
-function filtrarOS() {
-    listarOS(document.getElementById('filtroStatusOS').value);
-}
+function filtrarOS() { listarOS(document.getElementById('filtroStatusOS').value); }
 
 function abrirOS(id) {
     osAtual = ordensServico.find(os => os.id === id);
@@ -517,11 +642,7 @@ function abrirOS(id) {
         </div>
         <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                <thead><tr style="background:#1a237e;color:white;">
-                    <th style="padding:5px;">#</th><th style="padding:5px;">Produto</th>
-                    <th style="padding:5px;">Qtd</th><th style="padding:5px;">Preço</th>
-                    <th style="padding:5px;">Subtotal</th>
-                </tr></thead>
+                <thead><tr style="background:#1a237e;color:white;"><th style="padding:5px;">#</th><th style="padding:5px;">Produto</th><th style="padding:5px;">Qtd</th><th style="padding:5px;">Preço</th><th style="padding:5px;">Subtotal</th></tr></thead>
                 <tbody>${itensHTML}</tbody>
             </table>
         </div>
@@ -622,9 +743,7 @@ function listarRecibos(filtro = 'todos') {
     }).join('');
 }
 
-function filtrarRecibos() {
-    listarRecibos(document.getElementById('filtroRecibo').value);
-}
+function filtrarRecibos() { listarRecibos(document.getElementById('filtroRecibo').value); }
 
 function abrirRecibo(id) {
     reciboAtual = recibos.find(r => r.id === id);
@@ -652,11 +771,7 @@ function abrirRecibo(id) {
         </div>
         <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                <thead><tr style="background:#1a237e;color:white;">
-                    <th style="padding:5px;">#</th><th style="padding:5px;">Produto</th>
-                    <th style="padding:5px;">Qtd</th><th style="padding:5px;">Preço</th>
-                    <th style="padding:5px;">Subtotal</th>
-                </tr></thead>
+                <thead><tr style="background:#1a237e;color:white;"><th style="padding:5px;">#</th><th style="padding:5px;">Produto</th><th style="padding:5px;">Qtd</th><th style="padding:5px;">Preço</th><th style="padding:5px;">Subtotal</th></tr></thead>
                 <tbody>${itensHTML}</tbody>
             </table>
         </div>
@@ -703,7 +818,7 @@ function imprimirRecibo() {
 }
 
 // ============================================
-// PDF CORRIGIDO
+// PDF
 // ============================================
 function gerarPDF() {
     const cliente = document.getElementById('selCliente').value;
@@ -829,7 +944,7 @@ function gerarPDF() {
 }
 
 // ============================================
-// WHATSAPP DIRETO PARA O CLIENTE
+// WHATSAPP
 // ============================================
 function enviarWhatsApp() {
     const cliente = document.getElementById('selCliente').value;
@@ -874,9 +989,6 @@ function enviarWhatsApp() {
     atualizarStatus(`💬 Enviado para ${clienteData.nome}`);
 }
 
-// ============================================
-// ENVIAR PDF + WHATSAPP
-// ============================================
 function enviarPDFWhatsApp() {
     const cliente = document.getElementById('selCliente').value;
     if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
@@ -1001,13 +1113,10 @@ function init() {
     updateTotal();
     listarOS();
     listarRecibos();
-    
     if (produtos.length > 0) adicionarItem();
-    
     document.querySelector('title').textContent = `${EMPRESA.nome} - Sistema Completo`;
     carregarLogo();
     atualizarStatus(`✅ Sistema pronto! ${clientes.length} clientes, ${produtos.length} produtos`);
-    
     setInterval(salvarDados, 300000);
 }
 
