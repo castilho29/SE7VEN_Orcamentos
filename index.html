@@ -16,6 +16,10 @@
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="style.css">
     
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:Arial,sans-serif;background:#f0f2f5;padding:10px;max-width:480px;margin:0 auto;min-height:100vh;}
@@ -31,6 +35,9 @@
         .btn-danger{background:#e74c3c;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-info{background:#3498db;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-whatsapp{background:#25d366;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
+        .btn-google{background:#db4437;color:white;border:none;padding:12px;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:300px;margin:5px auto;transition:background 0.3s;}
+        .btn-google:hover{background:#c33d31;}
+        .btn-google:disabled{opacity:0.6;cursor:not-allowed;}
         .btn-logout{background:#e74c3c;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
         
         .status-bar{background:#1a237e;color:white;padding:10px 15px;border-radius:8px;font-size:14px;margin-bottom:15px;text-align:center;font-weight:bold;}
@@ -101,19 +108,27 @@
         .modal-content button{margin:5px 5px 5px 0;padding:8px 16px;border-radius:4px;border:none;cursor:pointer;font-weight:bold;}
         
         .login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:white;padding:20px;}
-        .login-screen h1{color:#1a237e;margin-bottom:30px;}
+        .login-screen h1{color:#1a237e;margin-bottom:10px;text-align:center;}
         .login-screen img{max-height:80px;margin-bottom:20px;}
         .login-screen input{width:100%;max-width:300px;padding:12px;margin:8px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:16px;}
-        .login-screen button{width:100%;max-width:300px;padding:12px;background:#1a237e;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;}
         .login-screen .error{color:#e74c3c;font-size:14px;margin-top:10px;display:none;}
-        .login-screen .info{color:#666;font-size:12px;margin-top:15px;text-align:center;}
+        .login-screen .info{color:#666;font-size:12px;margin-top:15px;text-align:center;max-width:300px;}
+        
+        .login-screen .divider{display:flex;align-items:center;width:100%;max-width:300px;margin:10px auto;}
+        .login-screen .divider::before,.login-screen .divider::after{content:'';flex:1;border-bottom:1px solid #ddd;}
+        .login-screen .divider span{padding:0 10px;color:#999;font-size:12px;}
         
         .user-info{display:flex;align-items:center;gap:10px;font-size:12px;color:#666;}
         .user-info .name{font-weight:bold;color:#1a237e;}
+        .user-info img{width:24px;height:24px;border-radius:50%;}
         
         .log-list{max-height:150px;overflow-y:auto;font-size:12px;background:#f8f9fa;padding:10px;border-radius:4px;margin-top:5px;}
         .log-list .entry{padding:3px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;}
         .log-list .entry .time{color:#999;font-size:10px;}
+        
+        .user-list{max-height:150px;overflow-y:auto;}
+        .user-list .user-item{padding:8px 12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;}
+        .user-list .user-item .role{font-size:11px;color:#666;background:#e8eaf6;padding:2px 8px;border-radius:4px;}
         
         @media (max-width:480px){
             .item-orcamento{flex-direction:column;align-items:stretch;}
@@ -130,14 +145,37 @@
     </style>
 </head>
 <body>
-    <!-- TELA DE LOGIN -->
+    <!-- ========== TELA DE LOGIN ========== -->
     <div id="loginScreen" class="login-screen">
         <img src="logo.png" alt="SE7VEN ENERGIA" onerror="this.style.display='none'">
         <h1>⚡ SE7VEN ENERGIA</h1>
+        
+        <!-- Login com usuário/senha -->
         <input type="text" id="loginUsuario" placeholder="Usuário" value="">
         <input type="password" id="loginSenha" placeholder="Senha" value="">
         <div id="loginError" class="error">❌ Usuário ou senha incorretos</div>
-        <button onclick="fazerLogin()">🔑 Entrar</button>
+        <button onclick="fazerLogin()" style="background:#1a237e;color:white;width:100%;max-width:300px;padding:12px;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;border:none;margin:5px auto;">🔑 Entrar</button>
+        
+        <div class="divider"><span>ou</span></div>
+        
+        <!-- Login com Google -->
+        <button class="btn-google" onclick="loginGoogle()">
+            <svg width="20" height="20" viewBox="0 0 48 48">
+                <path fill="#ffffff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#ffffff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#ffffff" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#ffffff" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Entrar com Google
+        </button>
+        
+        <!-- Botão Cadastrar Usuário -->
+        <div style="margin-top:10px;text-align:center;width:100%;max-width:300px;">
+            <button onclick="mostrarCadastroUsuario()" style="background:transparent;color:#1a237e;text-decoration:underline;font-size:12px;padding:5px;border:none;cursor:pointer;">
+                🔑 Cadastrar novo usuário
+            </button>
+        </div>
+        
         <div class="info">
             <strong>Usuários padrão:</strong><br>
             admin / admin<br>
@@ -145,7 +183,7 @@
         </div>
     </div>
 
-    <!-- SISTEMA -->
+    <!-- ========== SISTEMA ========== -->
     <div id="sistemaScreen" style="display:none;">
         <header>
             <div class="header-logo" id="headerLogo">
@@ -153,6 +191,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 <div class="user-info">
+                    <span id="userAvatar" style="display:none;"><img src="" alt="Avatar" id="avatarImg"></span>
                     <span>👤 <span class="name" id="nomeUsuario">Admin</span></span>
                     <button class="btn-logout" onclick="fazerLogout()">Sair</button>
                 </div>
@@ -180,6 +219,7 @@
                 <button class="btn-backup" onclick="exportarDados()">📤 Exportar</button>
                 <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📥 Importar</button>
                 <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
+                <button class="btn-backup" onclick="backupGit()" style="background:#24292e;color:white;">🐙 Backup Git</button>
             </div>
         </div>
 
@@ -192,6 +232,7 @@
             <button class="tab-btn" onclick="abrirTab('tabRecibos')">💰 Recibos</button>
             <button class="tab-btn" onclick="abrirTab('tabCalculos')">🧮 Cálculos</button>
             <button class="tab-btn" onclick="abrirTab('tabLogs')">📋 Logs</button>
+            <button class="tab-btn" onclick="abrirTab('tabUsuarios')">👥 Usuários</button>
         </div>
 
         <!-- TAB CLIENTES -->
@@ -329,9 +370,36 @@
                 <button class="btn-danger" onclick="limparLogs()" style="margin-top:10px;padding:6px 12px;font-size:12px;">🗑️ Limpar Logs</button>
             </section>
         </div>
+
+        <!-- TAB USUÁRIOS -->
+        <div id="tabUsuarios" class="tab-content">
+            <section>
+                <h2>👥 Gerenciar Usuários</h2>
+                <div id="listaUsuarios" class="user-list"></div>
+                <button class="btn-success" onclick="mostrarCadastroUsuario()" style="margin-top:10px;">+ Adicionar Usuário</button>
+            </section>
+        </div>
     </div>
 
-    <!-- MODAIS -->
+    <!-- ========== MODAL CADASTRO USUÁRIO ========== -->
+    <div id="modalCadastroUsuario" class="modal">
+        <div class="modal-content">
+            <h3>👤 Novo Usuário</h3>
+            <input type="text" id="novoUsuarioNome" placeholder="Nome do usuário *">
+            <input type="text" id="novoUsuarioLogin" placeholder="Login *">
+            <input type="password" id="novoUsuarioSenha" placeholder="Senha *">
+            <select id="novoUsuarioTipo">
+                <option value="usuario">Usuário</option>
+                <option value="admin">Administrador</option>
+            </select>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+                <button id="salvarNovoUsuario" class="btn-success" style="flex:1;">Salvar</button>
+                <button onclick="fecharModal('modalCadastroUsuario')" class="btn-secondary" style="flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAIS EXISTENTES ========== -->
     <div id="modalCliente" class="modal"><div class="modal-content"><h3>👤 Novo Cliente</h3><input type="text" id="nomeCliente" placeholder="Nome *"><input type="tel" id="telefoneCliente" placeholder="Celular"><input type="text" id="cpfCliente" placeholder="CPF/CNPJ"><input type="text" id="enderecoCliente" placeholder="Endereço"><input type="email" id="emailCliente" placeholder="Email"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
     
     <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
