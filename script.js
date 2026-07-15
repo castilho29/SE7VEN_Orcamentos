@@ -1,23 +1,30 @@
 // ============================================
-// CONFIGURAÇÕES DO SISTEMA
+// SISTEMA SE7VEN ENERGIA - VERSÃO SIMPLIFICADA
 // ============================================
 
-// Carrega as configurações do config.js
+console.log('⚡ Carregando sistema...');
+
+// ============================================
+// CONFIGURAÇÕES
+// ============================================
 let CONFIG = {};
 
+// Tenta carregar do config.js
 try {
-    if (typeof window.CONFIG !== 'undefined') {
+    if (typeof window.CONFIG !== 'undefined' && window.CONFIG) {
         CONFIG = window.CONFIG;
-        console.log('✅ Configurações carregadas!');
+        console.log('✅ Configurações carregadas do config.js');
+    } else {
+        console.warn('⚠️ config.js não encontrado, usando padrão');
     }
 } catch(e) {
-    console.warn('⚠️ config.js não encontrado');
+    console.warn('⚠️ Erro ao carregar config.js');
 }
 
 // ============================================
-// EMPRESA
+// DADOS DA EMPRESA
 // ============================================
-const EMPRESA = CONFIG.EMPRESA || {
+const EMPRESA = {
     nome: 'SE7VEN ENERGIA',
     nomeAbreviado: 'SE7VEN',
     telefone: '(93) 98102-7290',
@@ -40,56 +47,48 @@ const EMPRESA = CONFIG.EMPRESA || {
 // GITHUB CONFIG
 // ============================================
 const GITHUB_CONFIG = {
-    token: CONFIG.GITHUB_TOKEN || '',
-    usuario: CONFIG.GITHUB_USUARIO || 'castilho29',
-    repo: CONFIG.GITHUB_REPO || 'SE7VEN_Orcamentos',
-    arquivo: CONFIG.GITHUB_ARQUIVO || 'dados.json',
-    intervaloAuto: CONFIG.INTERVALO_SYNC || 300000,
-    branch: CONFIG.BRANCH || 'main'
+    token: CONFIG?.GITHUB_TOKEN || '',
+    usuario: CONFIG?.GITHUB_USUARIO || 'castilho29',
+    repo: CONFIG?.GITHUB_REPO || 'SE7VEN_Orcamentos',
+    arquivo: CONFIG?.GITHUB_ARQUIVO || 'dados.json',
+    intervaloAuto: CONFIG?.INTERVALO_SYNC || 300000,
+    branch: CONFIG?.BRANCH || 'main'
 };
 
+console.log('🔑 Token:', GITHUB_CONFIG.token ? '✅ Configurado' : '❌ Não configurado');
+
 // ============================================
-// FIREBASE CONFIG (LOGIN GOOGLE)
+// FIREBASE (Login Google)
 // ============================================
-// Verifica se o Firebase está disponível
 let auth = null;
-let firebaseApp = null;
 
 try {
-    if (typeof firebase !== 'undefined' && CONFIG.FIREBASE_CONFIG) {
+    if (typeof firebase !== 'undefined' && CONFIG?.FIREBASE_CONFIG) {
         firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
         auth = firebase.auth();
         console.log('✅ Firebase inicializado!');
+    } else {
+        console.log('ℹ️ Firebase não disponível');
     }
 } catch(e) {
-    console.warn('⚠️ Firebase não disponível');
+    console.warn('⚠️ Firebase não inicializado:', e.message);
 }
 
 // ============================================
 // USUÁRIOS
 // ============================================
-let USUARIOS = {};
+let USUARIOS = {
+    admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' },
+    usuario: { senha: '123456', nome: 'Usuário Padrão', tipo: 'usuario' }
+};
 
-try {
-    if (CONFIG.USUARIOS) {
-        USUARIOS = CONFIG.USUARIOS;
-        console.log('✅ Usuários carregados do config.js');
-    } else {
-        // Usuários padrão
-        USUARIOS = {
-            admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' },
-            usuario: { senha: '123456', nome: 'Usuário Padrão', tipo: 'usuario' }
-        };
-        console.log('ℹ️ Usuários padrão carregados');
-    }
-} catch(e) {
-    USUARIOS = {
-        admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' },
-        usuario: { senha: '123456', nome: 'Usuário Padrão', tipo: 'usuario' }
-    };
+// Tenta carregar do config.js
+if (CONFIG?.USUARIOS) {
+    USUARIOS = { ...USUARIOS, ...CONFIG.USUARIOS };
+    console.log('✅ Usuários carregados do config.js');
 }
 
-console.log('📋 Usuários disponíveis:', Object.keys(USUARIOS));
+console.log('📋 Usuários:', Object.keys(USUARIOS).join(', '));
 
 // ============================================
 // VARIÁVEIS GLOBAIS
@@ -103,12 +102,12 @@ let logs = [];
 let osAtual = null;
 let reciboAtual = null;
 let syncTimeout = null;
-let syncAutomaticaAtiva = true;
-let ultimaSync = null;
 
 // ============================================
-// FUNÇÃO DE LOGIN
+// FUNÇÕES DE LOGIN
 // ============================================
+
+// Função de Login (chamada pelo botão)
 function fazerLogin() {
     console.log('🔑 Função fazerLogin chamada!');
     
@@ -117,7 +116,7 @@ function fazerLogin() {
     const error = document.getElementById('loginError');
     
     if (!userInput || !senhaInput) {
-        console.error('❌ Campos de login não encontrados!');
+        console.error('❌ Campos de login não encontrados');
         alert('Erro: Campos de login não encontrados!');
         return;
     }
@@ -125,8 +124,7 @@ function fazerLogin() {
     const user = userInput.value.trim();
     const senha = senhaInput.value.trim();
     
-    console.log('🔑 Tentando login:', user);
-    console.log('📋 Usuários disponíveis:', Object.keys(USUARIOS));
+    console.log('👤 Tentando login:', user);
     
     if (!user || !senha) {
         error.textContent = '❌ Preencha todos os campos!';
@@ -142,13 +140,13 @@ function fazerLogin() {
     }
     
     if (USUARIOS[user].senha !== senha) {
-        console.error('❌ Senha incorreta para:', user);
+        console.error('❌ Senha incorreta');
         error.textContent = '❌ Senha incorreta!';
         error.style.display = 'block';
         return;
     }
     
-    console.log('✅ Login bem sucedido!', user);
+    console.log('✅ Login bem sucedido!');
     
     usuarioAtual = { 
         login: user, 
@@ -156,14 +154,9 @@ function fazerLogin() {
         tipo: USUARIOS[user].tipo || 'usuario'
     };
     
-    try {
-        localStorage.setItem('usuarioLogado', JSON.stringify(usuarioAtual));
-        console.log('💾 Usuário salvo no localStorage');
-    } catch(e) {
-        console.warn('⚠️ Não foi possível salvar no localStorage:', e);
-    }
+    localStorage.setItem('usuarioLogado', JSON.stringify(usuarioAtual));
     
-    // Mostra o sistema
+    // Entra no sistema
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('sistemaScreen').style.display = 'block';
     document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
@@ -176,15 +169,11 @@ function fazerLogin() {
     registrarLog('LOGIN', `${usuarioAtual.nome} entrou no sistema`);
     
     init();
-    setTimeout(sincronizarDados, 3000);
 }
 
-// ============================================
-// FUNÇÃO DE LOGOUT
-// ============================================
+// Função de Logout
 function fazerLogout() {
     console.log('🔓 Fazendo logout');
-    registrarLog('LOGOUT', `${usuarioAtual?.nome || 'Usuário'} saiu do sistema`);
     usuarioAtual = null;
     localStorage.removeItem('usuarioLogado');
     document.getElementById('loginScreen').style.display = 'flex';
@@ -195,9 +184,11 @@ function fazerLogout() {
 }
 
 // ============================================
-// LOGIN COM GOOGLE
+// LOGIN GOOGLE
 // ============================================
 function loginGoogle() {
+    console.log('🔑 Login Google chamado');
+    
     if (!auth) {
         alert('⚠️ Login Google não disponível. Configure o Firebase.');
         return;
@@ -207,8 +198,29 @@ function loginGoogle() {
     auth.signInWithPopup(provider)
         .then((result) => {
             const user = result.user;
-            console.log('✅ Login Google bem sucedido!', user);
-            // ... resto da função
+            console.log('✅ Login Google bem sucedido:', user.displayName);
+            
+            usuarioAtual = {
+                login: user.email,
+                nome: user.displayName || user.email,
+                email: user.email,
+                tipo: 'google',
+                avatar: user.photoURL || null
+            };
+            
+            localStorage.setItem('usuarioLogado', JSON.stringify(usuarioAtual));
+            
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('sistemaScreen').style.display = 'block';
+            document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
+            
+            if (user.photoURL) {
+                document.getElementById('userAvatar').style.display = 'inline-block';
+                document.getElementById('avatarImg').src = user.photoURL;
+            }
+            
+            init();
+            atualizarStatus(`✅ Bem-vindo, ${usuarioAtual.nome}!`);
         })
         .catch((error) => {
             console.error('❌ Erro no login Google:', error);
@@ -222,8 +234,8 @@ function loginGoogle() {
 // ============================================
 function mostrarCadastroUsuario() {
     console.log('📝 Abrindo cadastro de usuário');
-    document.getElementById('modalCadastroUsuario').style.display = 'flex';
-    document.getElementById('novoUsuarioNome').focus();
+    const modal = document.getElementById('modalCadastroUsuario');
+    if (modal) modal.style.display = 'flex';
 }
 
 function salvarNovoUsuario() {
@@ -252,13 +264,9 @@ function salvarNovoUsuario() {
     document.getElementById('novoUsuarioSenha').value = '';
     
     atualizarStatus(`✅ Usuário "${nome}" cadastrado!`);
-    registrarLog('USUARIO_CADASTRADO', `Usuário "${nome}" (${login}) cadastrado`);
     alert(`✅ Usuário "${nome}" cadastrado com sucesso!`);
 }
 
-// ============================================
-// LISTAR USUÁRIOS
-// ============================================
 function listarUsuarios() {
     const container = document.getElementById('listaUsuarios');
     if (!container) return;
@@ -284,17 +292,12 @@ function excluirUsuario(login) {
         salvarUsuarios();
         listarUsuarios();
         atualizarStatus(`🗑️ Usuário "${login}" removido`);
-        registrarLog('USUARIO_EXCLUIDO', `Usuário "${login}" excluído`);
     }
 }
 
 function salvarUsuarios() {
     try {
         localStorage.setItem('usuarios', JSON.stringify(USUARIOS));
-        // Atualiza também no CONFIG
-        if (window.CONFIG) {
-            window.CONFIG.USUARIOS = USUARIOS;
-        }
     } catch(e) {}
 }
 
@@ -314,36 +317,30 @@ function carregarUsuarios() {
 function verificarLogin() {
     try {
         const salvo = localStorage.getItem('usuarioLogado');
-        console.log('🔍 Verificando login salvo:', salvo);
-        
-        if (!salvo) {
-            console.log('ℹ️ Nenhum login salvo encontrado');
-            return false;
-        }
+        if (!salvo) return false;
         
         const data = JSON.parse(salvo);
-        console.log('📋 Dados salvos:', data);
-        
-        // Verifica se o usuário ainda existe
         if (!USUARIOS[data.login] && data.tipo !== 'google') {
-            console.warn('⚠️ Usuário não existe mais:', data.login);
             localStorage.removeItem('usuarioLogado');
             return false;
         }
         
         usuarioAtual = data;
-        console.log('✅ Sessão restaurada para:', usuarioAtual.nome);
-        
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('sistemaScreen').style.display = 'block';
         document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
+        
+        if (usuarioAtual.avatar) {
+            document.getElementById('userAvatar').style.display = 'inline-block';
+            document.getElementById('avatarImg').src = usuarioAtual.avatar;
+        }
         
         init();
         atualizarStatus(`✅ Bem-vindo de volta, ${usuarioAtual.nome}!`);
         return true;
         
     } catch(e) {
-        console.error('❌ Erro ao verificar login:', e);
+        console.error('Erro ao verificar login:', e);
         return false;
     }
 }
@@ -360,26 +357,15 @@ function registrarLog(acao, detalhes) {
     };
     logs.unshift(entry);
     if (logs.length > 500) logs = logs.slice(0, 500);
-    salvarLogs();
-    renderizarLogs();
-}
-
-function salvarLogs() {
     try { localStorage.setItem('logs', JSON.stringify(logs)); } catch(e) {}
-}
-
-function carregarLogs() {
-    try {
-        const saved = localStorage.getItem('logs');
-        if (saved) logs = JSON.parse(saved);
-    } catch(e) {}
+    renderizarLogs();
 }
 
 function renderizarLogs() {
     const container = document.getElementById('logList');
     if (!container) return;
     if (logs.length === 0) {
-        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum registro de atividade</p>';
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum registro</p>';
         return;
     }
     container.innerHTML = logs.slice(0, 100).map(log => `
@@ -393,15 +379,14 @@ function renderizarLogs() {
 function limparLogs() {
     if (confirm('Limpar todos os logs?')) {
         logs = [];
-        salvarLogs();
+        try { localStorage.setItem('logs', JSON.stringify(logs)); } catch(e) {}
         renderizarLogs();
         atualizarStatus('🗑️ Logs limpos!');
-        registrarLog('LOGS_LIMPADOS', 'Logs limpos');
     }
 }
 
 // ============================================
-// DADOS LOCAIS
+// DADOS
 // ============================================
 function carregarDados() {
     try {
@@ -413,21 +398,7 @@ function carregarDados() {
         if (p) produtos = JSON.parse(p);
         if (o) ordensServico = JSON.parse(o);
         if (r) recibos = JSON.parse(r);
-        
-        if (clientes.length === 0 && produtos.length === 0) {
-            clientes = [
-                { id: '1', nome: 'José Castilho', email: 'jose@email.com', telefone: '(93) 98102-7290', cpf: '123.456.789-00', endereco: 'Rua Exemplo, 123 - Belém/PA' },
-                { id: '2', nome: 'Maria Santos', email: 'maria@email.com', telefone: '(91) 99999-2222', cpf: '987.654.321-00', endereco: 'Av. Principal, 456 - Ananindeua/PA' }
-            ];
-            produtos = [
-                { id: '1', nome: 'Kit Solar 5kWp', preco: 15000.00, tipo: 'equipamento' },
-                { id: '2', nome: 'Inversor 5kW', preco: 4500.00, tipo: 'equipamento' },
-                { id: '3', nome: 'Instalação Completa', preco: 3000.00, tipo: 'servico' },
-                { id: '4', nome: 'Manutenção Anual', preco: 1200.00, tipo: 'servico' }
-            ];
-            salvarDados();
-        }
-    } catch(e) { console.log('Erro ao carregar:', e); }
+    } catch(e) { console.log('Erro ao carregar dados:', e); }
 }
 
 function salvarDados() {
@@ -436,8 +407,7 @@ function salvarDados() {
         localStorage.setItem('produtos', JSON.stringify(produtos));
         localStorage.setItem('ordensServico', JSON.stringify(ordensServico));
         localStorage.setItem('recibos', JSON.stringify(recibos));
-        return true;
-    } catch(e) { console.log('Erro ao salvar:', e); return false; }
+    } catch(e) { console.log('Erro ao salvar:', e); }
 }
 
 function gerarId() {
@@ -481,81 +451,7 @@ function carregarLogo() {
 }
 
 // ============================================
-// SINCRONIZAÇÃO
-// ============================================
-async function sincronizarDados() {
-    const statusElement = document.getElementById('syncStatus');
-    const progressElement = document.getElementById('syncProgress');
-    const ultimaSyncElement = document.getElementById('ultimaSync');
-    
-    if (!statusElement) return;
-    
-    try {
-        statusElement.textContent = '🔄 Sincronizando...';
-        statusElement.className = 'status sincronizando';
-        progressElement.style.display = 'block';
-        progressElement.textContent = '⏳ Conectando ao GitHub...';
-        
-        if (!GITHUB_CONFIG.token) {
-            throw new Error('Token não configurado! Verifique o config.js');
-        }
-        
-        const testResponse = await fetch('https://api.github.com/user', {
-            headers: {
-                'Authorization': `token ${GITHUB_CONFIG.token}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
-        });
-        
-        if (!testResponse.ok) {
-            throw new Error(`Token inválido: ${testResponse.status}`);
-        }
-        
-        progressElement.textContent = '📥 Baixando dados...';
-        const dadosRemotos = await baixarDadosGitHub();
-        
-        if (dadosRemotos) {
-            // ... resto da sincronização
-        }
-        
-        statusElement.textContent = '✅ Sincronizado!';
-        statusElement.className = 'status online';
-        progressElement.style.display = 'none';
-        
-    } catch (error) {
-        console.error('❌ Erro na sincronização:', error);
-        statusElement.textContent = '❌ Erro: ' + error.message;
-        statusElement.className = 'status offline';
-        progressElement.textContent = '❌ ' + error.message;
-        progressElement.style.display = 'block';
-        atualizarStatus('❌ ' + error.message, 'error');
-    }
-}
-
-async function baixarDadosGitHub() {
-    try {
-        const url = `https://api.github.com/repos/${GITHUB_CONFIG.usuario}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.arquivo}`;
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `token ${GITHUB_CONFIG.token}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
-        });
-        if (response.status === 404) return null;
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const conteudo = atob(data.content);
-        const dados = JSON.parse(conteudo);
-        dados.timestamp = data.committer?.date || null;
-        return dados;
-    } catch (error) {
-        console.error('Erro ao baixar:', error);
-        throw error;
-    }
-}
-
-// ============================================
-// FUNÇÕES DE CLIENTES
+// CLIENTES (CRUD BÁSICO)
 // ============================================
 function renderClientes() {
     const lista = document.getElementById('listaClientes');
@@ -598,7 +494,6 @@ function adicionarCliente() {
     renderClientes();
     renderSelectClientes();
     atualizarStatus(`✅ Cliente "${nome}" cadastrado!`);
-    registrarLog('CLIENTE_ADICIONADO', `Cliente "${nome}" adicionado por ${usuarioAtual?.nome}`);
 }
 
 function excluirCliente(index) {
@@ -609,13 +504,57 @@ function excluirCliente(index) {
         renderClientes();
         renderSelectClientes();
         atualizarStatus(`🗑️ Cliente "${nome}" removido`);
-        registrarLog('CLIENTE_EXCLUIDO', `Cliente "${nome}" excluído por ${usuarioAtual?.nome}`);
     }
 }
 
 function editarCliente(index) {
-    // Implementação simplificada
-    alert('Função editar cliente em desenvolvimento');
+    alert('✏️ Editar cliente em desenvolvimento');
+}
+
+function renderSelectClientes() {
+    const sel = document.getElementById('selCliente');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Selecione um cliente</option>' +
+        clientes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+}
+
+// ============================================
+// BACKUP
+// ============================================
+function exportarDados() {
+    const dados = { clientes, produtos, ordensServico, recibos, logs, data: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    atualizarStatus('✅ Backup exportado!');
+}
+
+function importarDados(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const dados = JSON.parse(e.target.result);
+            if (dados.clientes) {
+                clientes = dados.clientes;
+                produtos = dados.produtos || [];
+                ordensServico = dados.ordensServico || [];
+                recibos = dados.recibos || [];
+                salvarDados();
+                renderClientes();
+                renderSelectClientes();
+                atualizarStatus('✅ Dados importados!');
+                alert('✅ Dados importados com sucesso!');
+            }
+        } catch(err) { alert('❌ Arquivo inválido!'); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
 }
 
 // ============================================
@@ -624,19 +563,12 @@ function editarCliente(index) {
 function init() {
     console.log('🚀 Inicializando sistema...');
     carregarDados();
-    carregarLogs();
     renderClientes();
     renderSelectClientes();
     listarUsuarios();
-    atualizarStatus(`✅ Sistema pronto! ${clientes.length} clientes, ${produtos.length} produtos`);
+    carregarLogo();
+    atualizarStatus(`✅ Sistema pronto! ${clientes.length} clientes`);
     console.log('✅ Sistema inicializado!');
-}
-
-function renderSelectClientes() {
-    const sel = document.getElementById('selCliente');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione um cliente</option>' +
-        clientes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
 }
 
 // ============================================
@@ -651,7 +583,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('sistemaScreen').style.display = 'none';
     }
     
-    // Evento Enter no login
+    // Evento Enter
     document.getElementById('loginUsuario')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') document.getElementById('loginSenha').focus();
     });
@@ -659,7 +591,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter') fazerLogin();
     });
     
-    // Botão cadastro usuário
+    // Botões
+    document.getElementById('btnAddCliente')?.addEventListener('click', function() {
+        abrirModal('modalCliente');
+        document.getElementById('nomeCliente').focus();
+    });
+    
+    document.getElementById('salvarCliente')?.addEventListener('click', adicionarCliente);
+    document.getElementById('fecharModalCliente')?.addEventListener('click', function() {
+        fecharModal('modalCliente');
+    });
+    
     document.getElementById('salvarNovoUsuario')?.addEventListener('click', salvarNovoUsuario);
     
     console.log('✅ Eventos configurados!');
