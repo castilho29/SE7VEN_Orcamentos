@@ -24,7 +24,7 @@ const EMPRESA = {
 // GITHUB CONFIG
 // ============================================
 const GITHUB_CONFIG = {
-    token: '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',
+    token: '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',
     usuario: 'castilho29',
     repo: 'SE7VEN_Orcamentos',
     arquivo: 'dados.json',
