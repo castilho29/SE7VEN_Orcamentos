@@ -12,7 +12,8 @@
     <meta name="theme-color" content="#1a237e">
     
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=⚡&background=1a237e&color=ffffff&size=192&font-size=0.5">
+    <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="style.css">
     
     <style>
@@ -21,7 +22,7 @@
         
         header{display:flex;justify-content:space-between;align-items:center;background:white;padding:15px;border-radius:12px;margin-bottom:15px;box-shadow:0 2px 8px rgba(26,35,126,0.15);}
         .header-logo{display:flex;align-items:center;gap:12px;}
-        .header-logo img{height:40px;width:auto;border-radius:8px;}
+        .header-logo img{height:40px;width:auto;border-radius:8px;object-fit:contain;}
         .logo-title{color:#1a237e;font-weight:900;letter-spacing:1px;font-size:20px;}
         .btn-primary{background:#1a237e;color:white;border:none;padding:10px 18px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold;}
         .btn-secondary{background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;padding:8px 16px;border-radius:8px;font-size:14px;cursor:pointer;}
@@ -30,16 +31,27 @@
         .btn-danger{background:#e74c3c;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-info{background:#3498db;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-whatsapp{background:#25d366;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
+        .btn-logout{background:#e74c3c;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
         
         .status-bar{background:#1a237e;color:white;padding:10px 15px;border-radius:8px;font-size:14px;margin-bottom:15px;text-align:center;font-weight:bold;}
         .status-bar.success{background:#27ae60;}
         .status-bar.error{background:#e74c3c;}
         .status-bar.warning{background:#f39c12;}
         
-        .backup-info{background:#e8f5e9;padding:10px 15px;border-radius:8px;margin-bottom:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-        .backup-info strong{color:#2e7d32;font-size:13px;}
-        .btn-backup{background:#27ae60;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
-        .btn-restore{background:#f39c12;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
+        .sync-info{background:#e8f0fe;padding:10px 15px;border-radius:8px;margin-bottom:15px;border:1px solid #1a237e;}
+        .sync-info strong{color:#1a237e;font-size:13px;display:block;margin-bottom:5px;}
+        .sync-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+        .sync-status .status{font-size:12px;color:#666;}
+        .sync-status .status.online{color:#27ae60;}
+        .sync-status .status.offline{color:#e74c3c;}
+        .sync-status .status.sincronizando{color:#f39c12;}
+        
+        .backup-info{background:#e8f5e9;padding:10px 15px;border-radius:8px;margin-bottom:15px;}
+        .backup-info strong{color:#2e7d32;font-size:13px;display:block;margin-bottom:5px;}
+        .backup-buttons{display:flex;gap:8px;flex-wrap:wrap;}
+        .backup-buttons button{font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;font-weight:bold;}
+        .btn-backup{background:#27ae60;color:white;}
+        .btn-restore{background:#f39c12;color:white;}
         
         .tab-container{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap;}
         .tab-btn{padding:8px 16px;border:1px solid #bdc3c7;background:white;border-radius:4px;cursor:pointer;font-size:12px;transition:all 0.3s;}
@@ -88,6 +100,21 @@
         .modal-content input,.modal-content select{width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:4px;font-size:14px;}
         .modal-content button{margin:5px 5px 5px 0;padding:8px 16px;border-radius:4px;border:none;cursor:pointer;font-weight:bold;}
         
+        .login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:white;padding:20px;}
+        .login-screen h1{color:#1a237e;margin-bottom:30px;}
+        .login-screen img{max-height:80px;margin-bottom:20px;}
+        .login-screen input{width:100%;max-width:300px;padding:12px;margin:8px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:16px;}
+        .login-screen button{width:100%;max-width:300px;padding:12px;background:#1a237e;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;}
+        .login-screen .error{color:#e74c3c;font-size:14px;margin-top:10px;display:none;}
+        .login-screen .info{color:#666;font-size:12px;margin-top:15px;text-align:center;}
+        
+        .user-info{display:flex;align-items:center;gap:10px;font-size:12px;color:#666;}
+        .user-info .name{font-weight:bold;color:#1a237e;}
+        
+        .log-list{max-height:150px;overflow-y:auto;font-size:12px;background:#f8f9fa;padding:10px;border-radius:4px;margin-top:5px;}
+        .log-list .entry{padding:3px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;}
+        .log-list .entry .time{color:#999;font-size:10px;}
+        
         @media (max-width:480px){
             .item-orcamento{flex-direction:column;align-items:stretch;}
             .item-orcamento select,.item-orcamento input{width:100% !important;}
@@ -96,28 +123,67 @@
             .header-logo img{height:30px;}
             .logo-title{font-size:16px;}
             .tab-btn{font-size:10px;padding:6px 10px;}
-            .backup-info{flex-direction:column;align-items:stretch;}
+            .backup-buttons button{font-size:10px;padding:4px 8px;}
+            .login-screen h1{font-size:24px;}
+            .sync-status{flex-direction:column;align-items:flex-start;}
         }
     </style>
 </head>
 <body>
-    <div id="app">
+    <!-- TELA DE LOGIN -->
+    <div id="loginScreen" class="login-screen">
+        <img src="logo.png" alt="SE7VEN ENERGIA" onerror="this.style.display='none'">
+        <h1>⚡ SE7VEN ENERGIA</h1>
+        <input type="text" id="loginUsuario" placeholder="Usuário" value="">
+        <input type="password" id="loginSenha" placeholder="Senha" value="">
+        <div id="loginError" class="error">❌ Usuário ou senha incorretos</div>
+        <button onclick="fazerLogin()">🔑 Entrar</button>
+        <div class="info">
+            <strong>Usuários padrão:</strong><br>
+            admin / admin<br>
+            usuario / 123456
+        </div>
+    </div>
+
+    <!-- SISTEMA -->
+    <div id="sistemaScreen" style="display:none;">
         <header>
             <div class="header-logo" id="headerLogo">
                 <h1 class="logo-title">⚡ SE7VEN ENERGIA</h1>
             </div>
-            <button id="btnNovo" class="btn-primary">+ Novo</button>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div class="user-info">
+                    <span>👤 <span class="name" id="nomeUsuario">Admin</span></span>
+                    <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+                </div>
+                <button id="btnNovo" class="btn-primary">+ Novo</button>
+            </div>
         </header>
 
         <div id="statusBar" class="status-bar">✅ Sistema pronto para uso</div>
 
-        <div class="backup-info">
-            <strong>💾 Backup Automático:</strong> Dados salvos a cada 5 minutos
-            <button class="btn-backup" onclick="exportarDados()">📤 Exportar</button>
-            <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📥 Importar</button>
-            <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
+        <!-- SINCRONIZAÇÃO -->
+        <div class="sync-info">
+            <strong>🔄 SINCRONIZAÇÃO COM GIT</strong>
+            <div class="sync-status">
+                <span class="status" id="syncStatus">🔄 Aguardando...</span>
+                <button class="btn-primary" onclick="sincronizarDados()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizar</button>
+                <span style="font-size:10px;color:#999;" id="ultimaSync">Última: nunca</span>
+            </div>
+            <div id="syncProgress" style="display:none;margin-top:5px;font-size:12px;color:#1a237e;">⏳ Sincronizando...</div>
         </div>
 
+        <!-- BACKUP -->
+        <div class="backup-info">
+            <strong>💾 BACKUP LOCAL</strong>
+            <div class="backup-buttons">
+                <button class="btn-backup" onclick="exportarDados()">📤 Exportar</button>
+                <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📥 Importar</button>
+                <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
+            </div>
+        </div>
+
+        <!-- ABAS -->
         <div class="tab-container">
             <button class="tab-btn active" onclick="abrirTab('tabClientes')">👤 Clientes</button>
             <button class="tab-btn" onclick="abrirTab('tabProdutos')">📦 Produtos</button>
@@ -125,6 +191,7 @@
             <button class="tab-btn" onclick="abrirTab('tabOS')">🔧 OS</button>
             <button class="tab-btn" onclick="abrirTab('tabRecibos')">💰 Recibos</button>
             <button class="tab-btn" onclick="abrirTab('tabCalculos')">🧮 Cálculos</button>
+            <button class="tab-btn" onclick="abrirTab('tabLogs')">📋 Logs</button>
         </div>
 
         <!-- TAB CLIENTES -->
@@ -151,54 +218,29 @@
         <div id="tabOrcamento" class="tab-content">
             <section>
                 <h2>📄 Novo Orçamento</h2>
-                
-                <select id="selCliente">
-                    <option value="">Selecione um cliente</option>
-                </select>
-                
+                <select id="selCliente"><option value="">Selecione um cliente</option></select>
                 <div id="itensOrcamento">
                     <div class="item-orcamento">
-                        <select class="selProduto">
-                            <option value="">Selecione um produto</option>
-                        </select>
+                        <select class="selProduto"><option value="">Selecione um produto</option></select>
                         <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
                         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
                     </div>
                 </div>
-                
                 <button id="btnAddItem" class="btn-secondary">+ Adicionar Item</button>
                 
                 <div style="margin-top:15px;padding:15px;background:#e8eaf6;border-radius:8px;">
                     <h3>⚡ Dados do Projeto Elétrico</h3>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                        <div>
-                            <label>Distância (m):</label>
-                            <input type="number" id="distancia" placeholder="Distância em metros" value="50">
-                        </div>
-                        <div>
-                            <label>Tensão (V):</label>
-                            <select id="tensao">
-                                <option value="127">127V</option>
-                                <option value="220" selected>220V</option>
-                                <option value="380">380V</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Fator de Potência:</label>
-                            <input type="number" id="fp" placeholder="0.85" step="0.01" value="0.92">
-                        </div>
-                        <div>
-                            <label>Queda de Tensão Máxima (%):</label>
-                            <input type="number" id="quedaMax" placeholder="3%" value="3" step="0.5">
-                        </div>
+                        <div><label>Distância (m):</label><input type="number" id="distancia" value="50"></div>
+                        <div><label>Tensão (V):</label><select id="tensao"><option value="127">127V</option><option value="220" selected>220V</option><option value="380">380V</option></select></div>
+                        <div><label>Fator de Potência:</label><input type="number" id="fp" step="0.01" value="0.92"></div>
+                        <div><label>Queda Máxima (%):</label><input type="number" id="quedaMax" step="0.5" value="3"></div>
                     </div>
                     <button class="btn-calcular" onclick="calcularProjeto()">📊 Calcular Projeto</button>
                     <div id="resultadoProjeto" style="margin-top:10px;"></div>
                 </div>
 
-                <div id="totalOrcamento">
-                    <strong>Total: R$ <span id="totalValor">0,00</span></strong>
-                </div>
+                <div id="totalOrcamento"><strong>Total: R$ <span id="totalValor">0,00</span></strong></div>
                 
                 <div class="footer-actions">
                     <button id="btnLimpar" class="btn-danger">🗑️ Limpar</button>
@@ -210,7 +252,7 @@
             </section>
         </div>
 
-        <!-- TAB ORDEM DE SERVIÇO -->
+        <!-- TAB OS -->
         <div id="tabOS" class="tab-content">
             <section>
                 <h2>🔧 Ordens de Serviço</h2>
@@ -225,9 +267,7 @@
                     </select>
                     <button class="btn-info" onclick="filtrarOS()">🔍 Filtrar</button>
                 </div>
-                <div id="listaOS">
-                    <p style="color:#999;text-align:center;padding:20px;">Nenhuma Ordem de Serviço criada</p>
-                </div>
+                <div id="listaOS"><p style="color:#999;text-align:center;padding:20px;">Nenhuma OS criada</p></div>
             </section>
         </div>
 
@@ -243,9 +283,7 @@
                     </select>
                     <button class="btn-info" onclick="filtrarRecibos()">🔍 Filtrar</button>
                 </div>
-                <div id="listaRecibos">
-                    <p style="color:#999;text-align:center;padding:20px;">Nenhum recibo emitido</p>
-                </div>
+                <div id="listaRecibos"><p style="color:#999;text-align:center;padding:20px;">Nenhum recibo emitido</p></div>
             </section>
         </div>
 
@@ -253,123 +291,54 @@
         <div id="tabCalculos" class="tab-content">
             <section>
                 <h2>🧮 Calculadora Elétrica</h2>
-                
                 <div class="calc-card">
                     <h3>📏 Dimensionamento de Cabos</h3>
-                    <label>Corrente (A):</label>
-                    <input type="number" id="correnteCabos" placeholder="Corrente em Ampères">
-                    <label>Distância (m):</label>
-                    <input type="number" id="distanciaCabos" placeholder="Distância em metros" value="50">
-                    <label>Tensão (V):</label>
-                    <select id="tensaoCabos">
-                        <option value="127">127V</option>
-                        <option value="220" selected>220V</option>
-                        <option value="380">380V</option>
-                    </select>
+                    <label>Corrente (A):</label><input type="number" id="correnteCabos">
+                    <label>Distância (m):</label><input type="number" id="distanciaCabos" value="50">
+                    <label>Tensão (V):</label><select id="tensaoCabos"><option value="127">127V</option><option value="220" selected>220V</option><option value="380">380V</option></select>
                     <button class="btn-calcular" onclick="dimensionarCabos()">Calcular Bitola</button>
                     <div id="resultadoCabos" class="resultado"></div>
                 </div>
-
                 <div class="calc-card">
                     <h3>📉 Queda de Tensão</h3>
-                    <label>Corrente (A):</label>
-                    <input type="number" id="correnteQueda" placeholder="Corrente em Ampères">
-                    <label>Distância (m):</label>
-                    <input type="number" id="distanciaQueda" placeholder="Distância em metros" value="50">
-                    <label>Bitola do Cabo (mm²):</label>
-                    <input type="number" id="bitolaQueda" placeholder="Bitola em mm²">
-                    <label>Tensão (V):</label>
-                    <select id="tensaoQueda">
-                        <option value="127">127V</option>
-                        <option value="220" selected>220V</option>
-                        <option value="380">380V</option>
-                    </select>
+                    <label>Corrente (A):</label><input type="number" id="correnteQueda">
+                    <label>Distância (m):</label><input type="number" id="distanciaQueda" value="50">
+                    <label>Bitola (mm²):</label><input type="number" id="bitolaQueda">
+                    <label>Tensão (V):</label><select id="tensaoQueda"><option value="127">127V</option><option value="220" selected>220V</option><option value="380">380V</option></select>
                     <button class="btn-calcular" onclick="calcularQuedaTensao()">Calcular Queda</button>
                     <div id="resultadoQueda" class="resultado"></div>
                 </div>
-
                 <div class="calc-card">
                     <h3>💡 Demanda de Energia</h3>
-                    <label>Potência Total (W):</label>
-                    <input type="number" id="potenciaDemanda" placeholder="Potência em Watts">
-                    <label>Tensão (V):</label>
-                    <select id="tensaoDemanda">
-                        <option value="127">127V</option>
-                        <option value="220" selected>220V</option>
-                        <option value="380">380V</option>
-                    </select>
-                    <label>Fator de Potência:</label>
-                    <input type="number" id="fpDemanda" placeholder="0.85" step="0.01" value="0.92">
+                    <label>Potência (W):</label><input type="number" id="potenciaDemanda">
+                    <label>Tensão (V):</label><select id="tensaoDemanda"><option value="127">127V</option><option value="220" selected>220V</option><option value="380">380V</option></select>
+                    <label>Fator de Potência:</label><input type="number" id="fpDemanda" step="0.01" value="0.92">
                     <button class="btn-calcular" onclick="calcularDemanda()">Calcular Demanda</button>
                     <div id="resultadoDemanda" class="resultado"></div>
                 </div>
             </section>
         </div>
-    </div>
 
-    <!-- MODAL CLIENTE -->
-    <div id="modalCliente" class="modal">
-        <div class="modal-content">
-            <h3>👤 Novo Cliente</h3>
-            <input type="text" id="nomeCliente" placeholder="Nome do cliente *">
-            <input type="tel" id="telefoneCliente" placeholder="Celular (ex: (93) 98102-7290)">
-            <input type="text" id="cpfCliente" placeholder="CPF/CNPJ">
-            <input type="text" id="enderecoCliente" placeholder="Endereço">
-            <input type="email" id="emailCliente" placeholder="Email">
-            <div style="display:flex;gap:10px;margin-top:10px;">
-                <button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button>
-                <button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button>
-            </div>
+        <!-- TAB LOGS -->
+        <div id="tabLogs" class="tab-content">
+            <section>
+                <h2>📋 Log de Alterações</h2>
+                <div id="logList" class="log-list">
+                    <p style="color:#999;text-align:center;padding:10px;">Nenhum registro de atividade</p>
+                </div>
+                <button class="btn-danger" onclick="limparLogs()" style="margin-top:10px;padding:6px 12px;font-size:12px;">🗑️ Limpar Logs</button>
+            </section>
         </div>
     </div>
 
-    <!-- MODAL PRODUTO -->
-    <div id="modalProduto" class="modal">
-        <div class="modal-content">
-            <h3>📦 Novo Produto</h3>
-            <input type="text" id="nomeProduto" placeholder="Nome do produto *">
-            <input type="number" id="precoProduto" placeholder="Preço *" step="0.01">
-            <select id="tipoProduto">
-                <option value="material">Material Elétrico</option>
-                <option value="servico">Serviço</option>
-                <option value="equipamento">Equipamento</option>
-                <option value="outro">Outro</option>
-            </select>
-            <div style="display:flex;gap:10px;margin-top:10px;">
-                <button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button>
-                <button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL OS -->
-    <div id="modalOS" class="modal">
-        <div class="modal-content" style="max-width:500px;">
-            <h3>🔧 Detalhes da Ordem de Serviço</h3>
-            <div id="detalhesOS"></div>
-            <div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;">
-                <button id="btnAprovarOS" class="btn-success" style="display:none;">✅ Aprovar</button>
-                <button id="btnIniciarOS" class="btn-warning" style="display:none;">🔧 Iniciar</button>
-                <button id="btnConcluirOS" class="btn-success" style="display:none;">✅ Concluir</button>
-                <button id="btnCancelarOS" class="btn-danger" style="display:none;">❌ Cancelar</button>
-                <button id="btnEmitirRecibo" class="btn-primary" style="display:none;">💰 Recibo</button>
-                <button id="btnFecharOS" class="btn-secondary">Fechar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL RECIBO -->
-    <div id="modalRecibo" class="modal">
-        <div class="modal-content" style="max-width:500px;">
-            <h3>💰 Recibo</h3>
-            <div id="conteudoRecibo" class="recibo-area"></div>
-            <div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;">
-                <button id="btnMarcarPago" class="btn-success">✅ Marcar Pago</button>
-                <button id="btnImprimirRecibo" class="btn-primary">🖨️ Imprimir</button>
-                <button id="btnFecharRecibo" class="btn-secondary">Fechar</button>
-            </div>
-        </div>
-    </div>
+    <!-- MODAIS -->
+    <div id="modalCliente" class="modal"><div class="modal-content"><h3>👤 Novo Cliente</h3><input type="text" id="nomeCliente" placeholder="Nome *"><input type="tel" id="telefoneCliente" placeholder="Celular"><input type="text" id="cpfCliente" placeholder="CPF/CNPJ"><input type="text" id="enderecoCliente" placeholder="Endereço"><input type="email" id="emailCliente" placeholder="Email"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+    
+    <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+    
+    <div id="modalOS" class="modal"><div class="modal-content" style="max-width:500px;"><h3>🔧 Detalhes da OS</h3><div id="detalhesOS"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnAprovarOS" class="btn-success" style="display:none;">✅ Aprovar</button><button id="btnIniciarOS" class="btn-warning" style="display:none;">🔧 Iniciar</button><button id="btnConcluirOS" class="btn-success" style="display:none;">✅ Concluir</button><button id="btnCancelarOS" class="btn-danger" style="display:none;">❌ Cancelar</button><button id="btnEmitirRecibo" class="btn-primary" style="display:none;">💰 Recibo</button><button id="btnFecharOS" class="btn-secondary">Fechar</button></div></div></div>
+    
+    <div id="modalRecibo" class="modal"><div class="modal-content" style="max-width:500px;"><h3>💰 Recibo</h3><div id="conteudoRecibo" class="recibo-area"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnMarcarPago" class="btn-success">✅ Marcar Pago</button><button id="btnImprimirRecibo" class="btn-primary">🖨️ Imprimir</button><button id="btnFecharRecibo" class="btn-secondary">Fechar</button></div></div></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="script.js"></script>
