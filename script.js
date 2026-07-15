@@ -74,17 +74,21 @@ try {
 }
 
 // ============================================
-// USUÁRIOS
+// USUÁRIOS - CORRIGIDO
 // ============================================
 let USUARIOS = {};
 
 function carregarUsuarios() {
     try {
+        // Tenta carregar do localStorage
         const saved = localStorage.getItem('usuarios');
+        console.log('📋 Dados salvos:', saved);
+        
         if (saved) {
             USUARIOS = JSON.parse(saved);
-            console.log('✅ Usuários carregados do localStorage');
+            console.log('✅ Usuários carregados do localStorage:', Object.keys(USUARIOS));
         } else {
+            // Se não houver, cria o usuário admin
             USUARIOS = {
                 admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' }
             };
@@ -92,16 +96,23 @@ function carregarUsuarios() {
             console.log('👤 Usuário admin criado');
         }
     } catch(e) {
-        USUARIOS = { admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' } };
+        console.error('❌ Erro ao carregar usuários:', e);
+        USUARIOS = {
+            admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' }
+        };
         salvarUsuarios();
     }
-    console.log('📋 Usuários:', Object.keys(USUARIOS).join(', '));
+    console.log('📋 Usuários disponíveis:', Object.keys(USUARIOS));
 }
 
 function salvarUsuarios() {
-    try { localStorage.setItem('usuarios', JSON.stringify(USUARIOS)); } catch(e) {}
+    try {
+        localStorage.setItem('usuarios', JSON.stringify(USUARIOS));
+        console.log('💾 Usuários salvos:', Object.keys(USUARIOS));
+    } catch(e) {
+        console.error('❌ Erro ao salvar usuários:', e);
+    }
 }
-
 // ============================================
 // GERAR PRODUTOS
 // ============================================
