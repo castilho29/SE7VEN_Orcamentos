@@ -8,14 +8,14 @@ console.log('⚡ Carregando sistema...');
 // SUPABASE CONFIG
 // ============================================
 const SUPABASE_URL = 'https://se7ven-energia.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_23NQo9Pd7-hvhyhNQQrpHw_WP_o7DzM';
+const SUPABASE_KEY = 'sb_secret_8oWSKV0ECqj0yNgTOuQpvQ_oVqWEAtV';
 
 // Inicializa Supabase
 let supabaseClient = null;
 
 try {
     supabaseClient = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log('✅ Supabase conectado!');
+    console.log('✅ Supabase conectado com sucesso!');
 } catch(e) {
     console.warn('⚠️ Erro ao conectar Supabase:', e);
 }
@@ -342,6 +342,22 @@ async function salvarOSSupabase(os) {
     }
 }
 
+async function excluirOSSupabase(id) {
+    try {
+        const { error } = await supabaseClient
+            .from('ordens_servico')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        console.log('✅ OS excluída do Supabase');
+        return true;
+    } catch(e) {
+        console.error('❌ Erro ao excluir OS:', e);
+        return false;
+    }
+}
+
 // ----- RECIBOS -----
 async function carregarRecibosSupabase() {
     try {
@@ -359,6 +375,21 @@ async function carregarRecibosSupabase() {
         }
     } catch(e) {
         console.error('❌ Erro ao carregar recibos:', e);
+        return false;
+    }
+}
+
+async function salvarReciboSupabase(recibo) {
+    try {
+        const { error } = await supabaseClient
+            .from('recibos')
+            .upsert(recibo, { onConflict: 'id' });
+        
+        if (error) throw error;
+        console.log('✅ Recibo salvo no Supabase:', recibo.numero);
+        return true;
+    } catch(e) {
+        console.error('❌ Erro ao salvar recibo:', e);
         return false;
     }
 }
@@ -439,7 +470,6 @@ function carregarUsuarios() {
 }
 
 function salvarUsuarios() {
-    // Salva localmente também
     try { localStorage.setItem('usuarios', JSON.stringify(USUARIOS)); } catch(e) {}
 }
 
@@ -496,7 +526,6 @@ async function excluirUsuario(login) {
     if (confirm(`Excluir usuário "${login}"?`)) {
         delete USUARIOS[login];
         salvarUsuarios();
-        // Exclui do Supabase
         try {
             await supabaseClient.from('usuarios').delete().eq('login', login);
         } catch(e) {}
@@ -956,9 +985,8 @@ async function emitirRecibo() {
         data_pagamento: null
     };
     
-    try {
-        const { error } = await supabaseClient.from('recibos').insert(recibo);
-        if (error) throw error;
+    const salvou = await salvarReciboSupabase(recibo);
+    if (salvou) {
         recibos.push(recibo);
         salvarDados();
         listarRecibos();
@@ -966,9 +994,6 @@ async function emitirRecibo() {
         atualizarStatus(`💰 Recibo ${recibo.numero} emitido!`);
         registrarLog('RECIBO_EMITIDO', `Recibo ${recibo.numero} emitido para ${osAtual.cliente_nome}`);
         abrirRecibo(recibo.id);
-    } catch(e) {
-        console.error('❌ Erro ao emitir recibo:', e);
-        alert('❌ Erro ao emitir recibo!');
     }
 }
 
@@ -1341,6 +1366,17 @@ function backupGit() {
     exportarDados();
 }
 
+function backupGoogleDrive() {
+    exportarDados();
+    setTimeout(() => {
+        alert('📤 Backup criado!\n\nSalve o arquivo no Google Drive para ter seu backup na nuvem.');
+    }, 1000);
+}
+
+function restaurarGoogleDrive() {
+    document.getElementById('fileInput').click();
+}
+
 function renderizarTudo() {
     renderClientes();
     renderProdutos();
@@ -1405,64 +1441,6 @@ function carregarConfiguracoes() {
         }
         atualizarEstatisticas();
     } catch(e) { console.log('Erro ao carregar configurações:', e); }
-}
-
-function salvarConfiguracoesGit() {
-    const token = document.getElementById('inputGitToken')?.value.trim() || '';
-    const usuario = document.getElementById('inputGitUsuario')?.value.trim() || 'castilho29';
-    const repo = document.getElementById('inputGitRepo')?.value.trim() || 'SE7VEN_Orcamentos';
-    const intervalo = document.getElementById('inputSyncInterval')?.value || '300000';
-    if (!token || token.length < 10) {
-        alert('⚠️ Digite um token válido do GitHub!');
-        return;
-    }
-    const config = { gitToken: token, gitUsuario: usuario, gitRepo: repo, syncInterval: intervalo };
-    localStorage.setItem('system_config', JSON.stringify(config));
-    GITHUB_CONFIG.token = token;
-    GITHUB_CONFIG.usuario = usuario;
-    GITHUB_CONFIG.repo = repo;
-    GITHUB_CONFIG.intervaloAuto = parseInt(intervalo) || 300000;
-    atualizarStatus('✅ Configurações do Git salvas!');
-    registrarLog('CONFIG_GIT', 'Configurações do Git atualizadas');
-    alert('✅ Configurações salvas com sucesso!');
-    if (parseInt(intervalo) > 0) {
-        iniciarSincronizacaoAutomatica();
-    } else {
-        if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
-    }
-}
-
-function toggleGit() {
-    const statusLabel = document.getElementById('gitStatusLabel');
-    const btn = document.getElementById('btnToggleGit');
-    const token = document.getElementById('inputGitToken')?.value.trim() || GITHUB_CONFIG.token;
-    if (!statusLabel || !btn) return;
-    if (statusLabel.textContent.includes('Ativo')) {
-        statusLabel.textContent = '❌ Desativado';
-        statusLabel.style.background = '#e74c3c';
-        btn.textContent = '✅ Ativar';
-        btn.className = 'btn-success';
-        if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
-        GITHUB_CONFIG.token = '';
-        localStorage.setItem('git_ativado', 'false');
-        atualizarStatus('⏸️ Backup Git desativado');
-        registrarLog('CONFIG_GIT', 'Backup Git desativado');
-    } else {
-        if (!token || token.length < 10) {
-            alert('⚠️ Configure o token do GitHub primeiro!');
-            return;
-        }
-        statusLabel.textContent = '✅ Ativo';
-        statusLabel.style.background = '#27ae60';
-        btn.textContent = '❌ Desativar';
-        btn.className = 'btn-danger';
-        GITHUB_CONFIG.token = token;
-        localStorage.setItem('git_ativado', 'true');
-        atualizarStatus('✅ Backup Git ativado');
-        registrarLog('CONFIG_GIT', 'Backup Git ativado');
-        iniciarSincronizacaoAutomatica();
-        setTimeout(sincronizarDados, 2000);
-    }
 }
 
 // ============================================
@@ -1554,24 +1532,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnMarcarPago')?.addEventListener('click', marcarPago);
     document.getElementById('btnImprimirRecibo')?.addEventListener('click', imprimirRecibo);
     
-    // Eventos de Configuração
-    document.getElementById('btnSalvarConfigGit')?.addEventListener('click', salvarConfiguracoesGit);
-    document.getElementById('btnToggleGit')?.addEventListener('click', toggleGit);
-    document.getElementById('btnSalvarToken')?.addEventListener('click', function() {
-        const token = document.getElementById('inputGitToken')?.value.trim();
-        if (token && token.length > 10) {
-            const config = JSON.parse(localStorage.getItem('system_config') || '{}');
-            config.gitToken = token;
-            localStorage.setItem('system_config', JSON.stringify(config));
-            GITHUB_CONFIG.token = token;
-            atualizarStatus('✅ Token salvo!');
-            registrarLog('CONFIG_TOKEN', 'Token do GitHub atualizado');
-            alert('✅ Token salvo com sucesso!');
-        } else {
-            alert('⚠️ Token inválido!');
-        }
-    });
-    
     // Fechar modal clicando fora
     window.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal')) {
@@ -1613,4 +1573,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('⚡ SE7VEN ENERGIA - Sistema carregado!');
-console.log('☁️ Supabase conectado!');
+console.log('☁️ Supabase conectado com chave secreta!');
