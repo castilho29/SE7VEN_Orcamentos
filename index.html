@@ -153,6 +153,14 @@
     </style>
 </head>
 <body>
+    <div id="debugErros" style="display:none;position:fixed;top:0;left:0;right:0;background:#e74c3c;color:white;padding:10px;font-size:12px;z-index:9999;white-space:pre-wrap;"></div>
+    <script>
+    window.onerror = function(msg, url, linha) {
+        const el = document.getElementById('debugErros');
+        el.style.display = 'block';
+        el.textContent += '❌ ' + msg + ' (linha ' + linha + ')\n';
+    };
+    </script>
     <!-- ========== TELA DE LOGIN ========== -->
     <div id="loginScreen" class="login-screen">
         <img src="logo.png" alt="SE7VEN ENERGIA" 
