@@ -1,37 +1,15 @@
 // ============================================
-// SISTEMA SE7VEN ENERGIA - VERSÃO COMPLETA
+// SISTEMA SE7VEN ENERGIA - COMPLETO
 // ============================================
 
 console.log('⚡ Carregando sistema...');
 
 // ============================================
-// USUÁRIOS
+// 1. CONFIGURAÇÕES
 // ============================================
-let USUARIOS = {
-    admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' }
-};
 
-try {
-    const saved = localStorage.getItem('usuarios');
-    if (saved) {
-        const parsed = JSON.parse(saved);
-        Object.assign(USUARIOS, parsed);
-        console.log('✅ Usuários carregados:', Object.keys(USUARIOS));
-    } else {
-        localStorage.setItem('usuarios', JSON.stringify(USUARIOS));
-        console.log('👤 Usuário admin criado');
-    }
-} catch(e) {
-    console.warn('⚠️ Erro ao carregar usuários');
-}
-
-console.log('📋 Usuários:', Object.keys(USUARIOS));
-
-// ============================================
-// DADOS DA EMPRESA
-// ============================================
 const EMPRESA = {
-    nome: 'SE7VEN ENERGIA',
+    nome: 'SE7VEN SOLUÇÕES ENERGÉTICAS',
     nomeAbreviado: 'SE7VEN',
     telefone: '(93) 98102-7290',
     whatsapp: '5593981027290',
@@ -49,9 +27,6 @@ const EMPRESA = {
     rodape: 'Orçamento gerado automaticamente'
 };
 
-// ============================================
-// GITHUB CONFIG
-// ============================================
 const GITHUB_CONFIG = {
     token: '',
     usuario: 'castilho29',
@@ -61,122 +36,10 @@ const GITHUB_CONFIG = {
     branch: 'main'
 };
 
-// Carregar configurações salvas
-function carregarConfiguracoes() {
-    try {
-        const config = localStorage.getItem('system_config');
-        if (config) {
-            const parsed = JSON.parse(config);
-            if (parsed.gitToken) {
-                GITHUB_CONFIG.token = parsed.gitToken;
-                GITHUB_CONFIG.usuario = parsed.gitUsuario || 'castilho29';
-                GITHUB_CONFIG.repo = parsed.gitRepo || 'SE7VEN_Orcamentos';
-                GITHUB_CONFIG.intervaloAuto = parseInt(parsed.syncInterval) || 300000;
-                
-                // Atualiza a interface
-                const statusLabel = document.getElementById('gitStatusLabel');
-                const btnToggle = document.getElementById('btnToggleGit');
-                if (statusLabel && parsed.gitToken.length > 10) {
-                    statusLabel.textContent = '✅ Ativo';
-                    statusLabel.style.background = '#27ae60';
-                    if (btnToggle) {
-                        btnToggle.textContent = '❌ Desativar';
-                        btnToggle.className = 'btn-danger';
-                    }
-                    localStorage.setItem('git_ativado', 'true');
-                }
-            }
-        }
-        atualizarEstatisticas();
-    } catch(e) { console.log('Erro ao carregar configurações:', e); }
-}
+let USUARIOS = {
+    admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' }
+};
 
-function salvarConfiguracoesGit() {
-    const token = document.getElementById('inputGitToken')?.value.trim() || '';
-    const usuario = document.getElementById('inputGitUsuario')?.value.trim() || 'castilho29';
-    const repo = document.getElementById('inputGitRepo')?.value.trim() || 'SE7VEN_Orcamentos';
-    const intervalo = document.getElementById('inputSyncInterval')?.value || '300000';
-    
-    if (!token || token.length < 10) {
-        alert('⚠️ Digite um token válido do GitHub!');
-        return;
-    }
-    
-    const config = {
-        gitToken: token,
-        gitUsuario: usuario,
-        gitRepo: repo,
-        syncInterval: intervalo
-    };
-    
-    localStorage.setItem('system_config', JSON.stringify(config));
-    
-    GITHUB_CONFIG.token = token;
-    GITHUB_CONFIG.usuario = usuario;
-    GITHUB_CONFIG.repo = repo;
-    GITHUB_CONFIG.intervaloAuto = parseInt(intervalo) || 300000;
-    
-    const statusLabel = document.getElementById('gitStatusLabel');
-    const btnToggle = document.getElementById('btnToggleGit');
-    if (statusLabel) {
-        statusLabel.textContent = '✅ Ativo';
-        statusLabel.style.background = '#27ae60';
-    }
-    if (btnToggle) {
-        btnToggle.textContent = '❌ Desativar';
-        btnToggle.className = 'btn-danger';
-    }
-    localStorage.setItem('git_ativado', 'true');
-    
-    atualizarStatus('✅ Configurações do Git salvas!');
-    registrarLog('CONFIG_GIT', 'Configurações do Git atualizadas');
-    alert('✅ Configurações salvas com sucesso!');
-    
-    if (parseInt(intervalo) > 0) {
-        iniciarSincronizacaoAutomatica();
-    } else {
-        if (window.syncTimeout) { clearInterval(window.syncTimeout); window.syncTimeout = null; }
-    }
-}
-
-function toggleGit() {
-    const statusLabel = document.getElementById('gitStatusLabel');
-    const btn = document.getElementById('btnToggleGit');
-    const token = document.getElementById('inputGitToken')?.value.trim() || GITHUB_CONFIG.token;
-    
-    if (!statusLabel || !btn) return;
-    
-    if (statusLabel.textContent.includes('Ativo')) {
-        statusLabel.textContent = '❌ Desativado';
-        statusLabel.style.background = '#e74c3c';
-        btn.textContent = '✅ Ativar';
-        btn.className = 'btn-success';
-        if (window.syncTimeout) { clearInterval(window.syncTimeout); window.syncTimeout = null; }
-        GITHUB_CONFIG.token = '';
-        localStorage.setItem('git_ativado', 'false');
-        atualizarStatus('⏸️ Backup Git desativado');
-        registrarLog('CONFIG_GIT', 'Backup Git desativado');
-    } else {
-        if (!token || token.length < 10) {
-            alert('⚠️ Configure o token do GitHub primeiro!');
-            return;
-        }
-        statusLabel.textContent = '✅ Ativo';
-        statusLabel.style.background = '#27ae60';
-        btn.textContent = '❌ Desativar';
-        btn.className = 'btn-danger';
-        GITHUB_CONFIG.token = token;
-        localStorage.setItem('git_ativado', 'true');
-        atualizarStatus('✅ Backup Git ativado');
-        registrarLog('CONFIG_GIT', 'Backup Git ativado');
-        iniciarSincronizacaoAutomatica();
-        setTimeout(sincronizarDados, 2000);
-    }
-}
-
-// ============================================
-// VARIÁVEIS GLOBAIS
-// ============================================
 let usuarioAtual = null;
 let clientes = [];
 let produtos = [];
@@ -184,60 +47,147 @@ let ordensServico = [];
 let recibos = [];
 let logs = [];
 let syncTimeout = null;
+let osAtual = null;
+let reciboAtual = null;
 
 // ============================================
-// FUNÇÃO DE LOGIN
+// 2. INICIALIZAÇÃO
 // ============================================
+
+function init() {
+    console.log('🚀 Inicializando sistema...');
+    carregarUsuarios();
+    carregarDados();
+    renderClientes();
+    renderProdutos();
+    renderSelectClientes();
+    renderSelectProdutos();
+    updateTotal();
+    listarOS();
+    listarRecibos();
+    renderizarLogs();
+    listarUsuarios();
+    carregarLogo();
+    carregarConfiguracoes();
+    if (produtos.length > 0) adicionarItem();
+    atualizarStatus(`✅ Sistema pronto! ${clientes.length} clientes, ${produtos.length} produtos`);
+    console.log('✅ Sistema inicializado!');
+}
+
+// ============================================
+// 3. USUÁRIOS
+// ============================================
+
+function carregarUsuarios() {
+    try {
+        const saved = localStorage.getItem('usuarios');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            Object.assign(USUARIOS, parsed);
+            console.log('✅ Usuários carregados:', Object.keys(USUARIOS));
+        } else {
+            if (!USUARIOS.admin) {
+                USUARIOS.admin = { senha: 'admin', nome: 'Administrador', tipo: 'admin' };
+                localStorage.setItem('usuarios', JSON.stringify(USUARIOS));
+            }
+        }
+    } catch(e) { console.warn('⚠️ Erro ao carregar usuários:', e); }
+}
+
+function salvarUsuarios() {
+    try { localStorage.setItem('usuarios', JSON.stringify(USUARIOS)); } catch(e) {}
+}
+
+function listarUsuarios() {
+    const container = document.getElementById('listaUsuarios');
+    if (!container) return;
+    container.innerHTML = Object.entries(USUARIOS).map(([login, data]) => `
+        <div class="user-item">
+            <span><strong>${data.nome}</strong> (${login})</span>
+            <div>
+                <span class="role">${data.tipo || 'usuario'}</span>
+                ${login !== 'admin' ? `<button onclick="excluirUsuario('${login}')" class="btn-danger" style="padding:2px 8px;font-size:10px;margin-left:5px;">🗑️</button>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function mostrarCadastroUsuario() {
+    if (!usuarioAtual || usuarioAtual.tipo !== 'admin') {
+        alert('⚠️ Apenas administradores podem cadastrar usuários!');
+        return;
+    }
+    document.getElementById('modalCadastroUsuario').style.display = 'flex';
+}
+
+function salvarNovoUsuario() {
+    if (!usuarioAtual || usuarioAtual.tipo !== 'admin') {
+        alert('⚠️ Apenas administradores podem cadastrar usuários!');
+        return;
+    }
+    const nome = document.getElementById('novoUsuarioNome').value.trim();
+    const login = document.getElementById('novoUsuarioLogin').value.trim();
+    const senha = document.getElementById('novoUsuarioSenha').value.trim();
+    const tipo = document.getElementById('novoUsuarioTipo').value;
+    if (!nome || !login || !senha) { alert('⚠️ Preencha todos os campos!'); return; }
+    if (USUARIOS[login]) { alert('⚠️ Este login já existe!'); return; }
+    USUARIOS[login] = { senha, nome, tipo };
+    salvarUsuarios();
+    listarUsuarios();
+    fecharModal('modalCadastroUsuario');
+    document.getElementById('novoUsuarioNome').value = '';
+    document.getElementById('novoUsuarioLogin').value = '';
+    document.getElementById('novoUsuarioSenha').value = '';
+    atualizarStatus(`✅ Usuário "${nome}" cadastrado!`);
+    registrarLog('USUARIO_CADASTRADO', `Usuário "${nome}" (${login}) cadastrado`);
+    alert(`✅ Usuário "${nome}" cadastrado com sucesso!`);
+}
+
+function excluirUsuario(login) {
+    if (login === 'admin') { alert('⚠️ Não é possível excluir o usuário admin!'); return; }
+    if (confirm(`Excluir usuário "${login}"?`)) {
+        delete USUARIOS[login];
+        salvarUsuarios();
+        listarUsuarios();
+        atualizarStatus(`🗑️ Usuário "${login}" removido`);
+        registrarLog('USUARIO_EXCLUIDO', `Usuário "${login}" excluído`);
+    }
+}
+
+// ============================================
+// 4. LOGIN
+// ============================================
+
 function fazerLogin() {
-    console.log('🔑 Tentando login...');
     const user = document.getElementById('loginUsuario').value.trim();
     const senha = document.getElementById('loginSenha').value.trim();
     const error = document.getElementById('loginError');
-    
-    console.log('👤 Usuário:', user);
-    console.log('📋 Usuários disponíveis:', Object.keys(USUARIOS));
-    
     if (!user || !senha) {
         error.textContent = '❌ Preencha todos os campos!';
         error.style.display = 'block';
         return;
     }
-    
     if (!USUARIOS[user]) {
         error.textContent = '❌ Usuário não encontrado!';
         error.style.display = 'block';
         return;
     }
-    
     if (USUARIOS[user].senha !== senha) {
         error.textContent = '❌ Senha incorreta!';
         error.style.display = 'block';
         return;
     }
-    
-    console.log('✅ Login bem sucedido!', user);
-    
-    usuarioAtual = { 
-        login: user, 
-        nome: USUARIOS[user].nome,
-        tipo: USUARIOS[user].tipo || 'usuario'
-    };
-    
+    usuarioAtual = { login: user, nome: USUARIOS[user].nome, tipo: USUARIOS[user].tipo || 'usuario' };
     localStorage.setItem('usuarioLogado', JSON.stringify(usuarioAtual));
-    
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('sistemaScreen').style.display = 'block';
     document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
-    
     error.style.display = 'none';
     document.getElementById('loginUsuario').value = '';
     document.getElementById('loginSenha').value = '';
-    
-    document.getElementById('statusBar').textContent = `✅ Bem-vindo, ${usuarioAtual.nome}!`;
-    document.getElementById('statusBar').className = 'status-bar success';
-    
+    atualizarStatus(`✅ Bem-vindo, ${usuarioAtual.nome}!`);
+    registrarLog('LOGIN', `${usuarioAtual.nome} entrou no sistema`);
     init();
-    carregarConfiguracoes();
 }
 
 function fazerLogout() {
@@ -263,20 +213,20 @@ function verificarLogin() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('sistemaScreen').style.display = 'block';
         document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
-        document.getElementById('statusBar').textContent = `✅ Bem-vindo de volta, ${usuarioAtual.nome}!`;
-        document.getElementById('statusBar').className = 'status-bar success';
+        atualizarStatus(`✅ Bem-vindo de volta, ${usuarioAtual.nome}!`);
         init();
-        carregarConfiguracoes();
         return true;
-    } catch(e) {
-        console.error('Erro ao verificar login:', e);
-        return false;
-    }
+    } catch(e) { return false; }
+}
+
+function loginGoogle() {
+    alert('🔑 Login Google em desenvolvimento');
 }
 
 // ============================================
-// LOGS
+// 5. LOGS
 // ============================================
+
 function registrarLog(acao, detalhes) {
     const entry = {
         data: new Date().toISOString(),
@@ -315,8 +265,48 @@ function limparLogs() {
 }
 
 // ============================================
-// GERAR PRODUTOS
+// 6. DADOS
 // ============================================
+
+function carregarDados() {
+    try {
+        const c = localStorage.getItem('clientes');
+        const p = localStorage.getItem('produtos');
+        const o = localStorage.getItem('ordensServico');
+        const r = localStorage.getItem('recibos');
+        if (c) clientes = JSON.parse(c);
+        if (p) {
+            produtos = JSON.parse(p);
+        } else {
+            produtos = gerarProdutos();
+            localStorage.setItem('produtos', JSON.stringify(produtos));
+            console.log(`📦 ${produtos.length} produtos criados!`);
+        }
+        if (o) ordensServico = JSON.parse(o);
+        if (r) recibos = JSON.parse(r);
+        if (clientes.length === 0) {
+            clientes = [
+                { id: '1', nome: 'José Castilho', email: 'jose@email.com', telefone: '(93) 98102-7290', cpf: '123.456.789-00', endereco: 'Rua Exemplo, 123 - Belém/PA' }
+            ];
+            localStorage.setItem('clientes', JSON.stringify(clientes));
+        }
+    } catch(e) { console.log('Erro ao carregar dados:', e); }
+}
+
+function salvarDados() {
+    try {
+        localStorage.setItem('clientes', JSON.stringify(clientes));
+        localStorage.setItem('produtos', JSON.stringify(produtos));
+        localStorage.setItem('ordensServico', JSON.stringify(ordensServico));
+        localStorage.setItem('recibos', JSON.stringify(recibos));
+        return true;
+    } catch(e) { console.log('Erro ao salvar:', e); return false; }
+}
+
+function gerarId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
 function gerarProdutos() {
     const lista = [
         { nome: 'Cabo de Cobre 1,5mm² (100m)', preco: 180.00, tipo: 'material' },
@@ -379,59 +369,13 @@ function gerarProdutos() {
         { nome: 'Inspeção Técnica Elétrica', preco: 600.00, tipo: 'servico' }
     ];
     let id = 1;
-    return lista.map(item => ({
-        id: String(id++),
-        nome: item.nome,
-        preco: item.preco,
-        tipo: item.tipo
-    }));
+    return lista.map(item => ({ id: String(id++), nome: item.nome, preco: item.preco, tipo: item.tipo }));
 }
 
 // ============================================
-// CARREGAR DADOS
+// 7. INTERFACE (UI)
 // ============================================
-function carregarDados() {
-    try {
-        const c = localStorage.getItem('clientes');
-        const p = localStorage.getItem('produtos');
-        const o = localStorage.getItem('ordensServico');
-        const r = localStorage.getItem('recibos');
-        if (c) clientes = JSON.parse(c);
-        if (p) {
-            produtos = JSON.parse(p);
-        } else {
-            produtos = gerarProdutos();
-            localStorage.setItem('produtos', JSON.stringify(produtos));
-            console.log(`📦 ${produtos.length} produtos criados!`);
-        }
-        if (o) ordensServico = JSON.parse(o);
-        if (r) recibos = JSON.parse(r);
-        
-        if (clientes.length === 0) {
-            clientes = [
-                { id: '1', nome: 'José Castilho', email: 'jose@email.com', telefone: '(93) 98102-7290', cpf: '123.456.789-00', endereco: 'Rua Exemplo, 123 - Belém/PA' }
-            ];
-            localStorage.setItem('clientes', JSON.stringify(clientes));
-        }
-    } catch(e) { console.log('Erro ao carregar dados:', e); }
-}
 
-function salvarDados() {
-    try {
-        localStorage.setItem('clientes', JSON.stringify(clientes));
-        localStorage.setItem('produtos', JSON.stringify(produtos));
-        localStorage.setItem('ordensServico', JSON.stringify(ordensServico));
-        localStorage.setItem('recibos', JSON.stringify(recibos));
-    } catch(e) { console.log('Erro ao salvar:', e); }
-}
-
-function gerarId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-}
-
-// ============================================
-// FUNÇÕES DE INTERFACE
-// ============================================
 function atualizarStatus(msg, tipo = 'success') {
     const bar = document.getElementById('statusBar');
     if (!bar) return;
@@ -460,8 +404,9 @@ function carregarLogo() {
 }
 
 // ============================================
-// CLIENTES
+// 8. CLIENTES (CRUD)
 // ============================================
+
 function renderClientes() {
     const lista = document.getElementById('listaClientes');
     if (!lista) return;
@@ -549,8 +494,9 @@ function renderSelectClientes() {
 }
 
 // ============================================
-// PRODUTOS
+// 9. PRODUTOS (CRUD)
 // ============================================
+
 function renderProdutos() {
     const lista = document.getElementById('listaProdutos');
     if (!lista) return;
@@ -644,8 +590,9 @@ function renderSelectProdutos() {
 }
 
 // ============================================
-// ORÇAMENTO
+// 10. ORÇAMENTO
 // ============================================
+
 function adicionarItem() {
     if (produtos.length === 0) { alert('⚠️ Cadastre um produto primeiro!'); return; }
     const div = document.createElement('div');
@@ -727,9 +674,14 @@ function salvarOrcamento() {
     registrarLog('OS_CRIADA', `OS ${novaOS.numero} criada para ${cliente}`);
 }
 
+function editarOS(id) {
+    alert('✏️ Editar OS em desenvolvimento');
+}
+
 // ============================================
-// ORDENS DE SERVIÇO
+// 11. ORDEM DE SERVIÇO
 // ============================================
+
 function listarOS(filtro = 'todos') {
     const container = document.getElementById('listaOS');
     if (!container) return;
@@ -752,12 +704,208 @@ function filtrarOS() { listarOS(document.getElementById('filtroStatusOS').value)
 function abrirOS(id) {
     const os = ordensServico.find(o => o.id === id);
     if (!os) return;
-    alert(`📄 OS ${os.numero}\nCliente: ${os.cliente}\nTotal: R$ ${os.total.toFixed(2)}`);
+    const data = new Date(os.dataCriacao).toLocaleDateString('pt-BR');
+    let itensHTML = os.itens.map((item, i) => `
+        <tr><td>${i+1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${item.preco.toFixed(2)}</td><td>R$ ${item.subtotal.toFixed(2)}</td></tr>
+    `).join('');
+    document.getElementById('detalhesOS').innerHTML = `
+        <div style="margin-bottom:10px;">
+            <p><strong>Nº:</strong> ${os.numero}</p>
+            <p><strong>Cliente:</strong> ${os.cliente}</p>
+            <p><strong>Status:</strong> 📄 Orçamento</p>
+            <p><strong>Data:</strong> ${data}</p>
+            <p><strong>Total:</strong> R$ ${os.total.toFixed(2)}</p>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr style="background:#1a237e;color:white;">
+                    <th style="padding:5px;">#</th><th style="padding:5px;">Produto</th>
+                    <th style="padding:5px;">Qtd</th><th style="padding:5px;">Preço</th>
+                    <th style="padding:5px;">Subtotal</th>
+                </tr></thead>
+                <tbody>${itensHTML}</tbody>
+            </table>
+        </div>
+    `;
+    document.getElementById('btnAprovarOS').style.display = os.status === 'orcamento' ? 'inline-block' : 'none';
+    document.getElementById('btnIniciarOS').style.display = os.status === 'aprovado' ? 'inline-block' : 'none';
+    document.getElementById('btnConcluirOS').style.display = os.status === 'em_andamento' ? 'inline-block' : 'none';
+    document.getElementById('btnCancelarOS').style.display = os.status !== 'cancelado' && os.status !== 'concluido' ? 'inline-block' : 'none';
+    document.getElementById('btnEmitirRecibo').style.display = os.status === 'concluido' ? 'inline-block' : 'none';
+    osAtual = os;
+    abrirModal('modalOS');
+}
+
+function aprovarOS() {
+    if (!osAtual || !confirm(`Aprovar OS ${osAtual.numero}?`)) return;
+    osAtual.status = 'aprovado';
+    osAtual.dataAprovacao = new Date().toISOString();
+    salvarDados();
+    listarOS();
+    fecharModal('modalOS');
+    atualizarStatus(`✅ OS ${osAtual.numero} aprovada!`);
+    registrarLog('OS_APROVADA', `OS ${osAtual.numero} aprovada`);
+}
+
+function iniciarOS() {
+    if (!osAtual || !confirm(`Iniciar OS ${osAtual.numero}?`)) return;
+    osAtual.status = 'em_andamento';
+    osAtual.dataInicio = new Date().toISOString();
+    salvarDados();
+    listarOS();
+    fecharModal('modalOS');
+    atualizarStatus(`🔧 OS ${osAtual.numero} em andamento!`);
+    registrarLog('OS_INICIADA', `OS ${osAtual.numero} iniciada`);
+}
+
+function concluirOS() {
+    if (!osAtual || !confirm(`Concluir OS ${osAtual.numero}?`)) return;
+    osAtual.status = 'concluido';
+    osAtual.dataConclusao = new Date().toISOString();
+    salvarDados();
+    listarOS();
+    fecharModal('modalOS');
+    atualizarStatus(`✅ OS ${osAtual.numero} concluída!`);
+    registrarLog('OS_CONCLUIDA', `OS ${osAtual.numero} concluída`);
+}
+
+function cancelarOS() {
+    if (!osAtual || !confirm(`Cancelar OS ${osAtual.numero}?`)) return;
+    osAtual.status = 'cancelado';
+    salvarDados();
+    listarOS();
+    fecharModal('modalOS');
+    atualizarStatus(`❌ OS ${osAtual.numero} cancelada!`);
+    registrarLog('OS_CANCELADA', `OS ${osAtual.numero} cancelada`);
+}
+
+function emitirRecibo() {
+    if (!osAtual || osAtual.status !== 'concluido') { alert('⚠️ A OS precisa estar concluída!'); return; }
+    const recibo = {
+        id: gerarId(),
+        numero: 'REC-' + (recibos.length + 1).toString().padStart(4, '0'),
+        osId: osAtual.id,
+        osNumero: osAtual.numero,
+        cliente: osAtual.cliente,
+        clienteData: osAtual.clienteData,
+        itens: osAtual.itens,
+        total: osAtual.total,
+        status: 'pendente',
+        dataEmissao: new Date().toISOString(),
+        dataPagamento: null
+    };
+    recibos.push(recibo);
+    salvarDados();
+    listarRecibos();
+    fecharModal('modalOS');
+    atualizarStatus(`💰 Recibo ${recibo.numero} emitido!`);
+    registrarLog('RECIBO_EMITIDO', `Recibo ${recibo.numero} emitido para ${osAtual.cliente}`);
+    abrirRecibo(recibo.id);
 }
 
 // ============================================
-// CÁLCULOS
+// 12. RECIBOS
 // ============================================
+
+function listarRecibos(filtro = 'todos') {
+    const container = document.getElementById('listaRecibos');
+    if (!container) return;
+    let lista = filtro !== 'todos' ? recibos.filter(r => r.status === filtro) : recibos;
+    if (lista.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Nenhum recibo encontrado</p>';
+        return;
+    }
+    container.innerHTML = lista.map(r => {
+        const data = new Date(r.dataEmissao).toLocaleDateString('pt-BR');
+        const status = r.status === 'pago' ? '✅ Pago' : '⏳ Pendente';
+        return `
+            <div class="os-card" onclick="abrirRecibo('${r.id}')">
+                <div><strong>${r.numero}</strong> <span class="status-badge ${r.status === 'pago' ? 'status-recebido' : 'status-orcamento'}">${status}</span></div>
+                <div><strong>Cliente:</strong> ${r.cliente}</div>
+                <div style="font-size:12px;color:#666;">OS: ${r.osNumero} | Total: R$ ${r.total.toFixed(2)} | ${data}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filtrarRecibos() { listarRecibos(document.getElementById('filtroRecibo').value); }
+
+function abrirRecibo(id) {
+    reciboAtual = recibos.find(r => r.id === id);
+    if (!reciboAtual) return;
+    const data = new Date(reciboAtual.dataEmissao).toLocaleDateString('pt-BR');
+    let itensHTML = reciboAtual.itens.map((item, i) => `
+        <tr><td>${i+1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${item.preco.toFixed(2)}</td><td>R$ ${item.subtotal.toFixed(2)}</td></tr>
+    `).join('');
+    document.getElementById('conteudoRecibo').innerHTML = `
+        <div style="text-align:center;border-bottom:2px solid #1a237e;padding-bottom:10px;margin-bottom:15px;">
+            <h2 style="color:#1a237e;">${EMPRESA.nome}</h2>
+            <p style="color:#666;font-size:12px;">${EMPRESA.cnpj} | ${EMPRESA.endereco}</p>
+            <h3>RECIBO</h3>
+        </div>
+        <div style="margin-bottom:10px;">
+            <p><strong>Nº:</strong> ${reciboAtual.numero}</p>
+            <p><strong>OS:</strong> ${reciboAtual.osNumero}</p>
+            <p><strong>Cliente:</strong> ${reciboAtual.cliente}</p>
+            <p><strong>Data:</strong> ${data}</p>
+            <p><strong>Status:</strong> ${reciboAtual.status === 'pago' ? '✅ PAGO' : '⏳ PENDENTE'}</p>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr style="background:#1a237e;color:white;">
+                    <th style="padding:5px;">#</th><th style="padding:5px;">Produto</th>
+                    <th style="padding:5px;">Qtd</th><th style="padding:5px;">Preço</th>
+                    <th style="padding:5px;">Subtotal</th>
+                </tr></thead>
+                <tbody>${itensHTML}</tbody>
+            </table>
+        </div>
+        <div style="text-align:right;padding:10px;font-size:18px;font-weight:bold;border-top:2px solid #1a237e;margin-top:10px;">
+            TOTAL: R$ ${reciboAtual.total.toFixed(2)}
+        </div>
+        <div class="assinatura">
+            <p>Assinatura do Cliente</p>
+            <div style="height:40px;"></div>
+            <p>_________________________</p>
+        </div>
+    `;
+    document.getElementById('btnMarcarPago').style.display = reciboAtual.status === 'pendente' ? 'inline-block' : 'none';
+    abrirModal('modalRecibo');
+}
+
+function marcarPago() {
+    if (!reciboAtual || !confirm(`Marcar recibo ${reciboAtual.numero} como PAGO?`)) return;
+    reciboAtual.status = 'pago';
+    reciboAtual.dataPagamento = new Date().toISOString();
+    salvarDados();
+    listarRecibos();
+    abrirRecibo(reciboAtual.id);
+    atualizarStatus(`✅ Recibo ${reciboAtual.numero} pago!`);
+    registrarLog('RECIBO_PAGO', `Recibo ${reciboAtual.numero} marcado como pago`);
+}
+
+function imprimirRecibo() {
+    if (!reciboAtual) return;
+    const conteudo = document.getElementById('conteudoRecibo').innerHTML;
+    const win = window.open('', '_blank', 'width=800,height=600');
+    win.document.write(`
+        <html><head><title>Recibo ${reciboAtual.numero}</title>
+        <style>body{font-family:Arial;padding:40px;max-width:800px;margin:0 auto;}
+        .recibo-area{background:white;padding:20px;border:1px solid #ddd;}
+        table{width:100%;border-collapse:collapse;}th{background:#1a237e;color:white;padding:8px;text-align:left;}
+        td{padding:8px;border-bottom:1px solid #ddd;}.assinatura{border-top:1px solid #333;margin-top:20px;padding-top:10px;text-align:center;}
+        .total{text-align:right;font-size:18px;font-weight:bold;margin-top:10px;}
+        @media print{.no-print{display:none;}}</style>
+        </head><body><div class="recibo-area">${conteudo}</div>
+        <script>window.onload=function(){window.print();}<\/script></body></html>
+    `);
+    win.document.close();
+}
+
+// ============================================
+// 13. CÁLCULOS
+// ============================================
+
 function dimensionarCabos() {
     const corrente = parseFloat(document.getElementById('correnteCabos').value);
     if (!corrente || corrente <= 0) { alert('⚠️ Informe a corrente!'); return; }
@@ -772,20 +920,37 @@ function dimensionarCabos() {
 }
 
 function calcularQuedaTensao() {
-    alert('📉 Função em desenvolvimento');
+    alert('📉 Função Queda de Tensão em desenvolvimento');
 }
 
 function calcularDemanda() {
-    alert('💡 Função em desenvolvimento');
+    alert('💡 Função Demanda de Energia em desenvolvimento');
 }
 
 function calcularProjeto() {
-    alert('📊 Função em desenvolvimento');
+    alert('📊 Função Projeto Elétrico em desenvolvimento');
 }
 
 // ============================================
-// BACKUP
+// 14. PDF E WHATSAPP
 // ============================================
+
+function gerarPDF() {
+    alert('📄 Função PDF em desenvolvimento');
+}
+
+function enviarWhatsApp() {
+    alert('💬 Função WhatsApp em desenvolvimento');
+}
+
+function enviarPDFWhatsApp() {
+    alert('📤 Função PDF+WhatsApp em desenvolvimento');
+}
+
+// ============================================
+// 15. BACKUP
+// ============================================
+
 function exportarDados() {
     const dados = { clientes, produtos, ordensServico, recibos, logs, data: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
@@ -835,14 +1000,13 @@ function renderizarTudo() {
     renderSelectClientes();
     renderSelectProdutos();
     listarOS();
-    updateTotal();
+    listarRecibos();
     renderizarLogs();
+    updateTotal();
+    listarUsuarios();
     atualizarEstatisticas();
 }
 
-// ============================================
-// ESTATÍSTICAS
-// ============================================
 function atualizarEstatisticas() {
     try {
         const el1 = document.getElementById('statsClientes');
@@ -855,48 +1019,6 @@ function atualizarEstatisticas() {
         if (el4) el4.textContent = `Recibos: ${recibos.length}`;
     } catch(e) {}
 }
-
-// ============================================
-// SINCRONIZAÇÃO
-// ============================================
-function sincronizarDados() {
-    console.log('🔄 Sincronização em desenvolvimento');
-    atualizarStatus('🔄 Sincronização em desenvolvimento...');
-}
-
-function iniciarSincronizacaoAutomatica() {
-    if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
-    if (GITHUB_CONFIG.intervaloAuto > 0 && GITHUB_CONFIG.token) {
-        syncTimeout = setInterval(() => {
-            console.log('🔄 Sincronização automática...');
-            sincronizarDados();
-        }, GITHUB_CONFIG.intervaloAuto);
-        console.log(`✅ Sincronização automática configurada (${GITHUB_CONFIG.intervaloAuto/1000}s)`);
-    }
-}
-
-// ============================================
-// FUNÇÕES VAZIAS (PARA EVITAR ERROS)
-// ============================================
-function loginGoogle() { alert('🔑 Login Google em desenvolvimento'); }
-function mostrarCadastroUsuario() { alert('👤 Cadastro de usuário em desenvolvimento'); }
-function salvarNovoUsuario() { alert('👤 Cadastro de usuário em desenvolvimento'); }
-function listarUsuarios() { }
-function excluirUsuario() { }
-function gerarPDF() { alert('📄 PDF em desenvolvimento'); }
-function enviarWhatsApp() { alert('💬 WhatsApp em desenvolvimento'); }
-function enviarPDFWhatsApp() { alert('📤 PDF+WhatsApp em desenvolvimento'); }
-function editarOS() { alert('✏️ Editar OS em desenvolvimento'); }
-function aprovarOS() { alert('✅ Aprovar OS em desenvolvimento'); }
-function iniciarOS() { alert('🔧 Iniciar OS em desenvolvimento'); }
-function concluirOS() { alert('✅ Concluir OS em desenvolvimento'); }
-function cancelarOS() { alert('❌ Cancelar OS em desenvolvimento'); }
-function emitirRecibo() { alert('💰 Emitir recibo em desenvolvimento'); }
-function listarRecibos() { }
-function filtrarRecibos() { }
-function abrirRecibo() { }
-function marcarPago() { }
-function imprimirRecibo() { }
 
 function limparDados() {
     if (!confirm('⚠️ ATENÇÃO: Isso vai apagar TODOS os dados!\n\nContinuar?')) return;
@@ -920,29 +1042,129 @@ function recarregarDados() {
 }
 
 // ============================================
-// INICIALIZAÇÃO
+// 16. SINCRONIZAÇÃO
 // ============================================
-function init() {
-    console.log('🚀 Inicializando sistema...');
-    carregarDados();
-    renderClientes();
-    renderProdutos();
-    renderSelectClientes();
-    renderSelectProdutos();
-    updateTotal();
-    listarOS();
-    carregarLogo();
-    renderizarLogs();
-    atualizarEstatisticas();
-    if (produtos.length > 0) adicionarItem();
-    carregarConfiguracoes();
-    atualizarStatus(`✅ Sistema pronto! ${clientes.length} clientes, ${produtos.length} produtos`);
-    console.log('✅ Sistema inicializado!');
+
+function sincronizarDados() {
+    console.log('🔄 Sincronização em desenvolvimento');
+    atualizarStatus('🔄 Sincronização em desenvolvimento...');
+}
+
+function iniciarSincronizacaoAutomatica() {
+    if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
+    if (GITHUB_CONFIG.intervaloAuto > 0 && GITHUB_CONFIG.token) {
+        syncTimeout = setInterval(() => {
+            console.log('🔄 Sincronização automática...');
+            sincronizarDados();
+        }, GITHUB_CONFIG.intervaloAuto);
+        console.log(`✅ Sincronização automática configurada (${GITHUB_CONFIG.intervaloAuto/1000}s)`);
+    }
 }
 
 // ============================================
-// EVENTOS
+// 17. CONFIGURAÇÕES
 // ============================================
+
+function carregarConfiguracoes() {
+    try {
+        const config = localStorage.getItem('system_config');
+        if (config) {
+            const parsed = JSON.parse(config);
+            if (parsed.gitToken) {
+                GITHUB_CONFIG.token = parsed.gitToken;
+                GITHUB_CONFIG.usuario = parsed.gitUsuario || 'castilho29';
+                GITHUB_CONFIG.repo = parsed.gitRepo || 'SE7VEN_Orcamentos';
+                GITHUB_CONFIG.intervaloAuto = parseInt(parsed.syncInterval) || 300000;
+                const statusLabel = document.getElementById('gitStatusLabel');
+                const btnToggle = document.getElementById('btnToggleGit');
+                if (statusLabel && parsed.gitToken.length > 10) {
+                    statusLabel.textContent = '✅ Ativo';
+                    statusLabel.style.background = '#27ae60';
+                    if (btnToggle) {
+                        btnToggle.textContent = '❌ Desativar';
+                        btnToggle.className = 'btn-danger';
+                    }
+                    localStorage.setItem('git_ativado', 'true');
+                }
+            }
+        }
+        atualizarEstatisticas();
+    } catch(e) { console.log('Erro ao carregar configurações:', e); }
+}
+
+function salvarConfiguracoesGit() {
+    const token = document.getElementById('inputGitToken')?.value.trim() || '';
+    const usuario = document.getElementById('inputGitUsuario')?.value.trim() || 'castilho29';
+    const repo = document.getElementById('inputGitRepo')?.value.trim() || 'SE7VEN_Orcamentos';
+    const intervalo = document.getElementById('inputSyncInterval')?.value || '300000';
+    if (!token || token.length < 10) {
+        alert('⚠️ Digite um token válido do GitHub!');
+        return;
+    }
+    const config = { gitToken: token, gitUsuario: usuario, gitRepo: repo, syncInterval: intervalo };
+    localStorage.setItem('system_config', JSON.stringify(config));
+    GITHUB_CONFIG.token = token;
+    GITHUB_CONFIG.usuario = usuario;
+    GITHUB_CONFIG.repo = repo;
+    GITHUB_CONFIG.intervaloAuto = parseInt(intervalo) || 300000;
+    const statusLabel = document.getElementById('gitStatusLabel');
+    const btnToggle = document.getElementById('btnToggleGit');
+    if (statusLabel) {
+        statusLabel.textContent = '✅ Ativo';
+        statusLabel.style.background = '#27ae60';
+    }
+    if (btnToggle) {
+        btnToggle.textContent = '❌ Desativar';
+        btnToggle.className = 'btn-danger';
+    }
+    localStorage.setItem('git_ativado', 'true');
+    atualizarStatus('✅ Configurações do Git salvas!');
+    registrarLog('CONFIG_GIT', 'Configurações do Git atualizadas');
+    alert('✅ Configurações salvas com sucesso!');
+    if (parseInt(intervalo) > 0) {
+        iniciarSincronizacaoAutomatica();
+    } else {
+        if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
+    }
+}
+
+function toggleGit() {
+    const statusLabel = document.getElementById('gitStatusLabel');
+    const btn = document.getElementById('btnToggleGit');
+    const token = document.getElementById('inputGitToken')?.value.trim() || GITHUB_CONFIG.token;
+    if (!statusLabel || !btn) return;
+    if (statusLabel.textContent.includes('Ativo')) {
+        statusLabel.textContent = '❌ Desativado';
+        statusLabel.style.background = '#e74c3c';
+        btn.textContent = '✅ Ativar';
+        btn.className = 'btn-success';
+        if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
+        GITHUB_CONFIG.token = '';
+        localStorage.setItem('git_ativado', 'false');
+        atualizarStatus('⏸️ Backup Git desativado');
+        registrarLog('CONFIG_GIT', 'Backup Git desativado');
+    } else {
+        if (!token || token.length < 10) {
+            alert('⚠️ Configure o token do GitHub primeiro!');
+            return;
+        }
+        statusLabel.textContent = '✅ Ativo';
+        statusLabel.style.background = '#27ae60';
+        btn.textContent = '❌ Desativar';
+        btn.className = 'btn-danger';
+        GITHUB_CONFIG.token = token;
+        localStorage.setItem('git_ativado', 'true');
+        atualizarStatus('✅ Backup Git ativado');
+        registrarLog('CONFIG_GIT', 'Backup Git ativado');
+        iniciarSincronizacaoAutomatica();
+        setTimeout(sincronizarDados, 2000);
+    }
+}
+
+// ============================================
+// 18. EVENTOS (DOMContentLoaded)
+// ============================================
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📄 DOM carregado!');
     
@@ -951,6 +1173,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('sistemaScreen').style.display = 'none';
     }
     
+    // Eventos de Login
     document.getElementById('loginUsuario')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') document.getElementById('loginSenha').focus();
     });
@@ -958,37 +1181,55 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter') fazerLogin();
     });
     
+    // Eventos dos Botões Principais
     document.getElementById('btnNovo')?.addEventListener('click', function() {
         abrirTab('tabOrcamento');
         document.getElementById('orcamento').scrollIntoView({ behavior: 'smooth' });
     });
-    
     document.getElementById('btnAddCliente')?.addEventListener('click', function() {
         abrirModal('modalCliente');
         document.getElementById('nomeCliente').focus();
     });
-    
     document.getElementById('btnAddProduto')?.addEventListener('click', function() {
         abrirModal('modalProduto');
         document.getElementById('nomeProduto').focus();
     });
-    
     document.getElementById('btnAddItem')?.addEventListener('click', adicionarItem);
     document.getElementById('btnLimpar')?.addEventListener('click', limparOrcamento);
     document.getElementById('btnSalvarOrcamento')?.addEventListener('click', salvarOrcamento);
     document.getElementById('btnGerarPDF')?.addEventListener('click', gerarPDF);
     document.getElementById('btnEnviarPDF')?.addEventListener('click', enviarPDFWhatsApp);
     document.getElementById('btnWhatsApp')?.addEventListener('click', enviarWhatsApp);
+    
+    // Eventos dos Modais
     document.getElementById('salvarCliente')?.addEventListener('click', adicionarCliente);
     document.getElementById('salvarProduto')?.addEventListener('click', adicionarProduto);
+    document.getElementById('salvarNovoUsuario')?.addEventListener('click', salvarNovoUsuario);
     document.getElementById('fecharModalCliente')?.addEventListener('click', function() {
         fecharModal('modalCliente');
     });
     document.getElementById('fecharModalProduto')?.addEventListener('click', function() {
         fecharModal('modalProduto');
     });
+    document.getElementById('btnFecharOS')?.addEventListener('click', function() {
+        fecharModal('modalOS');
+    });
+    document.getElementById('btnFecharRecibo')?.addEventListener('click', function() {
+        fecharModal('modalRecibo');
+    });
     
-    // Configurações
+    // Eventos da OS
+    document.getElementById('btnAprovarOS')?.addEventListener('click', aprovarOS);
+    document.getElementById('btnIniciarOS')?.addEventListener('click', iniciarOS);
+    document.getElementById('btnConcluirOS')?.addEventListener('click', concluirOS);
+    document.getElementById('btnCancelarOS')?.addEventListener('click', cancelarOS);
+    document.getElementById('btnEmitirRecibo')?.addEventListener('click', emitirRecibo);
+    
+    // Eventos do Recibo
+    document.getElementById('btnMarcarPago')?.addEventListener('click', marcarPago);
+    document.getElementById('btnImprimirRecibo')?.addEventListener('click', imprimirRecibo);
+    
+    // Eventos de Configuração
     document.getElementById('btnSalvarConfigGit')?.addEventListener('click', salvarConfiguracoesGit);
     document.getElementById('btnToggleGit')?.addEventListener('click', toggleGit);
     document.getElementById('btnSalvarToken')?.addEventListener('click', function() {
@@ -1006,14 +1247,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Fechar modal clicando fora
+    // Evento para fechar modal clicando fora
     window.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal')) {
             e.target.style.display = 'none';
         }
     });
     
-    // Busca Clientes
+    // Eventos de Busca
     document.getElementById('buscaCliente')?.addEventListener('input', function(e) {
         const termo = e.target.value.toLowerCase().trim();
         document.querySelectorAll('#listaClientes li').forEach(li => {
@@ -1021,8 +1262,6 @@ document.addEventListener('DOMContentLoaded', function() {
             li.style.display = texto.includes(termo) ? 'flex' : 'none';
         });
     });
-    
-    // Busca Produtos
     document.getElementById('buscaProduto')?.addEventListener('input', function(e) {
         const termo = e.target.value.toLowerCase().trim();
         document.querySelectorAll('#listaProdutos li').forEach(li => {
@@ -1032,7 +1271,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Enter nos modais
+    // Eventos de Enter nos modais
     document.getElementById('nomeCliente')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') adicionarCliente();
     });
