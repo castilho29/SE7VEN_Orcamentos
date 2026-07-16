@@ -9,7 +9,7 @@ console.log('⚡ Carregando sistema...');
 // ============================================
 let CONFIG = window.CONFIG || {};
 if (!CONFIG.SUPABASE) {
-    CONFIG.SUPABASE = { url: 'https://se7ven-energia.supabase.co', publicKey: '' };
+    CONFIG.SUPABASE = { url: 'https://se7ven-energia.sb.co', publicKey: '' };
 }
 
 const SUPABASE_URL = CONFIG.SUPABASE.url;
@@ -20,10 +20,10 @@ const SUPABASE_PUBLIC_KEY = CONFIG.SUPABASE.publicKey;
 // A segurança agora vem do login real (Supabase Auth) + regras RLS no banco,
 // não de uma chave secreta escondida no navegador (isso nunca foi seguro).
 // ============================================
-let supabase = null;
+let sb = null;
 try {
     if (SUPABASE_PUBLIC_KEY) {
-        supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
         console.log('✅ Supabase conectado!');
     } else {
         console.warn('⚠️ Chave pública do Supabase não configurada em config.js!');
@@ -90,7 +90,7 @@ function alternarModoCadastro() {
 }
 
 async function fazerLogin() {
-    if (!supabase) { alert('⚠️ Supabase não está configurado (veja config.js).'); return; }
+    if (!sb) { alert('⚠️ Supabase não está configurado (veja config.js).'); return; }
     const email = document.getElementById('loginEmail').value.trim();
     const senha = document.getElementById('loginSenha').value.trim();
     const nome = document.getElementById('loginNome').value.trim();
@@ -103,7 +103,7 @@ async function fazerLogin() {
     if (modoCadastro && !nome) { errorEl.textContent = '❌ Informe seu nome!'; errorEl.style.display = 'block'; return; }
 
     if (modoCadastro) {
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await sb.auth.signUp({
             email, password: senha, options: { data: { nome } }
         });
         if (error) { errorEl.textContent = '❌ ' + error.message; errorEl.style.display = 'block'; return; }
@@ -122,7 +122,7 @@ async function fazerLogin() {
         return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    const { error } = await sb.auth.signInWithPassword({ email, password: senha });
     if (error) {
         errorEl.textContent = '❌ E-mail ou senha incorretos!';
         errorEl.style.display = 'block';
@@ -131,8 +131,8 @@ async function fazerLogin() {
 }
 
 async function loginGoogle() {
-    if (!supabase) { alert('⚠️ Supabase não está configurado.'); return; }
-    const { error } = await supabase.auth.signInWithOAuth({
+    if (!sb) { alert('⚠️ Supabase não está configurado.'); return; }
+    const { error } = await sb.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.href }
     });
@@ -142,8 +142,8 @@ async function loginGoogle() {
 
 async function fazerLogout() {
     if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
-    if (realtimeChannel) { supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
-    if (supabase) await supabase.auth.signOut();
+    if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+    if (sb) await sb.auth.signOut();
     usuarioAtual = null;
     mostrarTelaLogin();
 }
@@ -157,10 +157,10 @@ function mostrarTelaLogin() {
 
 async function garantirPerfil(user) {
     // Cria a linha em "profiles" na primeira vez que o usuário loga de verdade
-    const { data: existente } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    const { data: existente } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if (existente) return existente;
     const nome = user.user_metadata?.nome || user.email;
-    const { data: criado, error } = await supabase.from('profiles')
+    const { data: criado, error } = await sb.from('profiles')
         .insert({ id: user.id, nome, tipo: 'usuario' })
         .select().single();
     if (error) { console.warn('Não foi possível criar o perfil:', error.message); return { id: user.id, nome, tipo: 'usuario' }; }
@@ -183,7 +183,7 @@ async function entrarNoSistema(user) {
 // ============================================
 
 async function carregarClientesSupabase() {
-    const { data, error } = await supabase.from('clientes').select('*').order('created_at', { ascending: false });
+    const { data, error } = await sb.from('clientes').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     clientes = data || [];
     renderClientes();
@@ -191,7 +191,7 @@ async function carregarClientesSupabase() {
 }
 
 async function carregarProdutosSupabase() {
-    const { data, error } = await supabase.from('produtos').select('*').order('created_at', { ascending: false });
+    const { data, error } = await sb.from('produtos').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     produtos = data || [];
     renderProdutos();
@@ -199,35 +199,35 @@ async function carregarProdutosSupabase() {
 }
 
 async function carregarOSSupabase() {
-    const { data, error } = await supabase.from('ordens_servico').select('*').order('data_criacao', { ascending: false });
+    const { data, error } = await sb.from('ordens_servico').select('*').order('data_criacao', { ascending: false });
     if (error) throw error;
     ordensServico = data || [];
     listarOS();
 }
 
 async function carregarRecibosSupabase() {
-    const { data, error } = await supabase.from('recibos').select('*').order('data_emissao', { ascending: false });
+    const { data, error } = await sb.from('recibos').select('*').order('data_emissao', { ascending: false });
     if (error) throw error;
     recibos = data || [];
     listarRecibos();
 }
 
 async function carregarPerfisSupabase() {
-    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: true });
+    const { data, error } = await sb.from('profiles').select('*').order('created_at', { ascending: true });
     if (error) throw error;
     perfis = data || [];
     listarUsuarios();
 }
 
 async function carregarLogsSupabase() {
-    const { data, error } = await supabase.from('logs').select('*').order('data', { ascending: false }).limit(200);
+    const { data, error } = await sb.from('logs').select('*').order('data', { ascending: false }).limit(200);
     if (error) throw error;
     logs = data || [];
     renderizarLogs();
 }
 
 async function sincronizarDados() {
-    if (!supabase) return;
+    if (!sb) return;
     if (sincronizando) { console.log('⏳ Sincronização em andamento...'); return; }
     sincronizando = true;
     const statusElement = document.getElementById('syncStatus');
@@ -269,12 +269,12 @@ async function sincronizarDados() {
 }
 
 function iniciarSincronizacaoAutomatica() {
-    if (!supabase) return;
+    if (!sb) return;
     sincronizarDados();
 
     // Sincronização em tempo real: qualquer alteração feita em outro dispositivo
     // chega aqui na hora, sem precisar recarregar a página.
-    realtimeChannel = supabase.channel('se7ven-sync')
+    realtimeChannel = sb.channel('se7ven-sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => sincronizarDados())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos' }, () => sincronizarDados())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, () => sincronizarDados())
@@ -294,7 +294,7 @@ async function semearProdutosPadrao() {
     if (produtos.length > 0) return;
     const catalogo = gerarProdutos();
     try {
-        const { error } = await supabase.from('produtos').upsert(catalogo, { onConflict: 'id' });
+        const { error } = await sb.from('produtos').upsert(catalogo, { onConflict: 'id' });
         if (error) throw error;
         await carregarProdutosSupabase();
         console.log(`📦 ${catalogo.length} produtos padrão cadastrados!`);
@@ -340,7 +340,7 @@ async function adicionarCliente() {
         endereco: document.getElementById('enderecoCliente').value.trim() || ''
     };
     try {
-        const { error } = await supabase.from('clientes').upsert(novoCliente, { onConflict: 'id' });
+        const { error } = await sb.from('clientes').upsert(novoCliente, { onConflict: 'id' });
         if (error) throw error;
         clientes.push(novoCliente);
         document.getElementById('nomeCliente').value = '';
@@ -363,7 +363,7 @@ async function excluirCliente(index) {
     if (!cliente) return;
     if (!confirm(`Excluir "${cliente.nome}"?`)) return;
     try {
-        const { error } = await supabase.from('clientes').delete().eq('id', cliente.id);
+        const { error } = await sb.from('clientes').delete().eq('id', cliente.id);
         if (error) throw error;
         clientes.splice(index, 1);
         renderClientes();
@@ -398,7 +398,7 @@ function editarCliente(index) {
         if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
         const clienteAtualizado = { ...clientes[idx], nome, telefone, cpf, endereco, email };
         try {
-            const { error } = await supabase.from('clientes').upsert(clienteAtualizado, { onConflict: 'id' });
+            const { error } = await sb.from('clientes').upsert(clienteAtualizado, { onConflict: 'id' });
             if (error) throw error;
             clientes[idx] = clienteAtualizado;
             document.getElementById('nomeCliente').value = '';
@@ -461,7 +461,7 @@ async function adicionarProduto() {
     if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
     const novoProduto = { id: gerarId(), nome, preco, tipo };
     try {
-        const { error } = await supabase.from('produtos').upsert(novoProduto, { onConflict: 'id' });
+        const { error } = await sb.from('produtos').upsert(novoProduto, { onConflict: 'id' });
         if (error) throw error;
         produtos.push(novoProduto);
         document.getElementById('nomeProduto').value = '';
@@ -481,7 +481,7 @@ async function excluirProduto(index) {
     if (!produto) return;
     if (!confirm(`Excluir "${produto.nome}"?`)) return;
     try {
-        const { error } = await supabase.from('produtos').delete().eq('id', produto.id);
+        const { error } = await sb.from('produtos').delete().eq('id', produto.id);
         if (error) throw error;
         produtos.splice(index, 1);
         renderProdutos();
@@ -512,7 +512,7 @@ function editarProduto(index) {
         if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
         const produtoAtualizado = { ...produtos[idx], nome, preco, tipo };
         try {
-            const { error } = await supabase.from('produtos').upsert(produtoAtualizado, { onConflict: 'id' });
+            const { error } = await sb.from('produtos').upsert(produtoAtualizado, { onConflict: 'id' });
             if (error) throw error;
             produtos[idx] = produtoAtualizado;
             document.getElementById('nomeProduto').value = '';
@@ -625,7 +625,7 @@ async function salvarOrcamento() {
         data_criacao: new Date().toISOString()
     };
     try {
-        const { error } = await supabase.from('ordens_servico').upsert(novaOS, { onConflict: 'id' });
+        const { error } = await sb.from('ordens_servico').upsert(novaOS, { onConflict: 'id' });
         if (error) throw error;
         ordensServico.push(novaOS);
         listarOS();
@@ -707,7 +707,7 @@ async function atualizarStatusOS(novoStatus, mensagem, acao) {
     if (novoStatus === 'em_andamento') osAtualizada.data_inicio = new Date().toISOString();
     if (novoStatus === 'concluido') osAtualizada.data_conclusao = new Date().toISOString();
     try {
-        const { error } = await supabase.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
+        const { error } = await sb.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
         if (error) throw error;
         const idx = ordensServico.findIndex(o => o.id === osAtualizada.id);
         if (idx >= 0) ordensServico[idx] = osAtualizada;
@@ -749,7 +749,7 @@ async function emitirRecibo() {
         status: 'pendente', data_emissao: new Date().toISOString(), data_pagamento: null
     };
     try {
-        const { error } = await supabase.from('recibos').upsert(recibo, { onConflict: 'id' });
+        const { error } = await sb.from('recibos').upsert(recibo, { onConflict: 'id' });
         if (error) throw error;
         recibos.push(recibo);
         listarRecibos();
@@ -836,7 +836,7 @@ async function marcarPago() {
     if (!reciboAtual || !confirm(`Marcar recibo ${reciboAtual.numero} como PAGO?`)) return;
     try {
         const dataPagamento = new Date().toISOString();
-        const { error } = await supabase.from('recibos')
+        const { error } = await sb.from('recibos')
             .update({ status: 'pago', data_pagamento: dataPagamento }).eq('id', reciboAtual.id);
         if (error) throw error;
         reciboAtual.status = 'pago';
@@ -1165,9 +1165,9 @@ async function registrarLog(acao, detalhes) {
     const entry = { data: new Date().toISOString(), usuario: usuarioAtual?.nome || 'Sistema', acao, detalhes };
     logs.unshift(entry);
     renderizarLogs();
-    if (!supabase) return;
+    if (!sb) return;
     try {
-        const { error } = await supabase.from('logs').insert(entry);
+        const { error } = await sb.from('logs').insert(entry);
         if (error) console.warn('Não foi possível gravar o log:', error.message);
     } catch (e) { console.warn('Não foi possível gravar o log:', e.message); }
 }
@@ -1190,7 +1190,7 @@ function renderizarLogs() {
 async function limparLogs() {
     if (!confirm('Limpar todos os logs (de todos os dispositivos)?')) return;
     try {
-        await supabase.from('logs').delete().neq('id', 0);
+        await sb.from('logs').delete().neq('id', 0);
         logs = [];
         renderizarLogs();
         atualizarStatus('🗑️ Logs limpos!');
@@ -1298,10 +1298,10 @@ async function importarDados(event) {
             const dados = JSON.parse(e.target.result);
             if (!dados.clientes) { alert('❌ Arquivo inválido!'); return; }
             if (!confirm('Isso vai enviar os dados do backup para o Supabase (mesclando com o que já existe). Continuar?')) return;
-            if (dados.clientes?.length) await supabase.from('clientes').upsert(dados.clientes, { onConflict: 'id' });
-            if (dados.produtos?.length) await supabase.from('produtos').upsert(dados.produtos, { onConflict: 'id' });
-            if (dados.ordensServico?.length) await supabase.from('ordens_servico').upsert(dados.ordensServico, { onConflict: 'id' });
-            if (dados.recibos?.length) await supabase.from('recibos').upsert(dados.recibos, { onConflict: 'id' });
+            if (dados.clientes?.length) await sb.from('clientes').upsert(dados.clientes, { onConflict: 'id' });
+            if (dados.produtos?.length) await sb.from('produtos').upsert(dados.produtos, { onConflict: 'id' });
+            if (dados.ordensServico?.length) await sb.from('ordens_servico').upsert(dados.ordensServico, { onConflict: 'id' });
+            if (dados.recibos?.length) await sb.from('recibos').upsert(dados.recibos, { onConflict: 'id' });
             await sincronizarDados();
             atualizarStatus('✅ Dados importados!');
             registrarLog('IMPORTAR', 'Dados importados do JSON');
@@ -1378,14 +1378,14 @@ function init() {
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('📄 DOM carregado!');
 
-    if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
+    if (sb) {
+        const { data: { session } } = await sb.auth.getSession();
         if (session) {
             await entrarNoSistema(session.user);
         } else {
             mostrarTelaLogin();
         }
-        supabase.auth.onAuthStateChange((event, session) => {
+        sb.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session && !usuarioAtual) entrarNoSistema(session.user);
             if (event === 'SIGNED_OUT') mostrarTelaLogin();
         });
