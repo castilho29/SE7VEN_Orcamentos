@@ -111,10 +111,13 @@ async function fazerLogin() {
             // Login automático (confirmação de e-mail desativada no projeto)
             await entrarNoSistema(data.user);
         } else {
+            // Volta para o modo "login" manualmente, sem apagar a mensagem de sucesso
+            modoCadastro = false;
+            document.getElementById('loginNome').style.display = 'none';
+            document.getElementById('btnEntrar').textContent = '🔑 Entrar';
+            document.getElementById('btnAlternarCadastro').textContent = 'Não tem conta? Criar uma agora';
             sucessoEl.textContent = '✅ Conta criada! Verifique seu e-mail para confirmar e depois faça login.';
             sucessoEl.style.display = 'block';
-            modoCadastro = false;
-            alternarModoCadastro(); alternarModoCadastro(); // volta ao modo login mantendo textos corretos
         }
         return;
     }
