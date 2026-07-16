@@ -20,6 +20,15 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Configuração Supabase -->
+    <script>
+        const SUPABASE_URL = 'https://se7ven-energia.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_23NQo9Pd7-hvhyhNQQrpHw_WP_o7DzM';
+    </script>
+    
     <style>
         /* ===== ESTILOS COMPLETOS ===== */
         *{margin:0;padding:0;box-sizing:border-box;}
@@ -162,8 +171,8 @@
              onerror="this.style.display='none'">
         <h1>⚡ SE7VEN ENERGIA</h1>
         
-        <input type="text" id="loginUsuario" placeholder="Usuário">
-        <input type="password" id="loginSenha" placeholder="Senha">
+        <input type="text" id="loginUsuario" placeholder="Usuário" value="admin">
+        <input type="password" id="loginSenha" placeholder="Senha" value="admin">
         <div id="loginError" class="error">❌ Usuário ou senha incorretos</div>
         <button onclick="fazerLogin()" style="background:#1a237e;color:white;width:100%;max-width:300px;padding:12px;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;border:none;margin:5px auto;">🔑 Entrar</button>
         
@@ -180,7 +189,8 @@
         </button>
         
         <div class="info">
-           <strong>:</strong><br>
+            <strong>Usuário padrão:</strong><br>
+            admin / admin
         </div>
     </div>
 
@@ -191,7 +201,7 @@
                 <img src="logo.png" alt="SE7VEN ENERGIA" 
                      style="height:35px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px;"
                      onerror="this.style.display='none'">
-                <h1 class="logo-title">SE7VEN SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
+                <h1 class="logo-title">SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
                 <div class="user-info">
@@ -206,7 +216,7 @@
 
         <!-- SINCRONIZAÇÃO -->
         <div class="sync-info">
-            <strong>🔄 SINCRONIZAÇÃO COM GIT</strong>
+            <strong>🔄 SINCRONIZAÇÃO COM SUPABASE</strong>
             <div class="sync-status">
                 <span class="status" id="syncStatus">🔄 Aguardando...</span>
                 <button class="btn-primary" onclick="sincronizarDados()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizar</button>
@@ -217,12 +227,13 @@
 
         <!-- BACKUP -->
         <div class="backup-info">
-            <strong>💾 BACKUP LOCAL</strong>
+            <strong>💾 BACKUP</strong>
             <div class="backup-buttons">
-                <button class="btn-backup" onclick="exportarDados()">📤 Exportar</button>
-                <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📥 Importar</button>
+                <button class="btn-backup" onclick="exportarDados()">📤 Exportar JSON</button>
+                <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📥 Importar JSON</button>
                 <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
                 <button class="btn-backup" onclick="backupGit()" style="background:#24292e;color:white;">🐙 Backup Git</button>
+                <button class="btn-backup" onclick="backupGoogleDrive()" style="background:#4285f4;color:white;">☁️ Google Drive</button>
             </div>
         </div>
 
@@ -236,6 +247,7 @@
             <button class="tab-btn" onclick="abrirTab('tabCalculos')">🧮 Cálculos</button>
             <button class="tab-btn" onclick="abrirTab('tabLogs')">📋 Logs</button>
             <button class="tab-btn" onclick="abrirTab('tabUsuarios')">👥 Usuários</button>
+            <button class="tab-btn" onclick="abrirTab('tabConfig')">⚙️ Config</button>
         </div>
 
         <!-- TAB CLIENTES -->
@@ -382,9 +394,51 @@
                 <button class="btn-success" onclick="mostrarCadastroUsuario()" style="margin-top:10px;">+ Adicionar Usuário</button>
             </section>
         </div>
+
+        <!-- TAB CONFIGURAÇÕES -->
+        <div id="tabConfig" class="tab-content">
+            <section>
+                <h2>⚙️ Configurações</h2>
+                
+                <!-- Backup Google Drive -->
+                <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid #4285f4;">
+                    <h3 style="color:#4285f4;font-size:15px;margin-bottom:10px;">☁️ Backup Google Drive</h3>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button onclick="backupGoogleDrive()" style="background:#4285f4;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">📤 Backup Drive</button>
+                        <button onclick="restaurarGoogleDrive()" style="background:#34a853;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">📥 Restaurar Drive</button>
+                    </div>
+                </div>
+                
+                <!-- Backup Git -->
+                <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid #24292e;">
+                    <h3 style="color:#24292e;font-size:15px;margin-bottom:10px;">🐙 Backup Git</h3>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button onclick="backupGit()" style="background:#24292e;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">📤 Backup Git</button>
+                    </div>
+                </div>
+                
+                <!-- Dados -->
+                <div style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #e74c3c;">
+                    <h3 style="color:#e74c3c;font-size:15px;margin-bottom:10px;">🗄️ Gerenciar Dados</h3>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                        <button onclick="exportarDados()" class="btn-backup">📤 Exportar</button>
+                        <button onclick="document.getElementById('fileInput').click()" class="btn-restore">📥 Importar</button>
+                        <button onclick="recarregarDados()" class="btn-info" style="background:#3498db;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">🔄 Recarregar</button>
+                        <button onclick="limparDados()" class="btn-danger" style="padding:6px 12px;">🗑️ Limpar</button>
+                    </div>
+                    <div style="font-size:12px;color:#666;background:white;padding:10px;border-radius:4px;">
+                        <strong>📊 Estatísticas:</strong><br>
+                        <span id="statsClientes">Clientes: 0</span><br>
+                        <span id="statsProdutos">Produtos: 0</span><br>
+                        <span id="statsOS">Ordens de Serviço: 0</span><br>
+                        <span id="statsRecibos">Recibos: 0</span>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 
-    <!-- ========== MODAL CADASTRO USUÁRIO ========== -->
+    <!-- ========== MODAIS ========== -->
     <div id="modalCadastroUsuario" class="modal">
         <div class="modal-content">
             <h3>👤 Novo Usuário</h3>
@@ -402,7 +456,6 @@
         </div>
     </div>
 
-    <!-- ========== MODAIS EXISTENTES ========== -->
     <div id="modalCliente" class="modal"><div class="modal-content"><h3>👤 Novo Cliente</h3><input type="text" id="nomeCliente" placeholder="Nome *"><input type="tel" id="telefoneCliente" placeholder="Celular"><input type="text" id="cpfCliente" placeholder="CPF/CNPJ"><input type="text" id="enderecoCliente" placeholder="Endereço"><input type="email" id="emailCliente" placeholder="Email"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
     
     <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
