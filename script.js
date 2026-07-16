@@ -8,46 +8,27 @@ console.log('⚡ Carregando sistema...');
 // CARREGAR CONFIGURAÇÕES
 // ============================================
 let CONFIG = window.CONFIG || {};
-
-// Fallback se config.js não existir
 if (!CONFIG.SUPABASE) {
-    CONFIG.SUPABASE = {
-        url: 'https://se7ven-energia.supabase.co',
-        secretKey: '',
-        publicKey: ''
-    };
+    CONFIG.SUPABASE = { url: 'https://se7ven-energia.supabase.co', publicKey: '' };
 }
 
-// ============================================
-// SUPABASE CONFIG - DUAS CHAVES
-// ============================================
-
-const SUPABASE_URL = CONFIG.SUPABASE.url || 'https://se7ven-energia.supabase.co';
-const SUPABASE_SECRET_KEY = CONFIG.SUPABASE.secretKey || '';
-const SUPABASE_PUBLIC_KEY = CONFIG.SUPABASE.publicKey || '';
+const SUPABASE_URL = CONFIG.SUPABASE.url;
+const SUPABASE_PUBLIC_KEY = CONFIG.SUPABASE.publicKey;
 
 // ============================================
-// CLIENTES SUPABASE
+// CLIENTE ÚNICO DO SUPABASE (só chave pública)
+// A segurança agora vem do login real (Supabase Auth) + regras RLS no banco,
+// não de uma chave secreta escondida no navegador (isso nunca foi seguro).
 // ============================================
-
-let supabaseRead = null;
-let supabaseWrite = null;
-
+let supabase = null;
 try {
     if (SUPABASE_PUBLIC_KEY) {
-        supabaseRead = supabaseJs.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
-        console.log('✅ Supabase READ (público) conectado!');
+        supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
+        console.log('✅ Supabase conectado!');
+    } else {
+        console.warn('⚠️ Chave pública do Supabase não configurada em config.js!');
     }
-    
-    if (SUPABASE_SECRET_KEY) {
-        supabaseWrite = supabaseJs.createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
-        console.log('✅ Supabase WRITE (secreto) conectado!');
-    }
-    
-    if (!SUPABASE_PUBLIC_KEY && !SUPABASE_SECRET_KEY) {
-        console.warn('⚠️ Nenhuma chave Supabase configurada!');
-    }
-} catch(e) {
+} catch (e) {
     console.warn('⚠️ Erro ao conectar Supabase:', e.message);
 }
 
@@ -74,453 +55,248 @@ const EMPRESA = {
 };
 
 // ============================================
-// USUÁRIOS
-// ============================================
-let USUARIOS = {
-    admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' },
-    usuario: { senha: '123456', nome: 'Usuário Padrão', tipo: 'usuario' }
-};
-
-// ============================================
 // VARIÁVEIS GLOBAIS
 // ============================================
-let usuarioAtual = null;
+let usuarioAtual = null;      // { id, nome, tipo, email }
+let modoCadastro = false;     // tela de login: false = entrar, true = criar conta
 let clientes = [];
 let produtos = [];
 let ordensServico = [];
 let recibos = [];
 let logs = [];
+let perfis = [];              // lista de usuários (tabela profiles)
 let syncTimeout = null;
+let realtimeChannel = null;
 let osAtual = null;
 let reciboAtual = null;
 let sincronizando = false;
+let ultimaSync = null;
+
+// Tabela de ampacidade de cabos de cobre (A) por bitola (mm²) - referência prática
+const TABELA_AMPACIDADE = {1.5:15.5,2.5:21,4:28,6:36,10:50,16:68,25:89,35:111,50:134,70:171,95:207,120:239,150:275,185:314,240:370};
+const RESISTIVIDADE_COBRE = 0.0178; // Ω·mm²/m (aprox., referência prática)
 
 // ============================================
-// FUNÇÕES SUPABASE - LEITURA (CHAVE PÚBLICA)
+// AUTENTICAÇÃO (SUPABASE AUTH)
 // ============================================
 
-async function carregarClientesSupabase() {
-    if (!supabaseRead) return false;
-    try {
-        const { data, error } = await supabaseRead
-            .from('clientes')
-            .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        if (data) {
-            clientes = data;
-            console.log(`✅ ${clientes.length} clientes carregados (READ)`);
-            renderClientes();
-            renderSelectClientes();
-            return true;
+function alternarModoCadastro() {
+    modoCadastro = !modoCadastro;
+    document.getElementById('loginNome').style.display = modoCadastro ? 'block' : 'none';
+    document.getElementById('btnEntrar').textContent = modoCadastro ? '✨ Criar conta' : '🔑 Entrar';
+    document.getElementById('btnAlternarCadastro').textContent = modoCadastro ? 'Já tenho conta, entrar' : 'Não tem conta? Criar uma agora';
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('loginSucesso').style.display = 'none';
+}
+
+async function fazerLogin() {
+    if (!supabase) { alert('⚠️ Supabase não está configurado (veja config.js).'); return; }
+    const email = document.getElementById('loginEmail').value.trim();
+    const senha = document.getElementById('loginSenha').value.trim();
+    const nome = document.getElementById('loginNome').value.trim();
+    const errorEl = document.getElementById('loginError');
+    const sucessoEl = document.getElementById('loginSucesso');
+    errorEl.style.display = 'none';
+    sucessoEl.style.display = 'none';
+
+    if (!email || !senha) { errorEl.textContent = '❌ Preencha e-mail e senha!'; errorEl.style.display = 'block'; return; }
+    if (modoCadastro && !nome) { errorEl.textContent = '❌ Informe seu nome!'; errorEl.style.display = 'block'; return; }
+
+    if (modoCadastro) {
+        const { data, error } = await supabase.auth.signUp({
+            email, password: senha, options: { data: { nome } }
+        });
+        if (error) { errorEl.textContent = '❌ ' + error.message; errorEl.style.display = 'block'; return; }
+        if (data.session) {
+            // Login automático (confirmação de e-mail desativada no projeto)
+            await entrarNoSistema(data.user);
+        } else {
+            sucessoEl.textContent = '✅ Conta criada! Verifique seu e-mail para confirmar e depois faça login.';
+            sucessoEl.style.display = 'block';
+            modoCadastro = false;
+            alternarModoCadastro(); alternarModoCadastro(); // volta ao modo login mantendo textos corretos
         }
-    } catch(e) {
-        console.error('❌ Erro ao carregar clientes:', e);
-        return false;
+        return;
     }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    if (error) {
+        errorEl.textContent = '❌ E-mail ou senha incorretos!';
+        errorEl.style.display = 'block';
+    }
+    // Sucesso: onAuthStateChange cuida de entrar no sistema
 }
 
-async function carregarProdutosSupabase() {
-    if (!supabaseRead) return false;
-    try {
-        const { data, error } = await supabaseRead
-            .from('produtos')
-            .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        if (data) {
-            produtos = data;
-            console.log(`✅ ${produtos.length} produtos carregados (READ)`);
-            renderProdutos();
-            renderSelectProdutos();
-            return true;
-        }
-    } catch(e) {
-        console.error('❌ Erro ao carregar produtos:', e);
-        return false;
-    }
+async function loginGoogle() {
+    if (!supabase) { alert('⚠️ Supabase não está configurado.'); return; }
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href }
+    });
+    if (error) alert('❌ Erro ao entrar com Google: ' + error.message +
+        '\n\n(Verifique se o provedor Google está habilitado em Supabase → Authentication → Providers)');
 }
 
-async function carregarOSSupabase() {
-    if (!supabaseRead) return false;
-    try {
-        const { data, error } = await supabaseRead
-            .from('ordens_servico')
-            .select('*')
-            .order('data_criacao', { ascending: false });
-        if (error) throw error;
-        if (data) {
-            ordensServico = data;
-            console.log(`✅ ${ordensServico.length} OS carregadas (READ)`);
-            listarOS();
-            return true;
-        }
-    } catch(e) {
-        console.error('❌ Erro ao carregar OS:', e);
-        return false;
-    }
+async function fazerLogout() {
+    if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
+    if (realtimeChannel) { supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
+    if (supabase) await supabase.auth.signOut();
+    usuarioAtual = null;
+    mostrarTelaLogin();
 }
 
-async function carregarRecibosSupabase() {
-    if (!supabaseRead) return false;
-    try {
-        const { data, error } = await supabaseRead
-            .from('recibos')
-            .select('*')
-            .order('data_emissao', { ascending: false });
-        if (error) throw error;
-        if (data) {
-            recibos = data;
-            console.log(`✅ ${recibos.length} recibos carregados (READ)`);
-            listarRecibos();
-            return true;
-        }
-    } catch(e) {
-        console.error('❌ Erro ao carregar recibos:', e);
-        return false;
-    }
+function mostrarTelaLogin() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('sistemaScreen').style.display = 'none';
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginSenha').value = '';
 }
 
-async function carregarUsuariosSupabase() {
-    if (!supabaseRead) return false;
-    try {
-        const { data, error } = await supabaseRead
-            .from('usuarios')
-            .select('*');
-        if (error) throw error;
-        if (data) {
-            data.forEach(u => {
-                USUARIOS[u.login] = {
-                    senha: u.senha,
-                    nome: u.nome,
-                    tipo: u.tipo
-                };
-            });
-            console.log(`✅ ${Object.keys(USUARIOS).length} usuários carregados (READ)`);
-            return true;
-        }
-    } catch(e) {
-        console.error('❌ Erro ao carregar usuários:', e);
-        return false;
-    }
+async function garantirPerfil(user) {
+    // Cria a linha em "profiles" na primeira vez que o usuário loga de verdade
+    const { data: existente } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    if (existente) return existente;
+    const nome = user.user_metadata?.nome || user.email;
+    const { data: criado, error } = await supabase.from('profiles')
+        .insert({ id: user.id, nome, tipo: 'usuario' })
+        .select().single();
+    if (error) { console.warn('Não foi possível criar o perfil:', error.message); return { id: user.id, nome, tipo: 'usuario' }; }
+    return criado;
 }
 
-// ============================================
-// FUNÇÕES SUPABASE - ESCRITA (CHAVE SECRETA)
-// ============================================
-
-async function salvarClienteSupabase(cliente) {
-    if (!supabaseWrite) return false;
-    try {
-        const { error } = await supabaseWrite
-            .from('clientes')
-            .upsert(cliente, { onConflict: 'id' });
-        if (error) throw error;
-        console.log('✅ Cliente salvo (WRITE):', cliente.nome);
-        return true;
-    } catch(e) {
-        console.error('❌ Erro ao salvar cliente:', e);
-        return false;
-    }
-}
-
-async function excluirClienteSupabase(id) {
-    if (!supabaseWrite) return false;
-    try {
-        const { error } = await supabaseWrite
-            .from('clientes')
-            .delete()
-            .eq('id', id);
-        if (error) throw error;
-        console.log('✅ Cliente excluído (WRITE)');
-        return true;
-    } catch(e) {
-        console.error('❌ Erro ao excluir cliente:', e);
-        return false;
-    }
-}
-
-async function salvarProdutoSupabase(produto) {
-    if (!supabaseWrite) return false;
-    try {
-        const { error } = await supabaseWrite
-            .from('produtos')
-            .upsert(produto, { onConflict: 'id' });
-        if (error) throw error;
-        console.log('✅ Produto salvo (WRITE):', produto.nome);
-        return true;
-    } catch(e) {
-        console.error('❌ Erro ao salvar produto:', e);
-        return false;
-    }
-}
-
-async function excluirProdutoSupabase(id) {
-    if (!supabaseWrite) return false;
-    try {
-        const { error } = await supabaseWrite
-            .from('produtos')
-            .delete()
-            .eq('id', id);
-        if (error) throw error;
-        console.log('✅ Produto excluído (WRITE)');
-        return true;
-    } catch(e) {
-        console.error('❌ Erro ao excluir produto:', e);
-        return false;
-    }
-}
-
-async function salvarOSSupabase(os) {
-    if (!supabaseWrite) return false;
-    try {
-        const { error } = await supabaseWrite
-            .from('ordens_servico')
-            .upsert(os, { onConflict: 'id' });
-        if (error) throw error;
-        console.log('✅ OS salva (WRITE):', os.numero);
-        return true;
-    } catch(e) {
-        console.error('❌ Erro ao salvar OS:', e);
-        return false;
-    }
-}
-
-async function salvarReciboSupabase(recibo) {
-    if (!supabaseWrite) return false;
-    try {
-        const { error } = await supabaseWrite
-            .from('recibos')
-            .upsert(recibo, { onConflict: 'id' });
-        if (error) throw error;
-        console.log('✅ Recibo salvo (WRITE):', recibo.numero);
-        return true;
-    } catch(e) {
-        console.error('❌ Erro ao salvar recibo:', e);
-        return false;
-    }
-}
-
-async function salvarUsuarioSupabase(login, data) {
-    if (!supabaseWrite) return false;
-    try {
-        const { error } = await supabaseWrite
-            .from('usuarios')
-            .upsert({
-                id: login,
-                login: login,
-                senha: data.senha,
-                nome: data.nome,
-                tipo: data.tipo || 'usuario'
-            }, { onConflict: 'id' });
-        if (error) throw error;
-        console.log('✅ Usuário salvo (WRITE):', login);
-        return true;
-    } catch(e) {
-        console.error('❌ Erro ao salvar usuário:', e);
-        return false;
-    }
+async function entrarNoSistema(user) {
+    const perfil = await garantirPerfil(user);
+    usuarioAtual = { id: user.id, email: user.email, nome: perfil.nome, tipo: perfil.tipo };
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('sistemaScreen').style.display = 'block';
+    document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
+    atualizarStatus(`✅ Bem-vindo, ${usuarioAtual.nome}!`);
+    registrarLog('LOGIN', `${usuarioAtual.nome} entrou no sistema`);
+    init();
 }
 
 // ============================================
 // SINCRONIZAÇÃO
 // ============================================
 
+async function carregarClientesSupabase() {
+    const { data, error } = await supabase.from('clientes').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    clientes = data || [];
+    renderClientes();
+    renderSelectClientes();
+}
+
+async function carregarProdutosSupabase() {
+    const { data, error } = await supabase.from('produtos').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    produtos = data || [];
+    renderProdutos();
+    renderSelectProdutos();
+}
+
+async function carregarOSSupabase() {
+    const { data, error } = await supabase.from('ordens_servico').select('*').order('data_criacao', { ascending: false });
+    if (error) throw error;
+    ordensServico = data || [];
+    listarOS();
+}
+
+async function carregarRecibosSupabase() {
+    const { data, error } = await supabase.from('recibos').select('*').order('data_emissao', { ascending: false });
+    if (error) throw error;
+    recibos = data || [];
+    listarRecibos();
+}
+
+async function carregarPerfisSupabase() {
+    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: true });
+    if (error) throw error;
+    perfis = data || [];
+    listarUsuarios();
+}
+
+async function carregarLogsSupabase() {
+    const { data, error } = await supabase.from('logs').select('*').order('data', { ascending: false }).limit(200);
+    if (error) throw error;
+    logs = data || [];
+    renderizarLogs();
+}
+
 async function sincronizarDados() {
-    if (sincronizando) {
-        console.log('⏳ Sincronização em andamento...');
-        return;
-    }
-    
+    if (!supabase) return;
+    if (sincronizando) { console.log('⏳ Sincronização em andamento...'); return; }
     sincronizando = true;
     const statusElement = document.getElementById('syncStatus');
     const progressElement = document.getElementById('syncProgress');
     const ultimaSyncElement = document.getElementById('ultimaSync');
-    
     try {
         statusElement.textContent = '🔄 Sincronizando...';
         statusElement.className = 'status sincronizando';
         progressElement.style.display = 'block';
         progressElement.textContent = '⏳ Conectando ao banco de dados...';
-        
-        await carregarClientesSupabase();
-        await carregarProdutosSupabase();
-        await carregarOSSupabase();
-        await carregarRecibosSupabase();
-        await carregarUsuariosSupabase();
-        
+
+        await Promise.all([
+            carregarClientesSupabase(),
+            carregarProdutosSupabase(),
+            carregarOSSupabase(),
+            carregarRecibosSupabase(),
+            carregarPerfisSupabase(),
+            carregarLogsSupabase()
+        ]);
+
+        await semearProdutosPadrao();
+
         ultimaSync = new Date();
         ultimaSyncElement.textContent = `Última: ${ultimaSync.toLocaleString('pt-BR')}`;
-        
         statusElement.textContent = '✅ Sincronizado';
         statusElement.className = 'status online';
         progressElement.style.display = 'none';
         atualizarEstatisticas();
-        
         console.log('✅ Sincronização completa!');
-        
     } catch (error) {
         console.error('❌ Erro na sincronização:', error);
         statusElement.textContent = '❌ Erro: ' + error.message;
         statusElement.className = 'status offline';
         progressElement.textContent = '❌ ' + error.message;
         progressElement.style.display = 'block';
-        atualizarStatus('❌ Erro na sincronização', 'error');
     } finally {
         sincronizando = false;
     }
 }
 
 function iniciarSincronizacaoAutomatica() {
-    if (syncTimeout) {
-        clearInterval(syncTimeout);
-        syncTimeout = null;
-    }
-    setTimeout(() => { sincronizarDados(); }, 3000);
-    syncTimeout = setInterval(() => { sincronizarDados(); }, 10000);
-    console.log('✅ Sincronização automática ativada (10 segundos)');
+    if (!supabase) return;
+    sincronizarDados();
+
+    // Sincronização em tempo real: qualquer alteração feita em outro dispositivo
+    // chega aqui na hora, sem precisar recarregar a página.
+    realtimeChannel = supabase.channel('se7ven-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => sincronizarDados())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos' }, () => sincronizarDados())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, () => sincronizarDados())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'recibos' }, () => sincronizarDados())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, () => sincronizarDados())
+        .subscribe();
+
+    // Rede de segurança: sincroniza a cada 60s mesmo que o realtime perca algum evento
+    if (syncTimeout) clearInterval(syncTimeout);
+    syncTimeout = setInterval(sincronizarDados, 60000);
+    console.log('✅ Sincronização automática (tempo real + reforço a cada 60s) ativada');
 }
 
-// ============================================
-// LOGIN
-// ============================================
-
-function fazerLogin() {
-    const user = document.getElementById('loginUsuario').value.trim();
-    const senha = document.getElementById('loginSenha').value.trim();
-    const error = document.getElementById('loginError');
-    
-    if (!user || !senha) {
-        error.textContent = '❌ Preencha todos os campos!';
-        error.style.display = 'block';
-        return;
-    }
-    
-    carregarUsuariosSupabase().then(() => {
-        if (!USUARIOS[user]) {
-            error.textContent = '❌ Usuário não encontrado!';
-            error.style.display = 'block';
-            return;
-        }
-        if (USUARIOS[user].senha !== senha) {
-            error.textContent = '❌ Senha incorreta!';
-            error.style.display = 'block';
-            return;
-        }
-        usuarioAtual = { login: user, nome: USUARIOS[user].nome, tipo: USUARIOS[user].tipo || 'usuario' };
-        localStorage.setItem('usuarioLogado', JSON.stringify(usuarioAtual));
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('sistemaScreen').style.display = 'block';
-        document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
-        error.style.display = 'none';
-        document.getElementById('loginUsuario').value = '';
-        document.getElementById('loginSenha').value = '';
-        atualizarStatus(`✅ Bem-vindo, ${usuarioAtual.nome}!`);
-        registrarLog('LOGIN', `${usuarioAtual.nome} entrou no sistema`);
-        init();
-    });
-}
-
-function fazerLogout() {
-    usuarioAtual = null;
-    localStorage.removeItem('usuarioLogado');
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('sistemaScreen').style.display = 'none';
-    document.getElementById('loginUsuario').value = '';
-    document.getElementById('loginSenha').value = '';
-    if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
-}
-
-function verificarLogin() {
+async function semearProdutosPadrao() {
+    // Só roda uma vez: se a tabela de produtos estiver vazia, cadastra o catálogo padrão.
+    // Usa IDs fixos (1,2,3...) então rodar de novo nunca duplica.
+    if (produtos.length > 0) return;
+    const catalogo = gerarProdutos();
     try {
-        const salvo = localStorage.getItem('usuarioLogado');
-        if (!salvo) return false;
-        const data = JSON.parse(salvo);
-        if (!USUARIOS[data.login]) {
-            localStorage.removeItem('usuarioLogado');
-            return false;
-        }
-        usuarioAtual = data;
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('sistemaScreen').style.display = 'block';
-        document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
-        atualizarStatus(`✅ Bem-vindo de volta, ${usuarioAtual.nome}!`);
-        init();
-        return true;
-    } catch(e) { return false; }
-}
-
-function loginGoogle() {
-    alert('🔑 Login Google em desenvolvimento');
-}
-
-// ============================================
-// USUÁRIOS
-// ============================================
-
-function carregarUsuarios() {
-    carregarUsuariosSupabase();
-}
-
-function salvarUsuarios() {
-    try { localStorage.setItem('usuarios', JSON.stringify(USUARIOS)); } catch(e) {}
-}
-
-function listarUsuarios() {
-    const container = document.getElementById('listaUsuarios');
-    if (!container) return;
-    container.innerHTML = Object.entries(USUARIOS).map(([login, data]) => `
-        <div class="user-item">
-            <span><strong>${data.nome}</strong> (${login})</span>
-            <div>
-                <span class="role">${data.tipo || 'usuario'}</span>
-                ${login !== 'admin' ? `<button onclick="excluirUsuario('${login}')" class="btn-danger" style="padding:2px 8px;font-size:10px;margin-left:5px;">🗑️</button>` : ''}
-            </div>
-        </div>
-    `).join('');
-}
-
-function mostrarCadastroUsuario() {
-    if (!usuarioAtual || usuarioAtual.tipo !== 'admin') {
-        alert('⚠️ Apenas administradores podem cadastrar usuários!');
-        return;
-    }
-    document.getElementById('modalCadastroUsuario').style.display = 'flex';
-}
-
-async function salvarNovoUsuario() {
-    if (!usuarioAtual || usuarioAtual.tipo !== 'admin') {
-        alert('⚠️ Apenas administradores podem cadastrar usuários!');
-        return;
-    }
-    const nome = document.getElementById('novoUsuarioNome').value.trim();
-    const login = document.getElementById('novoUsuarioLogin').value.trim();
-    const senha = document.getElementById('novoUsuarioSenha').value.trim();
-    const tipo = document.getElementById('novoUsuarioTipo').value;
-    if (!nome || !login || !senha) { alert('⚠️ Preencha todos os campos!'); return; }
-    if (USUARIOS[login]) { alert('⚠️ Este login já existe!'); return; }
-    USUARIOS[login] = { senha, nome, tipo };
-    salvarUsuarios();
-    await salvarUsuarioSupabase(login, { senha, nome, tipo });
-    listarUsuarios();
-    fecharModal('modalCadastroUsuario');
-    document.getElementById('novoUsuarioNome').value = '';
-    document.getElementById('novoUsuarioLogin').value = '';
-    document.getElementById('novoUsuarioSenha').value = '';
-    atualizarStatus(`✅ Usuário "${nome}" cadastrado!`);
-    registrarLog('USUARIO_CADASTRADO', `Usuário "${nome}" (${login}) cadastrado`);
-    alert(`✅ Usuário "${nome}" cadastrado com sucesso!`);
-}
-
-async function excluirUsuario(login) {
-    if (login === 'admin') { alert('⚠️ Não é possível excluir o usuário admin!'); return; }
-    if (confirm(`Excluir usuário "${login}"?`)) {
-        delete USUARIOS[login];
-        salvarUsuarios();
-        try { await supabaseWrite.from('usuarios').delete().eq('login', login); } catch(e) {}
-        listarUsuarios();
-        atualizarStatus(`🗑️ Usuário "${login}" removido`);
-        registrarLog('USUARIO_EXCLUIDO', `Usuário "${login}" excluído`);
+        const { error } = await supabase.from('produtos').upsert(catalogo, { onConflict: 'id' });
+        if (error) throw error;
+        await carregarProdutosSupabase();
+        console.log(`📦 ${catalogo.length} produtos padrão cadastrados!`);
+    } catch (e) {
+        console.warn('Não foi possível semear produtos padrão:', e.message);
     }
 }
 
@@ -554,18 +330,16 @@ async function adicionarCliente() {
     const nome = document.getElementById('nomeCliente').value.trim();
     const telefone = document.getElementById('telefoneCliente').value.trim();
     if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
-    const novoCliente = { 
-        id: gerarId(), 
-        nome, 
-        telefone,
+    const novoCliente = {
+        id: gerarId(), nome, telefone,
         email: document.getElementById('emailCliente').value.trim() || '',
         cpf: document.getElementById('cpfCliente').value.trim() || '',
         endereco: document.getElementById('enderecoCliente').value.trim() || ''
     };
-    const salvou = await salvarClienteSupabase(novoCliente);
-    if (salvou) {
+    try {
+        const { error } = await supabase.from('clientes').upsert(novoCliente, { onConflict: 'id' });
+        if (error) throw error;
         clientes.push(novoCliente);
-        salvarDados();
         document.getElementById('nomeCliente').value = '';
         document.getElementById('telefoneCliente').value = '';
         document.getElementById('cpfCliente').value = '';
@@ -576,22 +350,25 @@ async function adicionarCliente() {
         renderSelectClientes();
         atualizarStatus(`✅ Cliente "${nome}" cadastrado!`);
         registrarLog('CLIENTE_ADICIONADO', `Cliente "${nome}" adicionado`);
+    } catch (e) {
+        alert('❌ Erro ao salvar cliente: ' + e.message);
     }
 }
 
 async function excluirCliente(index) {
     const cliente = clientes[index];
     if (!cliente) return;
-    if (confirm(`Excluir "${cliente.nome}"?`)) {
-        const excluiu = await excluirClienteSupabase(cliente.id);
-        if (excluiu) {
-            clientes.splice(index, 1);
-            salvarDados();
-            renderClientes();
-            renderSelectClientes();
-            atualizarStatus(`🗑️ Cliente "${cliente.nome}" removido`);
-            registrarLog('CLIENTE_EXCLUIDO', `Cliente "${cliente.nome}" excluído`);
-        }
+    if (!confirm(`Excluir "${cliente.nome}"?`)) return;
+    try {
+        const { error } = await supabase.from('clientes').delete().eq('id', cliente.id);
+        if (error) throw error;
+        clientes.splice(index, 1);
+        renderClientes();
+        renderSelectClientes();
+        atualizarStatus(`🗑️ Cliente "${cliente.nome}" removido`);
+        registrarLog('CLIENTE_EXCLUIDO', `Cliente "${cliente.nome}" excluído`);
+    } catch (e) {
+        alert('❌ Erro ao excluir cliente: ' + e.message);
     }
 }
 
@@ -608,7 +385,7 @@ function editarCliente(index) {
     btn.dataset.index = index;
     const novoBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(novoBtn, btn);
-    novoBtn.addEventListener('click', async function() {
+    novoBtn.addEventListener('click', async function () {
         const idx = parseInt(this.dataset.index);
         const nome = document.getElementById('nomeCliente').value.trim();
         const telefone = document.getElementById('telefoneCliente').value.trim();
@@ -617,10 +394,10 @@ function editarCliente(index) {
         const email = document.getElementById('emailCliente').value.trim();
         if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
         const clienteAtualizado = { ...clientes[idx], nome, telefone, cpf, endereco, email };
-        const salvou = await salvarClienteSupabase(clienteAtualizado);
-        if (salvou) {
+        try {
+            const { error } = await supabase.from('clientes').upsert(clienteAtualizado, { onConflict: 'id' });
+            if (error) throw error;
             clientes[idx] = clienteAtualizado;
-            salvarDados();
             document.getElementById('nomeCliente').value = '';
             document.getElementById('telefoneCliente').value = '';
             document.getElementById('cpfCliente').value = '';
@@ -634,6 +411,8 @@ function editarCliente(index) {
             renderSelectClientes();
             atualizarStatus(`✅ Cliente "${nome}" atualizado!`);
             registrarLog('CLIENTE_EDITADO', `Cliente "${nome}" editado`);
+        } catch (e) {
+            alert('❌ Erro ao atualizar cliente: ' + e.message);
         }
     });
     abrirModal('modalCliente');
@@ -661,7 +440,7 @@ function renderProdutos() {
         <li>
             <span>
                 <strong>${p.nome}</strong>
-                <br><small>R$ ${p.preco.toFixed(2)}</small>
+                <br><small>R$ ${Number(p.preco).toFixed(2)}</small>
                 <br><small>📂 ${p.tipo || 'outro'}</small>
             </span>
             <div style="display:flex;gap:5px;">
@@ -678,10 +457,10 @@ async function adicionarProduto() {
     const tipo = document.getElementById('tipoProduto').value;
     if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
     const novoProduto = { id: gerarId(), nome, preco, tipo };
-    const salvou = await salvarProdutoSupabase(novoProduto);
-    if (salvou) {
+    try {
+        const { error } = await supabase.from('produtos').upsert(novoProduto, { onConflict: 'id' });
+        if (error) throw error;
         produtos.push(novoProduto);
-        salvarDados();
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
         fecharModal('modalProduto');
@@ -689,22 +468,25 @@ async function adicionarProduto() {
         renderSelectProdutos();
         atualizarStatus(`✅ Produto "${nome}" cadastrado!`);
         registrarLog('PRODUTO_ADICIONADO', `Produto "${nome}" adicionado`);
+    } catch (e) {
+        alert('❌ Erro ao salvar produto: ' + e.message);
     }
 }
 
 async function excluirProduto(index) {
     const produto = produtos[index];
     if (!produto) return;
-    if (confirm(`Excluir "${produto.nome}"?`)) {
-        const excluiu = await excluirProdutoSupabase(produto.id);
-        if (excluiu) {
-            produtos.splice(index, 1);
-            salvarDados();
-            renderProdutos();
-            renderSelectProdutos();
-            atualizarStatus(`🗑️ Produto "${produto.nome}" removido`);
-            registrarLog('PRODUTO_EXCLUIDO', `Produto "${produto.nome}" excluído`);
-        }
+    if (!confirm(`Excluir "${produto.nome}"?`)) return;
+    try {
+        const { error } = await supabase.from('produtos').delete().eq('id', produto.id);
+        if (error) throw error;
+        produtos.splice(index, 1);
+        renderProdutos();
+        renderSelectProdutos();
+        atualizarStatus(`🗑️ Produto "${produto.nome}" removido`);
+        registrarLog('PRODUTO_EXCLUIDO', `Produto "${produto.nome}" excluído`);
+    } catch (e) {
+        alert('❌ Erro ao excluir produto: ' + e.message);
     }
 }
 
@@ -719,17 +501,17 @@ function editarProduto(index) {
     btn.dataset.index = index;
     const novoBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(novoBtn, btn);
-    novoBtn.addEventListener('click', async function() {
+    novoBtn.addEventListener('click', async function () {
         const idx = parseInt(this.dataset.index);
         const nome = document.getElementById('nomeProduto').value.trim();
         const preco = parseFloat(document.getElementById('precoProduto').value);
         const tipo = document.getElementById('tipoProduto').value;
         if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
         const produtoAtualizado = { ...produtos[idx], nome, preco, tipo };
-        const salvou = await salvarProdutoSupabase(produtoAtualizado);
-        if (salvou) {
+        try {
+            const { error } = await supabase.from('produtos').upsert(produtoAtualizado, { onConflict: 'id' });
+            if (error) throw error;
             produtos[idx] = produtoAtualizado;
-            salvarDados();
             document.getElementById('nomeProduto').value = '';
             document.getElementById('precoProduto').value = '';
             document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
@@ -740,6 +522,8 @@ function editarProduto(index) {
             renderSelectProdutos();
             atualizarStatus(`✅ Produto "${nome}" atualizado!`);
             registrarLog('PRODUTO_EDITADO', `Produto "${nome}" editado`);
+        } catch (e) {
+            alert('❌ Erro ao atualizar produto: ' + e.message);
         }
     });
     abrirModal('modalProduto');
@@ -749,7 +533,7 @@ function renderSelectProdutos() {
     document.querySelectorAll('.selProduto').forEach(select => {
         const current = select.value;
         select.innerHTML = '<option value="">Selecione um produto</option>' +
-            produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${p.preco.toFixed(2)}</option>`).join('');
+            produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('');
         select.value = current;
     });
 }
@@ -765,7 +549,7 @@ function adicionarItem() {
     div.innerHTML = `
         <select class="selProduto">
             <option value="">Selecione um produto</option>
-            ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${p.preco.toFixed(2)}</option>`).join('')}
+            ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('')}
         </select>
         <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
@@ -789,13 +573,25 @@ function updateTotal() {
     document.getElementById('totalValor').textContent = total.toFixed(2);
 }
 
+function pegarItensOrcamentoAtual() {
+    const itens = [];
+    document.querySelectorAll('.item-orcamento').forEach(item => {
+        const select = item.querySelector('.selProduto');
+        const qtd = parseInt(item.querySelector('.qtdProduto').value) || 0;
+        const nome = select.value;
+        const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
+        if (nome && qtd > 0) itens.push({ nome, qtd, preco, subtotal: preco * qtd });
+    });
+    return itens;
+}
+
 function limparOrcamento() {
     if (!confirm('Limpar todos os itens?')) return;
     document.getElementById('itensOrcamento').innerHTML = '';
     const div = document.createElement('div');
     div.className = 'item-orcamento';
     div.innerHTML = `
-        <select class="selProduto"><option value="">Selecione um produto</option>${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${p.preco.toFixed(2)}</option>`).join('')}</select>
+        <select class="selProduto"><option value="">Selecione um produto</option>${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('')}</select>
         <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
     `;
@@ -811,14 +607,7 @@ function limparOrcamento() {
 async function salvarOrcamento() {
     const cliente = document.getElementById('selCliente').value;
     if (!cliente) { alert('⚠️ Selecione um cliente!'); return; }
-    const itens = [];
-    document.querySelectorAll('.item-orcamento').forEach(item => {
-        const select = item.querySelector('.selProduto');
-        const qtd = parseInt(item.querySelector('.qtdProduto').value) || 0;
-        const nome = select.value;
-        const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
-        if (nome && qtd > 0) itens.push({ nome, qtd, preco, subtotal: preco * qtd });
-    });
+    const itens = pegarItensOrcamentoAtual();
     if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item!'); return; }
     const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
     const clienteData = clientes.find(c => c.nome === cliente);
@@ -832,15 +621,17 @@ async function salvarOrcamento() {
         status: 'orcamento',
         data_criacao: new Date().toISOString()
     };
-    const salvou = await salvarOSSupabase(novaOS);
-    if (salvou) {
+    try {
+        const { error } = await supabase.from('ordens_servico').upsert(novaOS, { onConflict: 'id' });
+        if (error) throw error;
         ordensServico.push(novaOS);
-        salvarDados();
         listarOS();
         atualizarStatus(`✅ Orçamento salvo! Nº ${novaOS.numero}`);
         registrarLog('OS_CRIADA', `OS ${novaOS.numero} criada para ${cliente}`);
         alert(`✅ Orçamento salvo!\nNº: ${novaOS.numero}\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
         abrirTab('tabOS');
+    } catch (e) {
+        alert('❌ Erro ao salvar orçamento: ' + e.message);
     }
 }
 
@@ -856,11 +647,15 @@ function listarOS(filtro = 'todos') {
         container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Nenhuma OS encontrada</p>';
         return;
     }
+    const badges = {
+        orcamento: '📄 Orçamento', aprovado: '✅ Aprovado', em_andamento: '🔧 Em Andamento',
+        concluido: '✅ Concluído', cancelado: '❌ Cancelado'
+    };
     container.innerHTML = lista.map(os => `
         <div class="os-card" onclick="abrirOS('${os.id}')">
-            <div><strong>${os.numero}</strong> <span class="status-badge status-orcamento">📄 Orçamento</span></div>
+            <div><strong>${os.numero}</strong> <span class="status-badge status-orcamento">${badges[os.status] || os.status}</span></div>
             <div><strong>Cliente:</strong> ${os.cliente_nome}</div>
-            <div style="font-size:12px;color:#666;">${os.itens?.length || 0} itens | Total: R$ ${os.total?.toFixed(2) || '0,00'}</div>
+            <div style="font-size:12px;color:#666;">${os.itens?.length || 0} itens | Total: R$ ${Number(os.total || 0).toFixed(2)}</div>
         </div>
     `).join('');
 }
@@ -872,15 +667,15 @@ function abrirOS(id) {
     if (!os) return;
     const data = new Date(os.data_criacao).toLocaleDateString('pt-BR');
     let itensHTML = os.itens?.map((item, i) => `
-        <tr><td>${i+1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${item.preco.toFixed(2)}</td><td>R$ ${item.subtotal.toFixed(2)}</td></tr>
+        <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
     `).join('') || '';
     document.getElementById('detalhesOS').innerHTML = `
         <div style="margin-bottom:10px;">
             <p><strong>Nº:</strong> ${os.numero}</p>
             <p><strong>Cliente:</strong> ${os.cliente_nome}</p>
-            <p><strong>Status:</strong> 📄 Orçamento</p>
+            <p><strong>Status:</strong> ${os.status}</p>
             <p><strong>Data:</strong> ${data}</p>
-            <p><strong>Total:</strong> R$ ${os.total?.toFixed(2) || '0,00'}</p>
+            <p><strong>Total:</strong> R$ ${Number(os.total || 0).toFixed(2)}</p>
         </div>
         <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -902,59 +697,42 @@ function abrirOS(id) {
     abrirModal('modalOS');
 }
 
+async function atualizarStatusOS(novoStatus, mensagem, acao) {
+    if (!osAtual) return;
+    const osAtualizada = { ...osAtual, status: novoStatus };
+    if (novoStatus === 'aprovado') osAtualizada.data_aprovacao = new Date().toISOString();
+    if (novoStatus === 'em_andamento') osAtualizada.data_inicio = new Date().toISOString();
+    if (novoStatus === 'concluido') osAtualizada.data_conclusao = new Date().toISOString();
+    try {
+        const { error } = await supabase.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
+        if (error) throw error;
+        const idx = ordensServico.findIndex(o => o.id === osAtualizada.id);
+        if (idx >= 0) ordensServico[idx] = osAtualizada;
+        osAtual = osAtualizada;
+        listarOS();
+        fecharModal('modalOS');
+        atualizarStatus(mensagem);
+        registrarLog(acao, `OS ${osAtualizada.numero}: ${mensagem}`);
+    } catch (e) {
+        alert('❌ Erro ao atualizar OS: ' + e.message);
+    }
+}
+
 async function aprovarOS() {
     if (!osAtual || !confirm(`Aprovar OS ${osAtual.numero}?`)) return;
-    osAtual.status = 'aprovado';
-    osAtual.data_aprovacao = new Date().toISOString();
-    const salvou = await salvarOSSupabase(osAtual);
-    if (salvou) {
-        salvarDados();
-        listarOS();
-        fecharModal('modalOS');
-        atualizarStatus(`✅ OS ${osAtual.numero} aprovada!`);
-        registrarLog('OS_APROVADA', `OS ${osAtual.numero} aprovada`);
-    }
+    await atualizarStatusOS('aprovado', `✅ OS ${osAtual.numero} aprovada!`, 'OS_APROVADA');
 }
-
 async function iniciarOS() {
     if (!osAtual || !confirm(`Iniciar OS ${osAtual.numero}?`)) return;
-    osAtual.status = 'em_andamento';
-    osAtual.data_inicio = new Date().toISOString();
-    const salvou = await salvarOSSupabase(osAtual);
-    if (salvou) {
-        salvarDados();
-        listarOS();
-        fecharModal('modalOS');
-        atualizarStatus(`🔧 OS ${osAtual.numero} em andamento!`);
-        registrarLog('OS_INICIADA', `OS ${osAtual.numero} iniciada`);
-    }
+    await atualizarStatusOS('em_andamento', `🔧 OS ${osAtual.numero} em andamento!`, 'OS_INICIADA');
 }
-
 async function concluirOS() {
     if (!osAtual || !confirm(`Concluir OS ${osAtual.numero}?`)) return;
-    osAtual.status = 'concluido';
-    osAtual.data_conclusao = new Date().toISOString();
-    const salvou = await salvarOSSupabase(osAtual);
-    if (salvou) {
-        salvarDados();
-        listarOS();
-        fecharModal('modalOS');
-        atualizarStatus(`✅ OS ${osAtual.numero} concluída!`);
-        registrarLog('OS_CONCLUIDA', `OS ${osAtual.numero} concluída`);
-    }
+    await atualizarStatusOS('concluido', `✅ OS ${osAtual.numero} concluída!`, 'OS_CONCLUIDA');
 }
-
 async function cancelarOS() {
     if (!osAtual || !confirm(`Cancelar OS ${osAtual.numero}?`)) return;
-    osAtual.status = 'cancelado';
-    const salvou = await salvarOSSupabase(osAtual);
-    if (salvou) {
-        salvarDados();
-        listarOS();
-        fecharModal('modalOS');
-        atualizarStatus(`❌ OS ${osAtual.numero} cancelada!`);
-        registrarLog('OS_CANCELADA', `OS ${osAtual.numero} cancelada`);
-    }
+    await atualizarStatusOS('cancelado', `❌ OS ${osAtual.numero} cancelada!`, 'OS_CANCELADA');
 }
 
 async function emitirRecibo() {
@@ -962,25 +740,22 @@ async function emitirRecibo() {
     const recibo = {
         id: gerarId(),
         numero: 'REC-' + (recibos.length + 1).toString().padStart(4, '0'),
-        os_id: osAtual.id,
-        os_numero: osAtual.numero,
-        cliente_id: osAtual.cliente_id,
-        cliente_nome: osAtual.cliente_nome,
-        itens: osAtual.itens,
-        total: osAtual.total,
-        status: 'pendente',
-        data_emissao: new Date().toISOString(),
-        data_pagamento: null
+        os_id: osAtual.id, os_numero: osAtual.numero,
+        cliente_id: osAtual.cliente_id, cliente_nome: osAtual.cliente_nome,
+        itens: osAtual.itens, total: osAtual.total,
+        status: 'pendente', data_emissao: new Date().toISOString(), data_pagamento: null
     };
-    const salvou = await salvarReciboSupabase(recibo);
-    if (salvou) {
+    try {
+        const { error } = await supabase.from('recibos').upsert(recibo, { onConflict: 'id' });
+        if (error) throw error;
         recibos.push(recibo);
-        salvarDados();
         listarRecibos();
         fecharModal('modalOS');
         atualizarStatus(`💰 Recibo ${recibo.numero} emitido!`);
         registrarLog('RECIBO_EMITIDO', `Recibo ${recibo.numero} emitido para ${osAtual.cliente_nome}`);
         abrirRecibo(recibo.id);
+    } catch (e) {
+        alert('❌ Erro ao emitir recibo: ' + e.message);
     }
 }
 
@@ -1003,7 +778,7 @@ function listarRecibos(filtro = 'todos') {
             <div class="os-card" onclick="abrirRecibo('${r.id}')">
                 <div><strong>${r.numero}</strong> <span class="status-badge ${r.status === 'pago' ? 'status-recebido' : 'status-orcamento'}">${status}</span></div>
                 <div><strong>Cliente:</strong> ${r.cliente_nome}</div>
-                <div style="font-size:12px;color:#666;">OS: ${r.os_numero} | Total: R$ ${r.total?.toFixed(2) || '0,00'} | ${data}</div>
+                <div style="font-size:12px;color:#666;">OS: ${r.os_numero} | Total: R$ ${Number(r.total || 0).toFixed(2)} | ${data}</div>
             </div>
         `;
     }).join('');
@@ -1016,7 +791,7 @@ function abrirRecibo(id) {
     if (!reciboAtual) return;
     const data = new Date(reciboAtual.data_emissao).toLocaleDateString('pt-BR');
     let itensHTML = reciboAtual.itens?.map((item, i) => `
-        <tr><td>${i+1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${item.preco.toFixed(2)}</td><td>R$ ${item.subtotal.toFixed(2)}</td></tr>
+        <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
     `).join('') || '';
     document.getElementById('conteudoRecibo').innerHTML = `
         <div style="text-align:center;border-bottom:2px solid #1a237e;padding-bottom:10px;margin-bottom:15px;">
@@ -1042,7 +817,7 @@ function abrirRecibo(id) {
             </table>
         </div>
         <div style="text-align:right;padding:10px;font-size:18px;font-weight:bold;border-top:2px solid #1a237e;margin-top:10px;">
-            TOTAL: R$ ${reciboAtual.total?.toFixed(2) || '0,00'}
+            TOTAL: R$ ${Number(reciboAtual.total || 0).toFixed(2)}
         </div>
         <div class="assinatura">
             <p>Assinatura do Cliente</p>
@@ -1056,22 +831,21 @@ function abrirRecibo(id) {
 
 async function marcarPago() {
     if (!reciboAtual || !confirm(`Marcar recibo ${reciboAtual.numero} como PAGO?`)) return;
-    reciboAtual.status = 'pago';
-    reciboAtual.data_pagamento = new Date().toISOString();
     try {
-        const { error } = await supabaseWrite
-            .from('recibos')
-            .update({ status: 'pago', data_pagamento: reciboAtual.data_pagamento })
-            .eq('id', reciboAtual.id);
+        const dataPagamento = new Date().toISOString();
+        const { error } = await supabase.from('recibos')
+            .update({ status: 'pago', data_pagamento: dataPagamento }).eq('id', reciboAtual.id);
         if (error) throw error;
-        salvarDados();
+        reciboAtual.status = 'pago';
+        reciboAtual.data_pagamento = dataPagamento;
+        const idx = recibos.findIndex(r => r.id === reciboAtual.id);
+        if (idx >= 0) recibos[idx] = reciboAtual;
         listarRecibos();
         abrirRecibo(reciboAtual.id);
         atualizarStatus(`✅ Recibo ${reciboAtual.numero} pago!`);
         registrarLog('RECIBO_PAGO', `Recibo ${reciboAtual.numero} marcado como pago`);
-    } catch(e) {
-        console.error('❌ Erro ao marcar pago:', e);
-        alert('❌ Erro ao marcar como pago!');
+    } catch (e) {
+        alert('❌ Erro ao marcar como pago: ' + e.message);
     }
 }
 
@@ -1099,193 +873,50 @@ function imprimirRecibo() {
 
 function gerarPDF() {
     const cliente = document.getElementById('selCliente').value;
-    if (!cliente) {
-        alert('⚠️ Selecione um cliente');
-        return;
-    }
-
-    const itens = [];
-    document.querySelectorAll('.item-orcamento').forEach(item => {
-        const select = item.querySelector('.selProduto');
-        const qtd = parseInt(item.querySelector('.qtdProduto').value) || 0;
-        const nome = select.value;
-        const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
-        if (nome && qtd > 0) {
-            itens.push({ nome, qtd, preco, subtotal: preco * qtd });
-        }
-    });
-
-    if (itens.length === 0) {
-        alert('⚠️ Adicione pelo menos um item ao orçamento');
-        return;
-    }
+    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
 
     const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
     const data = new Date();
     const dataFormatada = data.toLocaleDateString('pt-BR');
-    const dataInvertida = data.getDate().toString().padStart(2, '0') + '/' + 
-                          (data.getMonth() + 1).toString().padStart(2, '0') + '/' + 
-                          data.getFullYear();
-    
-    const clienteData = clientes.find(c => c.nome === cliente);
-    const numeroOrcamento = 'ORC-' + Date.now().toString().slice(-6);
+    const dataInvertida = data.getDate().toString().padStart(2, '0') + '/' +
+        (data.getMonth() + 1).toString().padStart(2, '0') + '/' + data.getFullYear();
 
-    // ============================================
-    // MODELO PDF - SE7VEN ENERGIA
-    // ============================================
+    const clienteData = clientes.find(c => c.nome === cliente);
+
     const conteudo = `
     <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Orçamento ${EMPRESA.nome}</title>
+    <html><head><meta charset="UTF-8"><title>Orçamento ${EMPRESA.nome}</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-                font-family: Arial, Helvetica, sans-serif; 
-                padding: 40px; 
-                max-width: 800px; 
-                margin: 0 auto; 
-                background: white; 
-            }
-            
-            /* CABEÇALHO */
-            .header {
-                text-align: center;
-                margin-bottom: 30px;
-            }
-            .header h1 {
-                color: #1a237e;
-                font-size: 32px;
-                font-weight: 900;
-                letter-spacing: 3px;
-                margin: 0;
-            }
-            .header .subtitle {
-                color: #666;
-                font-size: 14px;
-                font-weight: bold;
-                margin: 0;
-                letter-spacing: 2px;
-            }
-            
-            /* DATA */
-            .data {
-                text-align: right;
-                font-size: 14px;
-                margin-bottom: 20px;
-            }
-            
-            /* CLIENTE */
-            .cliente-box {
-                background: #f5f5f5;
-                padding: 15px;
-                border-radius: 4px;
-                margin-bottom: 20px;
-                border-left: 4px solid #1a237e;
-            }
-            .cliente-box .titulo {
-                color: #1a237e;
-                font-size: 14px;
-                text-transform: uppercase;
-                font-weight: bold;
-                margin-bottom: 8px;
-            }
-            .cliente-box p {
-                margin: 3px 0;
-                font-size: 14px;
-            }
-            .cliente-box .label {
-                font-weight: bold;
-            }
-            
-            /* TABELA */
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-                font-size: 14px;
-            }
-            table thead {
-                background: #1a237e;
-                color: white;
-            }
-            table th {
-                padding: 10px 12px;
-                text-align: left;
-            }
-            table td {
-                padding: 10px 12px;
-                border-bottom: 1px solid #ddd;
-            }
-            table tr:last-child td {
-                border-bottom: none;
-            }
-            .text-center { text-align: center; }
-            .text-right { text-align: right; }
-            
-            /* TOTAL */
-            .total-box {
-                text-align: right;
-                padding: 12px;
-                font-size: 18px;
-                font-weight: bold;
-                border-top: 2px solid #1a237e;
-                margin: 10px 0 30px 0;
-            }
-            
-            /* FORMA DE PAGAMENTO */
-            .pagamento {
-                background: #e8f5e9;
-                padding: 15px;
-                border-radius: 4px;
-                border-left: 4px solid #2e7d32;
-                margin-top: 30px;
-            }
-            .pagamento .titulo {
-                font-weight: bold;
-                color: #1a237e;
-            }
-            .pagamento p {
-                margin: 0;
-                font-size: 14px;
-            }
-            
-            /* RODAPÉ */
-            .rodape {
-                margin-top: 40px;
-                text-align: center;
-                color: #999;
-                font-size: 11px;
-                border-top: 1px solid #ddd;
-                padding-top: 15px;
-            }
-            .rodape p {
-                margin: 2px 0;
-            }
-            .rodape .destaque {
-                color: #1a237e;
-                font-weight: bold;
-            }
-            
-            @media print {
-                body { padding: 20px; }
-            }
+            body { font-family: Arial, Helvetica, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; background: white; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #1a237e; font-size: 32px; font-weight: 900; letter-spacing: 3px; margin: 0; }
+            .header .subtitle { color: #666; font-size: 14px; font-weight: bold; margin: 0; letter-spacing: 2px; }
+            .data { text-align: right; font-size: 14px; margin-bottom: 20px; }
+            .cliente-box { background: #f5f5f5; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #1a237e; }
+            .cliente-box .titulo { color: #1a237e; font-size: 14px; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
+            .cliente-box p { margin: 3px 0; font-size: 14px; }
+            .cliente-box .label { font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+            table thead { background: #1a237e; color: white; }
+            table th { padding: 10px 12px; text-align: left; }
+            table td { padding: 10px 12px; border-bottom: 1px solid #ddd; }
+            table tr:last-child td { border-bottom: none; }
+            .text-center { text-align: center; } .text-right { text-align: right; }
+            .total-box { text-align: right; padding: 12px; font-size: 18px; font-weight: bold; border-top: 2px solid #1a237e; margin: 10px 0 30px 0; }
+            .pagamento { background: #e8f5e9; padding: 15px; border-radius: 4px; border-left: 4px solid #2e7d32; margin-top: 30px; }
+            .pagamento .titulo { font-weight: bold; color: #1a237e; }
+            .pagamento p { margin: 0; font-size: 14px; }
+            .rodape { margin-top: 40px; text-align: center; color: #999; font-size: 11px; border-top: 1px solid #ddd; padding-top: 15px; }
+            .rodape p { margin: 2px 0; } .rodape .destaque { color: #1a237e; font-weight: bold; }
+            @media print { body { padding: 20px; } }
         </style>
     </head>
     <body>
-        <!-- CABEÇALHO -->
-        <div class="header">
-            <h1>SE7VEN ENERGIA</h1>
-            <p class="subtitle">ORÇAMENTO</p>
-        </div>
-
-        <!-- DATA -->
-        <div class="data">
-            <strong>Data:</strong> ${dataInvertida}
-        </div>
-
-        <!-- CLIENTE -->
+        <div class="header"><h1>SE7VEN ENERGIA</h1><p class="subtitle">ORÇAMENTO</p></div>
+        <div class="data"><strong>Data:</strong> ${dataInvertida}</div>
         <div class="cliente-box">
             <div class="titulo">CLIENTE:</div>
             <p><span class="label">Nome:</span> ${cliente}</p>
@@ -1293,60 +924,22 @@ function gerarPDF() {
             ${clienteData?.cpf ? `<p><span class="label">CPF/CNPJ:</span> ${clienteData.cpf}</p>` : ''}
             ${clienteData?.endereco ? `<p><span class="label">Endereço:</span> ${clienteData.endereco}</p>` : ''}
         </div>
-
-        <!-- TABELA -->
         <table>
-            <thead>
-                <tr>
-                    <th style="width:8%;">Nº</th>
-                    <th style="width:42%;">Descrição</th>
-                    <th style="width:15%;text-align:right;">Preço</th>
-                    <th style="width:10%;text-align:center;">Qt.</th>
-                    <th style="width:25%;text-align:right;">Total</th>
-                </tr>
-            </thead>
+            <thead><tr><th style="width:8%;">Nº</th><th style="width:42%;">Descrição</th><th style="width:15%;text-align:right;">Preço</th><th style="width:10%;text-align:center;">Qt.</th><th style="width:25%;text-align:right;">Total</th></tr></thead>
             <tbody>
                 ${itens.map((item, index) => `
-                    <tr>
-                        <td class="text-center">${index + 1}</td>
-                        <td>${item.nome}</td>
-                        <td class="text-right">R$ ${item.preco.toFixed(2)}</td>
-                        <td class="text-center">${item.qtd}</td>
-                        <td class="text-right"><strong>R$ ${item.subtotal.toFixed(2)}</strong></td>
-                    </tr>
+                    <tr><td class="text-center">${index + 1}</td><td>${item.nome}</td><td class="text-right">R$ ${item.preco.toFixed(2)}</td><td class="text-center">${item.qtd}</td><td class="text-right"><strong>R$ ${item.subtotal.toFixed(2)}</strong></td></tr>
                 `).join('')}
             </tbody>
         </table>
-
-        <!-- TOTAL -->
-        <div class="total-box">
-            <strong>Total: R$ ${total.toFixed(2)}</strong>
-        </div>
-
-        <!-- FORMA DE PAGAMENTO -->
-        <div class="pagamento">
-            <p class="titulo">FORMA DE PAGAMENTO</p>
-            <p>Aceitamos Pix à vista e Cartão de Crédito</p>
-        </div>
-
-        <!-- RODAPÉ -->
-        <div class="rodape">
-            <p><span class="destaque">SE7VEN ENERGIA</span> - Orçamento gerado automaticamente</p>
-            <p>📧 contato@se7venenergia.com | 📱 (93) 98102-7290</p>
-        </div>
-    </body>
-    </html>
+        <div class="total-box"><strong>Total: R$ ${total.toFixed(2)}</strong></div>
+        <div class="pagamento"><p class="titulo">FORMA DE PAGAMENTO</p><p>Aceitamos Pix à vista e Cartão de Crédito</p></div>
+        <div class="rodape"><p><span class="destaque">SE7VEN ENERGIA</span> - Orçamento gerado automaticamente</p><p>📧 contato@se7venenergia.com | 📱 (93) 98102-7290</p></div>
+    </body></html>
     `;
 
-    // ============================================
-    // GERAR PDF
-    // ============================================
     const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
-    if (!win) {
-        alert('⚠️ Por favor, permita pop-ups para gerar o PDF');
-        return;
-    }
-
+    if (!win) { alert('⚠️ Por favor, permita pop-ups para gerar o PDF'); return; }
     win.document.write(conteudo);
     win.document.close();
 
@@ -1354,64 +947,29 @@ function gerarPDF() {
         try {
             const script = win.document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-            script.onload = function() {
+            script.onload = function () {
                 const element = win.document.body;
                 const opt = {
                     margin: 0.5,
                     filename: `Orcamento_${EMPRESA.nomeAbreviado}_${cliente.replace(/\s/g, '_')}_${dataFormatada.replace(/\//g, '-')}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { 
-                        scale: 2, 
-                        useCORS: true, 
-                        logging: false,
-                        letterRendering: true
-                    },
-                    jsPDF: { 
-                        unit: 'in', 
-                        format: 'a4', 
-                        orientation: 'portrait' 
-                    }
+                    html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
+                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
                 };
-                
-                win.html2pdf()
-                    .set(opt)
-                    .from(element)
-                    .save()
-                    .then(() => {
-                        win.close();
-                        atualizarStatus('✅ PDF gerado com sucesso!');
-                    })
-                    .catch((err) => {
-                        console.error('Erro ao gerar PDF:', err);
-                        win.document.body.innerHTML += `
-                            <div style="text-align:center;margin-top:20px;padding:20px;">
-                                <button onclick="window.print()" style="padding:12px 24px;background:#1a237e;color:white;border:none;border-radius:4px;font-size:16px;cursor:pointer;">
-                                    🖨️ Salvar como PDF
-                                </button>
-                                <p style="margin-top:10px;color:#666;font-size:12px;">
-                                    Selecione "Salvar como PDF" na impressora
-                                </p>
-                            </div>
-                        `;
-                        atualizarStatus('⚠️ Use "Imprimir" para salvar o PDF');
-                    });
+                win.html2pdf().set(opt).from(element).save().then(() => {
+                    win.close();
+                    atualizarStatus('✅ PDF gerado com sucesso!');
+                }).catch(() => {
+                    win.document.body.innerHTML += `<div style="text-align:center;margin-top:20px;padding:20px;"><button onclick="window.print()" style="padding:12px 24px;background:#1a237e;color:white;border:none;border-radius:4px;font-size:16px;cursor:pointer;">🖨️ Salvar como PDF</button></div>`;
+                    atualizarStatus('⚠️ Use "Imprimir" para salvar o PDF');
+                });
             };
-            script.onerror = function() {
-                win.document.body.innerHTML += `
-                    <div style="text-align:center;margin-top:20px;padding:20px;">
-                        <button onclick="window.print()" style="padding:12px 24px;background:#1a237e;color:white;border:none;border-radius:4px;font-size:16px;cursor:pointer;">
-                            🖨️ Salvar como PDF
-                        </button>
-                        <p style="margin-top:10px;color:#666;font-size:12px;">
-                            Selecione "Salvar como PDF" na impressora
-                        </p>
-                    </div>
-                `;
+            script.onerror = function () {
+                win.document.body.innerHTML += `<div style="text-align:center;margin-top:20px;padding:20px;"><button onclick="window.print()" style="padding:12px 24px;background:#1a237e;color:white;border:none;border-radius:4px;font-size:16px;cursor:pointer;">🖨️ Salvar como PDF</button></div>`;
                 atualizarStatus('⚠️ Use "Imprimir" para salvar o PDF');
             };
             win.document.head.appendChild(script);
-        } catch(err) {
-            console.error('Erro ao gerar PDF:', err);
+        } catch (err) {
             win.close();
             alert('❌ Erro ao gerar PDF. Tente novamente.');
         }
@@ -1422,41 +980,128 @@ function gerarPDF() {
 // WHATSAPP
 // ============================================
 
+function formatarTelefoneWhatsApp(telefone) {
+    let digitos = (telefone || '').replace(/\D/g, '');
+    if (!digitos) return null;
+    if (digitos.length <= 11) digitos = '55' + digitos; // adiciona DDI Brasil se não tiver
+    return digitos;
+}
+
+function montarMensagemOrcamento(cliente, itens, total) {
+    let msg = `Olá ${cliente}! Segue o orçamento da *${EMPRESA.nomeAbreviado}*:\n\n`;
+    itens.forEach(item => {
+        msg += `• ${item.nome} (x${item.qtd}) - R$ ${item.subtotal.toFixed(2)}\n`;
+    });
+    msg += `\n*Total: R$ ${total.toFixed(2)}*\n\nFormas de pagamento: ${EMPRESA.formasPagamento.join(', ')}.`;
+    return msg;
+}
+
 function enviarWhatsApp() {
-    alert('💬 Função WhatsApp em desenvolvimento');
+    const cliente = document.getElementById('selCliente').value;
+    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
+    const total = itens.reduce((s, i) => s + i.subtotal, 0);
+    const clienteData = clientes.find(c => c.nome === cliente);
+    const numero = formatarTelefoneWhatsApp(clienteData?.telefone) || EMPRESA.whatsapp;
+    if (!clienteData?.telefone) alert('ℹ️ Esse cliente não tem celular cadastrado — a mensagem vai abrir para o número da própria empresa.');
+    const mensagem = montarMensagemOrcamento(cliente, itens, total);
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, '_blank');
+    registrarLog('WHATSAPP_ENVIADO', `Orçamento para ${cliente} aberto no WhatsApp`);
 }
 
 function enviarPDFWhatsApp() {
-    alert('📤 Função PDF+WhatsApp em desenvolvimento');
+    const cliente = document.getElementById('selCliente').value;
+    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
+    gerarPDF();
+    alert('📄 O PDF está sendo gerado/baixado. Depois de baixar, toque em "Enviar" no WhatsApp que vai abrir e anexe o arquivo — o navegador não permite anexar automaticamente.');
+    setTimeout(enviarWhatsApp, 2000);
 }
 
 // ============================================
-// CÁLCULOS
+// CÁLCULOS ELÉTRICOS
 // ============================================
+
+function bitolaMinimaPorAmpacidade(corrente) {
+    for (const [b, cap] of Object.entries(TABELA_AMPACIDADE)) {
+        if (cap >= corrente) return parseFloat(b);
+    }
+    return null;
+}
+
+function calcularQuedaPercentual(corrente, distancia, bitola, tensao, fases) {
+    const fator = fases === 3 ? Math.sqrt(3) : 2;
+    const quedaVolts = (fator * distancia * corrente * RESISTIVIDADE_COBRE) / bitola;
+    return (quedaVolts / tensao) * 100;
+}
 
 function dimensionarCabos() {
     const corrente = parseFloat(document.getElementById('correnteCabos').value);
     if (!corrente || corrente <= 0) { alert('⚠️ Informe a corrente!'); return; }
-    const tabela = {1.5:15.5,2.5:21,4:28,6:36,10:50,16:68,25:89,35:111,50:134,70:171,95:207,120:239,150:275,185:314,240:370};
-    let bitola = null;
-    for (let [b, cap] of Object.entries(tabela)) {
-        if (cap >= corrente) { bitola = b; break; }
-    }
-    document.getElementById('resultadoCabos').innerHTML = bitola ? 
-        `✅ Bitola recomendada: ${bitola} mm²` : 
-        '⚠️ Corrente muito alta!';
+    const bitola = bitolaMinimaPorAmpacidade(corrente);
+    document.getElementById('resultadoCabos').innerHTML = bitola ?
+        `✅ Bitola recomendada: ${bitola} mm²` : '⚠️ Corrente muito alta! Consulte um projeto específico.';
 }
 
 function calcularQuedaTensao() {
-    alert('📉 Função Queda de Tensão em desenvolvimento');
+    const corrente = parseFloat(document.getElementById('correnteQueda').value);
+    const distancia = parseFloat(document.getElementById('distanciaQueda').value);
+    const bitola = parseFloat(document.getElementById('bitolaQueda').value);
+    const tensao = parseFloat(document.getElementById('tensaoQueda').value);
+    if (!corrente || !distancia || !bitola || !tensao) { alert('⚠️ Preencha todos os campos!'); return; }
+    const fases = tensao === 380 ? 3 : 1;
+    const quedaPercentual = calcularQuedaPercentual(corrente, distancia, bitola, tensao, fases);
+    const status = quedaPercentual <= 3 ? '✅ Dentro do recomendado (≤3%)'
+        : quedaPercentual <= 5 ? '⚠️ Aceitável, mas no limite (até 5%)'
+        : '❌ Acima do recomendado — considere um cabo mais grosso ou menor distância';
+    document.getElementById('resultadoQueda').innerHTML =
+        `📉 Queda de tensão: <strong>${quedaPercentual.toFixed(2)}%</strong><br>${status}`;
 }
 
 function calcularDemanda() {
-    alert('💡 Função Demanda de Energia em desenvolvimento');
+    const potencia = parseFloat(document.getElementById('potenciaDemanda').value);
+    const tensao = parseFloat(document.getElementById('tensaoDemanda').value);
+    const fp = parseFloat(document.getElementById('fpDemanda').value) || 0.92;
+    if (!potencia || !tensao) { alert('⚠️ Preencha potência e tensão!'); return; }
+    const fases = tensao === 380 ? 3 : 1;
+    const corrente = fases === 3 ? potencia / (Math.sqrt(3) * tensao * fp) : potencia / (tensao * fp);
+    const demandaKVA = potencia / (1000 * fp);
+    document.getElementById('resultadoDemanda').innerHTML =
+        `💡 Corrente estimada: <strong>${corrente.toFixed(2)} A</strong><br>Demanda: <strong>${demandaKVA.toFixed(2)} kVA</strong>`;
 }
 
 function calcularProjeto() {
-    alert('📊 Função Projeto Elétrico em desenvolvimento');
+    const potencia = parseFloat(document.getElementById('potenciaProjeto').value);
+    const distancia = parseFloat(document.getElementById('distancia').value);
+    const tensao = parseFloat(document.getElementById('tensao').value);
+    const fp = parseFloat(document.getElementById('fp').value) || 0.92;
+    const quedaMax = parseFloat(document.getElementById('quedaMax').value) || 3;
+    if (!potencia || !distancia || !tensao) { alert('⚠️ Preencha ao menos a potência, distância e tensão!'); return; }
+
+    const fases = tensao === 380 ? 3 : 1;
+    const corrente = fases === 3 ? potencia / (Math.sqrt(3) * tensao * fp) : potencia / (tensao * fp);
+
+    let bitolaEscolhida = bitolaMinimaPorAmpacidade(corrente);
+    if (!bitolaEscolhida) {
+        document.getElementById('resultadoProjeto').innerHTML = '❌ Corrente muito alta para a tabela padrão — consulte um projeto específico.';
+        return;
+    }
+    // Sobe de bitola até a queda de tensão ficar dentro do limite escolhido
+    let quedaFinal = calcularQuedaPercentual(corrente, distancia, bitolaEscolhida, tensao, fases);
+    const bitolasOrdenadas = Object.keys(TABELA_AMPACIDADE).map(Number).sort((a, b) => a - b);
+    let i = bitolasOrdenadas.indexOf(bitolaEscolhida);
+    while (quedaFinal > quedaMax && i < bitolasOrdenadas.length - 1) {
+        i++;
+        bitolaEscolhida = bitolasOrdenadas[i];
+        quedaFinal = calcularQuedaPercentual(corrente, distancia, bitolaEscolhida, tensao, fases);
+    }
+
+    const statusQueda = quedaFinal <= quedaMax ? '✅ dentro do limite definido' : '⚠️ acima do limite — considere reduzir a distância';
+    document.getElementById('resultadoProjeto').innerHTML = `
+        ⚡ Corrente estimada: <strong>${corrente.toFixed(2)} A</strong><br>
+        📏 Bitola recomendada: <strong>${bitolaEscolhida} mm²</strong><br>
+        📉 Queda de tensão resultante: <strong>${quedaFinal.toFixed(2)}%</strong> (${statusQueda})
+    `;
 }
 
 // ============================================
@@ -1491,27 +1136,44 @@ function carregarLogo() {
 }
 
 // ============================================
-// LOGS
+// USUÁRIOS (somente leitura - contas reais do Supabase Auth)
 // ============================================
 
-function registrarLog(acao, detalhes) {
-    const entry = {
-        data: new Date().toISOString(),
-        usuario: usuarioAtual?.nome || 'Sistema',
-        acao: acao,
-        detalhes: detalhes
-    };
+function listarUsuarios() {
+    const container = document.getElementById('listaUsuarios');
+    if (!container) return;
+    if (!perfis.length) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum usuário encontrado</p>';
+        return;
+    }
+    container.innerHTML = perfis.map(p => `
+        <div class="user-item">
+            <span><strong>${p.nome}</strong></span>
+            <span class="role">${p.tipo}</span>
+        </div>
+    `).join('');
+}
+
+// ============================================
+// LOGS (sincronizados com o Supabase)
+// ============================================
+
+async function registrarLog(acao, detalhes) {
+    const entry = { data: new Date().toISOString(), usuario: usuarioAtual?.nome || 'Sistema', acao, detalhes };
     logs.unshift(entry);
-    if (logs.length > 500) logs = logs.slice(0, 500);
-    try { localStorage.setItem('logs', JSON.stringify(logs)); } catch(e) {}
     renderizarLogs();
+    if (!supabase) return;
+    try {
+        const { error } = await supabase.from('logs').insert(entry);
+        if (error) console.warn('Não foi possível gravar o log:', error.message);
+    } catch (e) { console.warn('Não foi possível gravar o log:', e.message); }
 }
 
 function renderizarLogs() {
     const container = document.getElementById('logList');
     if (!container) return;
     if (logs.length === 0) {
-        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum registro</p>';
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum registro de atividade</p>';
         return;
     }
     container.innerHTML = logs.slice(0, 100).map(log => `
@@ -1522,17 +1184,20 @@ function renderizarLogs() {
     `).join('');
 }
 
-function limparLogs() {
-    if (confirm('Limpar todos os logs?')) {
+async function limparLogs() {
+    if (!confirm('Limpar todos os logs (de todos os dispositivos)?')) return;
+    try {
+        await supabase.from('logs').delete().neq('id', 0);
         logs = [];
-        try { localStorage.setItem('logs', JSON.stringify(logs)); } catch(e) {}
         renderizarLogs();
         atualizarStatus('🗑️ Logs limpos!');
+    } catch (e) {
+        alert('❌ Erro ao limpar logs: ' + e.message);
     }
 }
 
 // ============================================
-// GERAR PRODUTOS
+// CATÁLOGO PADRÃO DE PRODUTOS
 // ============================================
 
 function gerarProdutos() {
@@ -1600,56 +1265,17 @@ function gerarProdutos() {
     return lista.map(item => ({ id: String(id++), nome: item.nome, preco: item.preco, tipo: item.tipo }));
 }
 
-// ============================================
-// CARREGAR DADOS (LOCAL)
-// ============================================
-
-function carregarDados() {
-    try {
-        const c = localStorage.getItem('clientes');
-        const p = localStorage.getItem('produtos');
-        const o = localStorage.getItem('ordensServico');
-        const r = localStorage.getItem('recibos');
-        if (c) clientes = JSON.parse(c);
-        if (p) {
-            produtos = JSON.parse(p);
-        } else {
-            produtos = gerarProdutos();
-            localStorage.setItem('produtos', JSON.stringify(produtos));
-            console.log(`📦 ${produtos.length} produtos criados!`);
-        }
-        if (o) ordensServico = JSON.parse(o);
-        if (r) recibos = JSON.parse(r);
-        if (clientes.length === 0) {
-            clientes = [
-                { id: '1', nome: 'José Castilho', email: 'jose@email.com', telefone: '(93) 98102-7290', cpf: '123.456.789-00', endereco: 'Rua Exemplo, 123 - Belém/PA' }
-            ];
-            localStorage.setItem('clientes', JSON.stringify(clientes));
-        }
-    } catch(e) { console.log('Erro ao carregar dados:', e); }
-}
-
-function salvarDados() {
-    try {
-        localStorage.setItem('clientes', JSON.stringify(clientes));
-        localStorage.setItem('produtos', JSON.stringify(produtos));
-        localStorage.setItem('ordensServico', JSON.stringify(ordensServico));
-        localStorage.setItem('recibos', JSON.stringify(recibos));
-        return true;
-    } catch(e) { console.log('Erro ao salvar:', e); return false; }
-}
-
 function gerarId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
 // ============================================
-// BACKUP
+// BACKUP (JSON local — continua útil como cópia de segurança extra)
 // ============================================
 
 function exportarDados() {
     const dados = { clientes, produtos, ordensServico, recibos, logs, data: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
+    const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1660,59 +1286,39 @@ function exportarDados() {
     registrarLog('EXPORTAR', 'Dados exportados');
 }
 
-function importarDados(event) {
+async function importarDados(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function (e) {
         try {
             const dados = JSON.parse(e.target.result);
-            if (dados.clientes) {
-                clientes = dados.clientes;
-                produtos = dados.produtos || [];
-                ordensServico = dados.ordensServico || [];
-                recibos = dados.recibos || [];
-                if (dados.logs) logs = dados.logs;
-                salvarDados();
-                try { localStorage.setItem('logs', JSON.stringify(logs)); } catch(e) {}
-                renderizarTudo();
-                atualizarStatus('✅ Dados importados!');
-                registrarLog('IMPORTAR', 'Dados importados do JSON');
-                alert('✅ Dados importados com sucesso!');
-            } else { alert('❌ Arquivo inválido!'); }
-        } catch(err) { alert('❌ Erro ao ler o arquivo!'); }
+            if (!dados.clientes) { alert('❌ Arquivo inválido!'); return; }
+            if (!confirm('Isso vai enviar os dados do backup para o Supabase (mesclando com o que já existe). Continuar?')) return;
+            if (dados.clientes?.length) await supabase.from('clientes').upsert(dados.clientes, { onConflict: 'id' });
+            if (dados.produtos?.length) await supabase.from('produtos').upsert(dados.produtos, { onConflict: 'id' });
+            if (dados.ordensServico?.length) await supabase.from('ordens_servico').upsert(dados.ordensServico, { onConflict: 'id' });
+            if (dados.recibos?.length) await supabase.from('recibos').upsert(dados.recibos, { onConflict: 'id' });
+            await sincronizarDados();
+            atualizarStatus('✅ Dados importados!');
+            registrarLog('IMPORTAR', 'Dados importados do JSON');
+            alert('✅ Dados importados com sucesso!');
+        } catch (err) {
+            alert('❌ Erro ao importar: ' + err.message);
+        }
     };
     reader.readAsText(file);
     event.target.value = '';
 }
 
-function backupGit() {
-    exportarDados();
-}
+function backupGit() { exportarDados(); }
 
 function backupGoogleDrive() {
     exportarDados();
-    setTimeout(() => {
-        alert('📤 Backup criado!\n\nSalve o arquivo no Google Drive para ter seu backup na nuvem.');
-    }, 1000);
+    setTimeout(() => { alert('📤 Backup criado!\n\nSalve o arquivo no Google Drive para ter seu backup na nuvem.'); }, 1000);
 }
 
-function restaurarGoogleDrive() {
-    document.getElementById('fileInput').click();
-}
-
-function renderizarTudo() {
-    renderClientes();
-    renderProdutos();
-    renderSelectClientes();
-    renderSelectProdutos();
-    listarOS();
-    listarRecibos();
-    renderizarLogs();
-    updateTotal();
-    listarUsuarios();
-    atualizarEstatisticas();
-}
+function restaurarGoogleDrive() { document.getElementById('fileInput').click(); }
 
 function atualizarEstatisticas() {
     try {
@@ -1724,27 +1330,20 @@ function atualizarEstatisticas() {
         if (el2) el2.textContent = `Produtos: ${produtos.length}`;
         if (el3) el3.textContent = `Ordens de Serviço: ${ordensServico.length}`;
         if (el4) el4.textContent = `Recibos: ${recibos.length}`;
-    } catch(e) {}
+    } catch (e) {}
 }
 
-function limparDados() {
-    if (!confirm('⚠️ ATENÇÃO: Isso vai apagar TODOS os dados!\n\nContinuar?')) return;
-    localStorage.clear();
-    USUARIOS = { admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' } };
-    localStorage.setItem('usuarios', JSON.stringify(USUARIOS));
-    clientes = [];
-    produtos = [];
-    ordensServico = [];
-    recibos = [];
-    logs = [];
-    atualizarStatus('🗑️ Todos os dados foram apagados!');
-    alert('✅ Dados apagados! A página será recarregada.');
-    location.reload();
+function limparDadosLocais() {
+    if (!confirm('Isso limpa apenas o cache local deste navegador (os dados no Supabase continuam intactos). Continuar?')) return;
+    try {
+        localStorage.clear();
+        atualizarStatus('🗑️ Cache local limpo! Recarregando...');
+        setTimeout(() => location.reload(), 800);
+    } catch (e) {}
 }
 
 function recarregarDados() {
-    carregarDados();
-    renderizarTudo();
+    sincronizarDados();
     atualizarStatus('🔄 Dados recarregados!');
 }
 
@@ -1754,8 +1353,6 @@ function recarregarDados() {
 
 function init() {
     console.log('🚀 Inicializando sistema...');
-    carregarDados();
-    carregarUsuarios();
     renderClientes();
     renderProdutos();
     renderSelectClientes();
@@ -1766,9 +1363,8 @@ function init() {
     renderizarLogs();
     listarUsuarios();
     carregarLogo();
-    if (produtos.length > 0) adicionarItem();
     iniciarSincronizacaoAutomatica();
-    atualizarStatus(`✅ Sistema pronto! ${clientes.length} clientes, ${produtos.length} produtos`);
+    atualizarStatus(`✅ Sistema pronto!`);
     console.log('✅ Sistema inicializado!');
 }
 
@@ -1776,32 +1372,42 @@ function init() {
 // EVENTOS
 // ============================================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function () {
     console.log('📄 DOM carregado!');
-    
-    if (!verificarLogin()) {
-        document.getElementById('loginScreen').style.display = 'flex';
-        document.getElementById('sistemaScreen').style.display = 'none';
+
+    if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            await entrarNoSistema(session.user);
+        } else {
+            mostrarTelaLogin();
+        }
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session && !usuarioAtual) entrarNoSistema(session.user);
+            if (event === 'SIGNED_OUT') mostrarTelaLogin();
+        });
+    } else {
+        mostrarTelaLogin();
     }
-    
+
     // Eventos de Login
-    document.getElementById('loginUsuario')?.addEventListener('keypress', function(e) {
+    document.getElementById('loginEmail')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') document.getElementById('loginSenha').focus();
     });
-    document.getElementById('loginSenha')?.addEventListener('keypress', function(e) {
+    document.getElementById('loginSenha')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') fazerLogin();
     });
-    
+
     // Eventos dos Botões
-    document.getElementById('btnNovo')?.addEventListener('click', function() {
+    document.getElementById('btnNovo')?.addEventListener('click', function () {
         abrirTab('tabOrcamento');
-        document.getElementById('orcamento').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('tabOrcamento')?.scrollIntoView({ behavior: 'smooth' });
     });
-    document.getElementById('btnAddCliente')?.addEventListener('click', function() {
+    document.getElementById('btnAddCliente')?.addEventListener('click', function () {
         abrirModal('modalCliente');
         document.getElementById('nomeCliente').focus();
     });
-    document.getElementById('btnAddProduto')?.addEventListener('click', function() {
+    document.getElementById('btnAddProduto')?.addEventListener('click', function () {
         abrirModal('modalProduto');
         document.getElementById('nomeProduto').focus();
     });
@@ -1813,49 +1419,38 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnWhatsApp')?.addEventListener('click', enviarWhatsApp);
     document.getElementById('salvarCliente')?.addEventListener('click', adicionarCliente);
     document.getElementById('salvarProduto')?.addEventListener('click', adicionarProduto);
-    document.getElementById('salvarNovoUsuario')?.addEventListener('click', salvarNovoUsuario);
-    document.getElementById('fecharModalCliente')?.addEventListener('click', function() {
-        fecharModal('modalCliente');
-    });
-    document.getElementById('fecharModalProduto')?.addEventListener('click', function() {
-        fecharModal('modalProduto');
-    });
-    document.getElementById('btnFecharOS')?.addEventListener('click', function() {
-        fecharModal('modalOS');
-    });
-    document.getElementById('btnFecharRecibo')?.addEventListener('click', function() {
-        fecharModal('modalRecibo');
-    });
-    
+    document.getElementById('fecharModalCliente')?.addEventListener('click', function () { fecharModal('modalCliente'); });
+    document.getElementById('fecharModalProduto')?.addEventListener('click', function () { fecharModal('modalProduto'); });
+    document.getElementById('btnFecharOS')?.addEventListener('click', function () { fecharModal('modalOS'); });
+    document.getElementById('btnFecharRecibo')?.addEventListener('click', function () { fecharModal('modalRecibo'); });
+
     // Eventos da OS
     document.getElementById('btnAprovarOS')?.addEventListener('click', aprovarOS);
     document.getElementById('btnIniciarOS')?.addEventListener('click', iniciarOS);
     document.getElementById('btnConcluirOS')?.addEventListener('click', concluirOS);
     document.getElementById('btnCancelarOS')?.addEventListener('click', cancelarOS);
     document.getElementById('btnEmitirRecibo')?.addEventListener('click', emitirRecibo);
-    
+
     // Eventos do Recibo
     document.getElementById('btnMarcarPago')?.addEventListener('click', marcarPago);
     document.getElementById('btnImprimirRecibo')?.addEventListener('click', imprimirRecibo);
-    
+
     // Fechar modal clicando fora
-    window.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal')) {
-            e.target.style.display = 'none';
-        }
+    window.addEventListener('click', function (e) {
+        if (e.target.classList.contains('modal')) e.target.style.display = 'none';
     });
-    
+
     // Busca Clientes
-    document.getElementById('buscaCliente')?.addEventListener('input', function(e) {
+    document.getElementById('buscaCliente')?.addEventListener('input', function (e) {
         const termo = e.target.value.toLowerCase().trim();
         document.querySelectorAll('#listaClientes li').forEach(li => {
             const texto = li.textContent?.toLowerCase() || '';
             li.style.display = texto.includes(termo) ? 'flex' : 'none';
         });
     });
-    
+
     // Busca Produtos
-    document.getElementById('buscaProduto')?.addEventListener('input', function(e) {
+    document.getElementById('buscaProduto')?.addEventListener('input', function (e) {
         const termo = e.target.value.toLowerCase().trim();
         document.querySelectorAll('#listaProdutos li').forEach(li => {
             const texto = li.textContent?.toLowerCase() || '';
@@ -1863,20 +1458,13 @@ document.addEventListener('DOMContentLoaded', function() {
             li.style.display = nome.includes(termo) ? 'flex' : 'none';
         });
     });
-    
+
     // Enter nos modais
-    document.getElementById('nomeCliente')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') adicionarCliente();
-    });
-    document.getElementById('nomeProduto')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') adicionarProduto();
-    });
-    document.getElementById('precoProduto')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') adicionarProduto();
-    });
-    
+    document.getElementById('nomeCliente')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') adicionarCliente(); });
+    document.getElementById('nomeProduto')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') adicionarProduto(); });
+    document.getElementById('precoProduto')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') adicionarProduto(); });
+
     console.log('✅ Eventos configurados!');
 });
 
 console.log('⚡ SE7VEN ENERGIA - Sistema carregado!');
-console.log('☁️ Supabase conectado!');

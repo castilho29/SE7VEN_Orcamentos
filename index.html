@@ -15,11 +15,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    
+
     <style>
         /* ===== ESTILOS COMPLETOS ===== */
         *{margin:0;padding:0;box-sizing:border-box;}
@@ -115,10 +111,12 @@
         .login-screen h1{color:#1a237e;font-size:22px;margin-bottom:20px;text-align:center;}
         .login-screen input{width:100%;max-width:300px;padding:12px;margin:5px auto;border:1px solid #bdc3c7;border-radius:8px;font-size:16px;display:block;}
         .login-screen .error{color:#e74c3c;font-size:14px;margin-top:10px;display:none;text-align:center;}
+        .login-screen .sucesso{color:#27ae60;font-size:14px;margin-top:10px;display:none;text-align:center;}
         .login-screen .divider{display:flex;align-items:center;width:100%;max-width:300px;margin:15px auto;}
         .login-screen .divider::before,.login-screen .divider::after{content:'';flex:1;border-bottom:1px solid #ddd;}
         .login-screen .divider span{padding:0 15px;color:#999;font-size:12px;}
         .login-screen .info{color:#666;font-size:12px;margin-top:15px;text-align:center;max-width:300px;}
+        .login-screen .link-alternar{background:none;border:none;color:#1a237e;font-size:13px;cursor:pointer;text-decoration:underline;margin-top:8px;}
         
         .user-info{display:flex;align-items:center;gap:10px;font-size:12px;color:#666;}
         .user-info .name{font-weight:bold;color:#1a237e;}
@@ -161,12 +159,15 @@
              style="max-height:70px; width:auto; margin-bottom:10px; border-radius:12px; object-fit:contain;"
              onerror="this.style.display='none'">
         <h1>⚡ SE7VEN ENERGIA</h1>
-        
-        <input type="text" id="loginUsuario" placeholder="Usuário" value="admin">
-        <input type="password" id="loginSenha" placeholder="Senha" value="admin">
+
+        <input type="text" id="loginNome" placeholder="Nome completo" style="display:none;">
+        <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="username">
+        <input type="password" id="loginSenha" placeholder="Senha" autocomplete="current-password">
         <div id="loginError" class="error">❌ Usuário ou senha incorretos</div>
-        <button onclick="fazerLogin()" style="background:#1a237e;color:white;width:100%;max-width:300px;padding:12px;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;border:none;margin:5px auto;">🔑 Entrar</button>
-        
+        <div id="loginSucesso" class="sucesso">✅ Conta criada! Verifique seu e-mail se for pedido.</div>
+        <button id="btnEntrar" onclick="fazerLogin()" style="background:#1a237e;color:white;width:100%;max-width:300px;padding:12px;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;border:none;margin:5px auto;">🔑 Entrar</button>
+        <button class="link-alternar" onclick="alternarModoCadastro()" id="btnAlternarCadastro">Não tem conta? Criar uma agora</button>
+
         <div class="divider"><span>ou</span></div>
         
         <button class="btn-google" onclick="loginGoogle()">
@@ -180,8 +181,7 @@
         </button>
         
         <div class="info">
-            <strong>:</strong><br>
-           
+            Login seguro via Supabase Auth. Seus dados sincronizam automaticamente entre todos os seus dispositivos.
         </div>
     </div>
 
@@ -278,6 +278,7 @@
                 <div style="margin-top:15px;padding:15px;background:#e8eaf6;border-radius:8px;">
                     <h3>⚡ Dados do Projeto Elétrico</h3>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div><label>Potência Total (W):</label><input type="number" id="potenciaProjeto" placeholder="Ex: 5000"></div>
                         <div><label>Distância (m):</label><input type="number" id="distancia" value="50"></div>
                         <div><label>Tensão (V):</label><select id="tensao"><option value="127">127V</option><option value="220" selected>220V</option><option value="380">380V</option></select></div>
                         <div><label>Fator de Potência:</label><input type="number" id="fp" step="0.01" value="0.92"></div>
@@ -380,9 +381,13 @@
         <!-- TAB USUÁRIOS -->
         <div id="tabUsuarios" class="tab-content">
             <section>
-                <h2>👥 Gerenciar Usuários</h2>
+                <h2>👥 Usuários do Sistema</h2>
                 <div id="listaUsuarios" class="user-list"></div>
-                <button class="btn-success" onclick="mostrarCadastroUsuario()" style="margin-top:10px;">+ Adicionar Usuário</button>
+                <p style="font-size:12px;color:#666;margin-top:10px;">
+                    Para adicionar alguém, peça para essa pessoa criar a própria conta na tela de login
+                    ("Criar uma agora"). Para torná-la administradora, isso é feito manualmente no
+                    painel do Supabase (tabela <code>profiles</code>, coluna <code>tipo</code>).
+                </p>
             </section>
         </div>
 
@@ -415,7 +420,7 @@
                         <button onclick="exportarDados()" class="btn-backup">📤 Exportar</button>
                         <button onclick="document.getElementById('fileInput').click()" class="btn-restore">📥 Importar</button>
                         <button onclick="recarregarDados()" class="btn-info" style="background:#3498db;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">🔄 Recarregar</button>
-                        <button onclick="limparDados()" class="btn-danger" style="padding:6px 12px;">🗑️ Limpar</button>
+                        <button onclick="limparDadosLocais()" class="btn-danger" style="padding:6px 12px;">🗑️ Limpar cache local</button>
                     </div>
                     <div style="font-size:12px;color:#666;background:white;padding:10px;border-radius:4px;">
                         <strong>📊 Estatísticas:</strong><br>
@@ -430,23 +435,6 @@
     </div>
 
     <!-- ========== MODAIS ========== -->
-    <div id="modalCadastroUsuario" class="modal">
-        <div class="modal-content">
-            <h3>👤 Novo Usuário</h3>
-            <input type="text" id="novoUsuarioNome" placeholder="Nome do usuário *">
-            <input type="text" id="novoUsuarioLogin" placeholder="Login *">
-            <input type="password" id="novoUsuarioSenha" placeholder="Senha *">
-            <select id="novoUsuarioTipo">
-                <option value="usuario">Usuário</option>
-                <option value="admin">Administrador</option>
-            </select>
-            <div style="display:flex;gap:10px;margin-top:10px;">
-                <button id="salvarNovoUsuario" class="btn-success" style="flex:1;">Salvar</button>
-                <button onclick="fecharModal('modalCadastroUsuario')" class="btn-secondary" style="flex:1;">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
     <div id="modalCliente" class="modal"><div class="modal-content"><h3>👤 Novo Cliente</h3><input type="text" id="nomeCliente" placeholder="Nome *"><input type="tel" id="telefoneCliente" placeholder="Celular"><input type="text" id="cpfCliente" placeholder="CPF/CNPJ"><input type="text" id="enderecoCliente" placeholder="Endereço"><input type="email" id="emailCliente" placeholder="Email"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
     
     <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
@@ -458,8 +446,9 @@
     <!-- ========== BIBLIOTECAS ========== -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- ========== SCRIPT PRINCIPAL ========== -->
+
+    <!-- ========== CONFIGURAÇÃO E SCRIPT PRINCIPAL ========== -->
+    <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
