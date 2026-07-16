@@ -1,17 +1,16 @@
 // ============================================
-// SISTEMA SE7VEN ENERGIA - VERSÃO SIMPLIFICADA
+// SISTEMA SE7VEN ENERGIA - VERSÃO COMPLETA
 // ============================================
 
 console.log('⚡ Carregando sistema...');
 
 // ============================================
-// USUÁRIOS - DIRETO NO CÓDIGO (FUNCIONAL)
+// USUÁRIOS
 // ============================================
-const USUARIOS = {
+let USUARIOS = {
     admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' }
 };
 
-// Tenta carregar usuários do localStorage
 try {
     const saved = localStorage.getItem('usuarios');
     if (saved) {
@@ -51,6 +50,131 @@ const EMPRESA = {
 };
 
 // ============================================
+// GITHUB CONFIG
+// ============================================
+const GITHUB_CONFIG = {
+    token: '',
+    usuario: 'castilho29',
+    repo: 'SE7VEN_Orcamentos',
+    arquivo: 'dados.json',
+    intervaloAuto: 300000,
+    branch: 'main'
+};
+
+// Carregar configurações salvas
+function carregarConfiguracoes() {
+    try {
+        const config = localStorage.getItem('system_config');
+        if (config) {
+            const parsed = JSON.parse(config);
+            if (parsed.gitToken) {
+                GITHUB_CONFIG.token = parsed.gitToken;
+                GITHUB_CONFIG.usuario = parsed.gitUsuario || 'castilho29';
+                GITHUB_CONFIG.repo = parsed.gitRepo || 'SE7VEN_Orcamentos';
+                GITHUB_CONFIG.intervaloAuto = parseInt(parsed.syncInterval) || 300000;
+                
+                // Atualiza a interface
+                const statusLabel = document.getElementById('gitStatusLabel');
+                const btnToggle = document.getElementById('btnToggleGit');
+                if (statusLabel && parsed.gitToken.length > 10) {
+                    statusLabel.textContent = '✅ Ativo';
+                    statusLabel.style.background = '#27ae60';
+                    if (btnToggle) {
+                        btnToggle.textContent = '❌ Desativar';
+                        btnToggle.className = 'btn-danger';
+                    }
+                    localStorage.setItem('git_ativado', 'true');
+                }
+            }
+        }
+        atualizarEstatisticas();
+    } catch(e) { console.log('Erro ao carregar configurações:', e); }
+}
+
+function salvarConfiguracoesGit() {
+    const token = document.getElementById('inputGitToken')?.value.trim() || '';
+    const usuario = document.getElementById('inputGitUsuario')?.value.trim() || 'castilho29';
+    const repo = document.getElementById('inputGitRepo')?.value.trim() || 'SE7VEN_Orcamentos';
+    const intervalo = document.getElementById('inputSyncInterval')?.value || '300000';
+    
+    if (!token || token.length < 10) {
+        alert('⚠️ Digite um token válido do GitHub!');
+        return;
+    }
+    
+    const config = {
+        gitToken: token,
+        gitUsuario: usuario,
+        gitRepo: repo,
+        syncInterval: intervalo
+    };
+    
+    localStorage.setItem('system_config', JSON.stringify(config));
+    
+    GITHUB_CONFIG.token = token;
+    GITHUB_CONFIG.usuario = usuario;
+    GITHUB_CONFIG.repo = repo;
+    GITHUB_CONFIG.intervaloAuto = parseInt(intervalo) || 300000;
+    
+    const statusLabel = document.getElementById('gitStatusLabel');
+    const btnToggle = document.getElementById('btnToggleGit');
+    if (statusLabel) {
+        statusLabel.textContent = '✅ Ativo';
+        statusLabel.style.background = '#27ae60';
+    }
+    if (btnToggle) {
+        btnToggle.textContent = '❌ Desativar';
+        btnToggle.className = 'btn-danger';
+    }
+    localStorage.setItem('git_ativado', 'true');
+    
+    atualizarStatus('✅ Configurações do Git salvas!');
+    registrarLog('CONFIG_GIT', 'Configurações do Git atualizadas');
+    alert('✅ Configurações salvas com sucesso!');
+    
+    if (parseInt(intervalo) > 0) {
+        iniciarSincronizacaoAutomatica();
+    } else {
+        if (window.syncTimeout) { clearInterval(window.syncTimeout); window.syncTimeout = null; }
+    }
+}
+
+function toggleGit() {
+    const statusLabel = document.getElementById('gitStatusLabel');
+    const btn = document.getElementById('btnToggleGit');
+    const token = document.getElementById('inputGitToken')?.value.trim() || GITHUB_CONFIG.token;
+    
+    if (!statusLabel || !btn) return;
+    
+    if (statusLabel.textContent.includes('Ativo')) {
+        statusLabel.textContent = '❌ Desativado';
+        statusLabel.style.background = '#e74c3c';
+        btn.textContent = '✅ Ativar';
+        btn.className = 'btn-success';
+        if (window.syncTimeout) { clearInterval(window.syncTimeout); window.syncTimeout = null; }
+        GITHUB_CONFIG.token = '';
+        localStorage.setItem('git_ativado', 'false');
+        atualizarStatus('⏸️ Backup Git desativado');
+        registrarLog('CONFIG_GIT', 'Backup Git desativado');
+    } else {
+        if (!token || token.length < 10) {
+            alert('⚠️ Configure o token do GitHub primeiro!');
+            return;
+        }
+        statusLabel.textContent = '✅ Ativo';
+        statusLabel.style.background = '#27ae60';
+        btn.textContent = '❌ Desativar';
+        btn.className = 'btn-danger';
+        GITHUB_CONFIG.token = token;
+        localStorage.setItem('git_ativado', 'true');
+        atualizarStatus('✅ Backup Git ativado');
+        registrarLog('CONFIG_GIT', 'Backup Git ativado');
+        iniciarSincronizacaoAutomatica();
+        setTimeout(sincronizarDados, 2000);
+    }
+}
+
+// ============================================
 // VARIÁVEIS GLOBAIS
 // ============================================
 let usuarioAtual = null;
@@ -59,13 +183,13 @@ let produtos = [];
 let ordensServico = [];
 let recibos = [];
 let logs = [];
+let syncTimeout = null;
 
 // ============================================
-// FUNÇÃO DE LOGIN (MAIS SIMPLES)
+// FUNÇÃO DE LOGIN
 // ============================================
 function fazerLogin() {
     console.log('🔑 Tentando login...');
-    
     const user = document.getElementById('loginUsuario').value.trim();
     const senha = document.getElementById('loginSenha').value.trim();
     const error = document.getElementById('loginError');
@@ -82,14 +206,12 @@ function fazerLogin() {
     if (!USUARIOS[user]) {
         error.textContent = '❌ Usuário não encontrado!';
         error.style.display = 'block';
-        console.log('❌ Usuário não existe:', user);
         return;
     }
     
     if (USUARIOS[user].senha !== senha) {
         error.textContent = '❌ Senha incorreta!';
         error.style.display = 'block';
-        console.log('❌ Senha incorreta para:', user);
         return;
     }
     
@@ -103,7 +225,6 @@ function fazerLogin() {
     
     localStorage.setItem('usuarioLogado', JSON.stringify(usuarioAtual));
     
-    // Entra no sistema
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('sistemaScreen').style.display = 'block';
     document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
@@ -116,11 +237,9 @@ function fazerLogin() {
     document.getElementById('statusBar').className = 'status-bar success';
     
     init();
+    carregarConfiguracoes();
 }
 
-// ============================================
-// FUNÇÃO DE LOGOUT
-// ============================================
 function fazerLogout() {
     usuarioAtual = null;
     localStorage.removeItem('usuarioLogado');
@@ -128,35 +247,70 @@ function fazerLogout() {
     document.getElementById('sistemaScreen').style.display = 'none';
     document.getElementById('loginUsuario').value = '';
     document.getElementById('loginSenha').value = '';
+    if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
 }
 
-// ============================================
-// VERIFICAR LOGIN SALVO
-// ============================================
 function verificarLogin() {
     try {
         const salvo = localStorage.getItem('usuarioLogado');
         if (!salvo) return false;
-        
         const data = JSON.parse(salvo);
         if (!USUARIOS[data.login]) {
             localStorage.removeItem('usuarioLogado');
             return false;
         }
-        
         usuarioAtual = data;
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('sistemaScreen').style.display = 'block';
         document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
         document.getElementById('statusBar').textContent = `✅ Bem-vindo de volta, ${usuarioAtual.nome}!`;
         document.getElementById('statusBar').className = 'status-bar success';
-        
         init();
+        carregarConfiguracoes();
         return true;
-        
     } catch(e) {
         console.error('Erro ao verificar login:', e);
         return false;
+    }
+}
+
+// ============================================
+// LOGS
+// ============================================
+function registrarLog(acao, detalhes) {
+    const entry = {
+        data: new Date().toISOString(),
+        usuario: usuarioAtual?.nome || 'Sistema',
+        acao: acao,
+        detalhes: detalhes
+    };
+    logs.unshift(entry);
+    if (logs.length > 500) logs = logs.slice(0, 500);
+    try { localStorage.setItem('logs', JSON.stringify(logs)); } catch(e) {}
+    renderizarLogs();
+}
+
+function renderizarLogs() {
+    const container = document.getElementById('logList');
+    if (!container) return;
+    if (logs.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum registro</p>';
+        return;
+    }
+    container.innerHTML = logs.slice(0, 100).map(log => `
+        <div class="entry">
+            <span>${log.acao}: ${log.detalhes}</span>
+            <span class="time">${new Date(log.data).toLocaleString('pt-BR')} - ${log.usuario}</span>
+        </div>
+    `).join('');
+}
+
+function limparLogs() {
+    if (confirm('Limpar todos os logs?')) {
+        logs = [];
+        try { localStorage.setItem('logs', JSON.stringify(logs)); } catch(e) {}
+        renderizarLogs();
+        atualizarStatus('🗑️ Logs limpos!');
     }
 }
 
@@ -165,7 +319,6 @@ function verificarLogin() {
 // ============================================
 function gerarProdutos() {
     const lista = [
-        // Materiais
         { nome: 'Cabo de Cobre 1,5mm² (100m)', preco: 180.00, tipo: 'material' },
         { nome: 'Cabo de Cobre 2,5mm² (100m)', preco: 280.00, tipo: 'material' },
         { nome: 'Cabo de Cobre 4mm² (100m)', preco: 420.00, tipo: 'material' },
@@ -200,7 +353,6 @@ function gerarProdutos() {
         { nome: 'Fita Isolante 19mm x 50m', preco: 18.00, tipo: 'material' },
         { nome: 'DR 40A 30mA', preco: 250.00, tipo: 'material' },
         { nome: 'DR 63A 30mA', preco: 320.00, tipo: 'material' },
-        // Equipamentos
         { nome: 'Inversor Solar 1kW', preco: 1200.00, tipo: 'equipamento' },
         { nome: 'Inversor Solar 3kW', preco: 2800.00, tipo: 'equipamento' },
         { nome: 'Inversor Solar 5kW', preco: 4200.00, tipo: 'equipamento' },
@@ -211,7 +363,6 @@ function gerarProdutos() {
         { nome: 'Placa Solar 450W', preco: 1200.00, tipo: 'equipamento' },
         { nome: 'Transformador 1kVA', preco: 800.00, tipo: 'equipamento' },
         { nome: 'Transformador 5kVA', preco: 2200.00, tipo: 'equipamento' },
-        // Serviços
         { nome: 'Instalação Elétrica Residencial (por m²)', preco: 120.00, tipo: 'servico' },
         { nome: 'Instalação Elétrica Comercial (por m²)', preco: 150.00, tipo: 'servico' },
         { nome: 'Instalação de Quadro de Distribuição', preco: 500.00, tipo: 'servico' },
@@ -227,7 +378,6 @@ function gerarProdutos() {
         { nome: 'Laudo Técnico Elétrico', preco: 800.00, tipo: 'servico' },
         { nome: 'Inspeção Técnica Elétrica', preco: 600.00, tipo: 'servico' }
     ];
-    
     let id = 1;
     return lista.map(item => ({
         id: String(id++),
@@ -246,7 +396,6 @@ function carregarDados() {
         const p = localStorage.getItem('produtos');
         const o = localStorage.getItem('ordensServico');
         const r = localStorage.getItem('recibos');
-        
         if (c) clientes = JSON.parse(c);
         if (p) {
             produtos = JSON.parse(p);
@@ -306,7 +455,7 @@ function carregarLogo() {
     if (!header) return;
     header.innerHTML = `
         <img src="logo.png" alt="SE7VEN" style="height:35px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px;" onerror="this.style.display='none'">
-        <h1 class="logo-title">SE7VEN ENERGIA</h1>
+        <h1 class="logo-title">SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
     `;
 }
 
@@ -346,6 +495,7 @@ function adicionarCliente() {
     renderClientes();
     renderSelectClientes();
     atualizarStatus(`✅ Cliente "${nome}" cadastrado!`);
+    registrarLog('CLIENTE_ADICIONADO', `Cliente "${nome}" adicionado`);
 }
 
 function excluirCliente(index) {
@@ -356,6 +506,7 @@ function excluirCliente(index) {
         renderClientes();
         renderSelectClientes();
         atualizarStatus(`🗑️ Cliente "${nome}" removido`);
+        registrarLog('CLIENTE_EXCLUIDO', `Cliente "${nome}" excluído`);
     }
 }
 
@@ -385,6 +536,7 @@ function editarCliente(index) {
         renderClientes();
         renderSelectClientes();
         atualizarStatus(`✅ Cliente "${nome}" atualizado!`);
+        registrarLog('CLIENTE_EDITADO', `Cliente "${nome}" editado`);
     });
     abrirModal('modalCliente');
 }
@@ -434,6 +586,7 @@ function adicionarProduto() {
     renderProdutos();
     renderSelectProdutos();
     atualizarStatus(`✅ Produto "${nome}" cadastrado!`);
+    registrarLog('PRODUTO_ADICIONADO', `Produto "${nome}" adicionado`);
 }
 
 function excluirProduto(index) {
@@ -444,6 +597,7 @@ function excluirProduto(index) {
         renderProdutos();
         renderSelectProdutos();
         atualizarStatus(`🗑️ Produto "${nome}" removido`);
+        registrarLog('PRODUTO_EXCLUIDO', `Produto "${nome}" excluído`);
     }
 }
 
@@ -475,6 +629,7 @@ function editarProduto(index) {
         renderProdutos();
         renderSelectProdutos();
         atualizarStatus(`✅ Produto "${nome}" atualizado!`);
+        registrarLog('PRODUTO_EDITADO', `Produto "${nome}" editado`);
     });
     abrirModal('modalProduto');
 }
@@ -569,6 +724,7 @@ function salvarOrcamento() {
     atualizarStatus(`✅ Orçamento salvo! Nº ${novaOS.numero}`);
     alert(`✅ Orçamento salvo!\nNº: ${novaOS.numero}\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
     abrirTab('tabOS');
+    registrarLog('OS_CRIADA', `OS ${novaOS.numero} criada para ${cliente}`);
 }
 
 // ============================================
@@ -600,7 +756,7 @@ function abrirOS(id) {
 }
 
 // ============================================
-// FUNÇÕES DE CÁLCULOS
+// CÁLCULOS
 // ============================================
 function dimensionarCabos() {
     const corrente = parseFloat(document.getElementById('correnteCabos').value);
@@ -631,7 +787,7 @@ function calcularProjeto() {
 // BACKUP
 // ============================================
 function exportarDados() {
-    const dados = { clientes, produtos, ordensServico, recibos, data: new Date().toISOString() };
+    const dados = { clientes, produtos, ordensServico, recibos, logs, data: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -640,6 +796,7 @@ function exportarDados() {
     a.click();
     URL.revokeObjectURL(url);
     atualizarStatus('✅ Backup exportado!');
+    registrarLog('EXPORTAR', 'Dados exportados');
 }
 
 function importarDados(event) {
@@ -654,11 +811,15 @@ function importarDados(event) {
                 produtos = dados.produtos || [];
                 ordensServico = dados.ordensServico || [];
                 recibos = dados.recibos || [];
+                if (dados.logs) logs = dados.logs;
                 salvarDados();
+                try { localStorage.setItem('logs', JSON.stringify(logs)); } catch(e) {}
                 renderizarTudo();
+                atualizarStatus('✅ Dados importados!');
+                registrarLog('IMPORTAR', 'Dados importados do JSON');
                 alert('✅ Dados importados com sucesso!');
-            }
-        } catch(err) { alert('❌ Arquivo inválido!'); }
+            } else { alert('❌ Arquivo inválido!'); }
+        } catch(err) { alert('❌ Erro ao ler o arquivo!'); }
     };
     reader.readAsText(file);
     event.target.value = '';
@@ -675,12 +836,48 @@ function renderizarTudo() {
     renderSelectProdutos();
     listarOS();
     updateTotal();
+    renderizarLogs();
+    atualizarEstatisticas();
+}
+
+// ============================================
+// ESTATÍSTICAS
+// ============================================
+function atualizarEstatisticas() {
+    try {
+        const el1 = document.getElementById('statsClientes');
+        const el2 = document.getElementById('statsProdutos');
+        const el3 = document.getElementById('statsOS');
+        const el4 = document.getElementById('statsRecibos');
+        if (el1) el1.textContent = `Clientes: ${clientes.length}`;
+        if (el2) el2.textContent = `Produtos: ${produtos.length}`;
+        if (el3) el3.textContent = `Ordens de Serviço: ${ordensServico.length}`;
+        if (el4) el4.textContent = `Recibos: ${recibos.length}`;
+    } catch(e) {}
+}
+
+// ============================================
+// SINCRONIZAÇÃO
+// ============================================
+function sincronizarDados() {
+    console.log('🔄 Sincronização em desenvolvimento');
+    atualizarStatus('🔄 Sincronização em desenvolvimento...');
+}
+
+function iniciarSincronizacaoAutomatica() {
+    if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
+    if (GITHUB_CONFIG.intervaloAuto > 0 && GITHUB_CONFIG.token) {
+        syncTimeout = setInterval(() => {
+            console.log('🔄 Sincronização automática...');
+            sincronizarDados();
+        }, GITHUB_CONFIG.intervaloAuto);
+        console.log(`✅ Sincronização automática configurada (${GITHUB_CONFIG.intervaloAuto/1000}s)`);
+    }
 }
 
 // ============================================
 // FUNÇÕES VAZIAS (PARA EVITAR ERROS)
 // ============================================
-function sincronizarDados() { console.log('🔄 Sincronização em desenvolvimento'); }
 function loginGoogle() { alert('🔑 Login Google em desenvolvimento'); }
 function mostrarCadastroUsuario() { alert('👤 Cadastro de usuário em desenvolvimento'); }
 function salvarNovoUsuario() { alert('👤 Cadastro de usuário em desenvolvimento'); }
@@ -701,8 +898,30 @@ function abrirRecibo() { }
 function marcarPago() { }
 function imprimirRecibo() { }
 
+function limparDados() {
+    if (!confirm('⚠️ ATENÇÃO: Isso vai apagar TODOS os dados!\n\nContinuar?')) return;
+    localStorage.clear();
+    USUARIOS = { admin: { senha: 'admin', nome: 'Administrador', tipo: 'admin' } };
+    localStorage.setItem('usuarios', JSON.stringify(USUARIOS));
+    clientes = [];
+    produtos = [];
+    ordensServico = [];
+    recibos = [];
+    logs = [];
+    atualizarStatus('🗑️ Todos os dados foram apagados!');
+    alert('✅ Dados apagados! A página será recarregada.');
+    location.reload();
+}
+
+function recarregarDados() {
+    carregarDados();
+    renderizarTudo();
+    atualizarStatus('🔄 Dados recarregados!');
+}
+
 // ============================================
-// INICIALIZAÇÃO// ============================================
+// INICIALIZAÇÃO
+// ============================================
 function init() {
     console.log('🚀 Inicializando sistema...');
     carregarDados();
@@ -713,7 +932,10 @@ function init() {
     updateTotal();
     listarOS();
     carregarLogo();
+    renderizarLogs();
+    atualizarEstatisticas();
     if (produtos.length > 0) adicionarItem();
+    carregarConfiguracoes();
     atualizarStatus(`✅ Sistema pronto! ${clientes.length} clientes, ${produtos.length} produtos`);
     console.log('✅ Sistema inicializado!');
 }
@@ -766,19 +988,41 @@ document.addEventListener('DOMContentLoaded', function() {
         fecharModal('modalProduto');
     });
     
+    // Configurações
+    document.getElementById('btnSalvarConfigGit')?.addEventListener('click', salvarConfiguracoesGit);
+    document.getElementById('btnToggleGit')?.addEventListener('click', toggleGit);
+    document.getElementById('btnSalvarToken')?.addEventListener('click', function() {
+        const token = document.getElementById('inputGitToken')?.value.trim();
+        if (token && token.length > 10) {
+            const config = JSON.parse(localStorage.getItem('system_config') || '{}');
+            config.gitToken = token;
+            localStorage.setItem('system_config', JSON.stringify(config));
+            GITHUB_CONFIG.token = token;
+            atualizarStatus('✅ Token salvo!');
+            registrarLog('CONFIG_TOKEN', 'Token do GitHub atualizado');
+            alert('✅ Token salvo com sucesso!');
+        } else {
+            alert('⚠️ Token inválido!');
+        }
+    });
+    
+    // Fechar modal clicando fora
     window.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal')) {
             e.target.style.display = 'none';
         }
     });
     
+    // Busca Clientes
     document.getElementById('buscaCliente')?.addEventListener('input', function(e) {
         const termo = e.target.value.toLowerCase().trim();
         document.querySelectorAll('#listaClientes li').forEach(li => {
-            li.style.display = li.textContent?.toLowerCase().includes(termo) ? 'flex' : 'none';
+            const texto = li.textContent?.toLowerCase() || '';
+            li.style.display = texto.includes(termo) ? 'flex' : 'none';
         });
     });
     
+    // Busca Produtos
     document.getElementById('buscaProduto')?.addEventListener('input', function(e) {
         const termo = e.target.value.toLowerCase().trim();
         document.querySelectorAll('#listaProdutos li').forEach(li => {
@@ -786,6 +1030,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const nome = texto.split('R$')[0].trim();
             li.style.display = nome.includes(termo) ? 'flex' : 'none';
         });
+    });
+    
+    // Enter nos modais
+    document.getElementById('nomeCliente')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') adicionarCliente();
+    });
+    document.getElementById('nomeProduto')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') adicionarProduto();
+    });
+    document.getElementById('precoProduto')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') adicionarProduto();
     });
     
     console.log('✅ Eventos configurados!');
