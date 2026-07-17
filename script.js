@@ -7,13 +7,13 @@ console.log('⚡ Carregando sistema...');
 // ============================================
 // CARREGAR CONFIGURAÇÕES
 // ============================================
-let CONFIG = window.CONFIG || {};
-if (!CONFIG.SUPABASE) {
-    CONFIG.SUPABASE = { url: 'https://se7ven-energia.sb.co', publicKey: '' };
+const CFG = window.CONFIG || {};
+if (!CFG.SUPABASE) {
+    CFG.SUPABASE = { url: 'https://se7ven-energia.supabase.co', publicKey: '' };
 }
 
-const SUPABASE_URL = CONFIG.SUPABASE.url;
-const SUPABASE_PUBLIC_KEY = CONFIG.SUPABASE.publicKey;
+const SUPABASE_URL = CFG.SUPABASE.url;
+const SUPABASE_PUBLIC_KEY = CFG.SUPABASE.publicKey;
 
 // ============================================
 // CLIENTE ÚNICO DO SUPABASE (só chave pública)
