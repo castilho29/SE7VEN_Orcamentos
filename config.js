@@ -5,7 +5,7 @@
 // Nunca coloque aqui a "secret key" / "service_role key" do Supabase.
 const CONFIG = {
     SUPABASE: {
-        url: 'https://se7ven-energia.supabase.co',
+        url: 'https://aqxrogqjeaxbckfxwbtt.supabase.co',
         publicKey: 'sb_publishable_23NQo9Pd7-hvhyhNQQrpHw_WP_o7DzM'
     }
 };
