@@ -1070,11 +1070,21 @@ function formatarTelefoneWhatsApp(telefone) {
 }
 
 function montarMensagemOrcamento(cliente, itens, total) {
-    let msg = `Olá ${cliente}! Segue o orçamento da *${EMPRESA.nomeAbreviado}*:\n\n`;
-    itens.forEach(item => {
-        msg += `• ${item.nome} (x${item.qtd}) - R$ ${item.subtotal.toFixed(2)}\n`;
+    const data = new Date();
+    const dataFormatada = data.getDate().toString().padStart(2, '0') + '/' +
+        (data.getMonth() + 1).toString().padStart(2, '0') + '/' + data.getFullYear();
+
+    let msg = `*${EMPRESA.nomeAbreviado} ENERGIA - ORÇAMENTO*\n\n`;
+    msg += `📅 Data: ${dataFormatada}\n`;
+    msg += `👤 Cliente: ${cliente}\n\n`;
+    msg += `*ITENS:*\n`;
+    itens.forEach((item, i) => {
+        msg += `${i + 1}. ${item.nome} - ${item.qtd}x R$ ${item.preco.toFixed(2)} = R$ ${item.subtotal.toFixed(2)}\n`;
     });
-    msg += `\n*Total: R$ ${total.toFixed(2)}*\n\nFormas de pagamento: ${EMPRESA.formasPagamento.join(', ')}.`;
+    msg += `\n*TOTAL: R$ ${total.toFixed(2)}*\n\n`;
+    msg += `💳 *Formas de Pagamento:*\n`;
+    EMPRESA.formasPagamento.forEach(fp => { msg += `✅ ${fp}\n`; });
+    msg += `\n📱 *Entre em contato para mais informações!*`;
     return msg;
 }
 
