@@ -304,6 +304,47 @@ async function semearProdutosPadrao() {
 }
 
 // ============================================
+// BUSCA DE CNPJ (dados públicos da Receita Federal via BrasilAPI)
+// Só funciona para CNPJ. CPF não tem base pública/legal para consulta
+// de nome e endereço — dado pessoal protegido pela LGPD.
+// ============================================
+
+async function buscarCNPJ() {
+    const valor = document.getElementById('cpfCliente').value.replace(/\D/g, '');
+    if (valor.length !== 14) {
+        alert('⚠️ Digite um CNPJ completo (14 números) nesse campo para buscar.\n\nBusca automática só funciona para CNPJ — não existe base pública para consultar nome/endereço por CPF.');
+        return;
+    }
+    atualizarStatus('🔍 Buscando dados do CNPJ...');
+    try {
+        const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${valor}`);
+        if (!resp.ok) throw new Error('CNPJ não encontrado');
+        const dados = await resp.json();
+
+        const nomeAtual = document.getElementById('nomeCliente').value.trim();
+        const nomeEncontrado = dados.razao_social || dados.nome_fantasia || '';
+        if (nomeEncontrado && (!nomeAtual || confirm(`Preencher nome como "${nomeEncontrado}"?`))) {
+            document.getElementById('nomeCliente').value = nomeEncontrado;
+        }
+
+        const partesEndereco = [dados.logradouro, dados.numero, dados.bairro].filter(Boolean).join(', ');
+        const cidadeUf = dados.municipio ? ` - ${dados.municipio}/${dados.uf}` : '';
+        document.getElementById('enderecoCliente').value = (partesEndereco + cidadeUf).trim();
+
+        if (dados.ddd_telefone_1 && !document.getElementById('telefoneCliente').value.trim()) {
+            document.getElementById('telefoneCliente').value = dados.ddd_telefone_1;
+        }
+        if (dados.email && !document.getElementById('emailCliente').value.trim()) {
+            document.getElementById('emailCliente').value = dados.email;
+        }
+        atualizarStatus('✅ Dados do CNPJ preenchidos!');
+    } catch (e) {
+        atualizarStatus('❌ CNPJ não encontrado', 'error');
+        alert('❌ Não encontramos esse CNPJ na Receita Federal. Confira os números e tente de novo.');
+    }
+}
+
+// ============================================
 // CLIENTES
 // ============================================
 
@@ -320,6 +361,7 @@ function renderClientes() {
                 <strong>${c.nome}</strong>
                 ${c.telefone ? `<br><small>📱 ${c.telefone}</small>` : ''}
                 ${c.email ? `<br><small>✉️ ${c.email}</small>` : ''}
+                ${c.observacoes ? `<br><small>📝 ${c.observacoes}</small>` : ''}
             </span>
             <div style="display:flex;gap:5px;">
                 <button onclick="editarCliente(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
@@ -337,7 +379,8 @@ async function adicionarCliente() {
         id: gerarId(), nome, telefone,
         email: document.getElementById('emailCliente').value.trim() || '',
         cpf: document.getElementById('cpfCliente').value.trim() || '',
-        endereco: document.getElementById('enderecoCliente').value.trim() || ''
+        endereco: document.getElementById('enderecoCliente').value.trim() || '',
+        observacoes: document.getElementById('observacoesCliente').value.trim() || ''
     };
     try {
         const { error } = await sb.from('clientes').upsert(novoCliente, { onConflict: 'id' });
@@ -348,6 +391,7 @@ async function adicionarCliente() {
         document.getElementById('cpfCliente').value = '';
         document.getElementById('enderecoCliente').value = '';
         document.getElementById('emailCliente').value = '';
+        document.getElementById('observacoesCliente').value = '';
         fecharModal('modalCliente');
         renderClientes();
         renderSelectClientes();
@@ -382,6 +426,7 @@ function editarCliente(index) {
     document.getElementById('cpfCliente').value = c.cpf || '';
     document.getElementById('enderecoCliente').value = c.endereco || '';
     document.getElementById('emailCliente').value = c.email || '';
+    document.getElementById('observacoesCliente').value = c.observacoes || '';
     document.querySelector('#modalCliente h3').textContent = '✏️ Editar Cliente';
     const btn = document.getElementById('salvarCliente');
     btn.textContent = '💾 Atualizar';
@@ -395,8 +440,9 @@ function editarCliente(index) {
         const cpf = document.getElementById('cpfCliente').value.trim();
         const endereco = document.getElementById('enderecoCliente').value.trim();
         const email = document.getElementById('emailCliente').value.trim();
+        const observacoes = document.getElementById('observacoesCliente').value.trim();
         if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
-        const clienteAtualizado = { ...clientes[idx], nome, telefone, cpf, endereco, email };
+        const clienteAtualizado = { ...clientes[idx], nome, telefone, cpf, endereco, email, observacoes };
         try {
             const { error } = await sb.from('clientes').upsert(clienteAtualizado, { onConflict: 'id' });
             if (error) throw error;
@@ -406,6 +452,7 @@ function editarCliente(index) {
             document.getElementById('cpfCliente').value = '';
             document.getElementById('enderecoCliente').value = '';
             document.getElementById('emailCliente').value = '';
+            document.getElementById('observacoesCliente').value = '';
             document.querySelector('#modalCliente h3').textContent = '👤 Novo Cliente';
             this.textContent = 'Salvar';
             this.dataset.index = '';
@@ -1449,6 +1496,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('btnWhatsApp')?.addEventListener('click', enviarWhatsApp);
     document.getElementById('salvarCliente')?.addEventListener('click', adicionarCliente);
     document.getElementById('salvarProduto')?.addEventListener('click', adicionarProduto);
+    document.getElementById('btnBuscarCNPJ')?.addEventListener('click', buscarCNPJ);
     document.getElementById('fecharModalCliente')?.addEventListener('click', function () { fecharModal('modalCliente'); });
     document.getElementById('fecharModalProduto')?.addEventListener('click', function () { fecharModal('modalProduto'); });
     document.getElementById('btnFecharOS')?.addEventListener('click', function () { fecharModal('modalOS'); });
