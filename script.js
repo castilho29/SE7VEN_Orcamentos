@@ -921,19 +921,11 @@ function imprimirRecibo() {
 // GERAR PDF - MODELO SE7VEN ENERGIA
 // ============================================
 
-function gerarPDF() {
-    const cliente = document.getElementById('selCliente').value;
-    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
-    const itens = pegarItensOrcamentoAtual();
-    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
-
-    const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
+function montarConteudoOrcamentoPDF(cliente, itens, total, clienteData) {
     const data = new Date();
     const dataFormatada = data.toLocaleDateString('pt-BR');
     const dataInvertida = data.getDate().toString().padStart(2, '0') + '/' +
         (data.getMonth() + 1).toString().padStart(2, '0') + '/' + data.getFullYear();
-
-    const clienteData = clientes.find(c => c.nome === cliente);
     const numeroOrcamento = 'ORC-' + Date.now().toString().slice(-6);
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
 
@@ -1015,6 +1007,19 @@ function gerarPDF() {
     </body></html>
     `;
 
+    return { conteudo, dataFormatada, numeroOrcamento };
+}
+
+function gerarPDF() {
+    const cliente = document.getElementById('selCliente').value;
+    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
+
+    const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
+    const clienteData = clientes.find(c => c.nome === cliente);
+    const { conteudo, dataFormatada } = montarConteudoOrcamentoPDF(cliente, itens, total, clienteData);
+
     const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
     if (!win) { alert('⚠️ Por favor, permita pop-ups para gerar o PDF'); return; }
     win.document.write(conteudo);
@@ -1087,12 +1092,73 @@ function enviarWhatsApp() {
     registrarLog('WHATSAPP_ENVIADO', `Orçamento para ${cliente} aberto no WhatsApp`);
 }
 
-function enviarPDFWhatsApp() {
+async function enviarPDFWhatsApp() {
     const cliente = document.getElementById('selCliente').value;
     if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
-    gerarPDF();
-    alert('📄 O PDF está sendo gerado/baixado. Depois de baixar, toque em "Enviar" no WhatsApp que vai abrir e anexe o arquivo — o navegador não permite anexar automaticamente.');
-    setTimeout(enviarWhatsApp, 2000);
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
+    const total = itens.reduce((s, i) => s + i.subtotal, 0);
+    const clienteData = clientes.find(c => c.nome === cliente);
+    const { conteudo, dataFormatada } = montarConteudoOrcamentoPDF(cliente, itens, total, clienteData);
+    const mensagem = montarMensagemOrcamento(cliente, itens, total);
+    const nomeArquivo = `Orcamento_${EMPRESA.nomeAbreviado}_${cliente.replace(/\s/g, '_')}_${dataFormatada.replace(/\//g, '-')}.pdf`;
+
+    atualizarStatus('⏳ Gerando PDF para compartilhar...');
+
+    const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+    if (!win) { alert('⚠️ Por favor, permita pop-ups para gerar o PDF'); return; }
+    win.document.write(conteudo);
+    win.document.close();
+
+    setTimeout(() => {
+        const script = win.document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        script.onload = async function () {
+            try {
+                const opt = {
+                    margin: 0.5,
+                    filename: nomeArquivo,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
+                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                };
+                const blob = await win.html2pdf().set(opt).from(win.document.body).outputPdf('blob');
+                win.close();
+
+                // Tenta o compartilhamento nativo do celular (anexa o PDF direto na conversa).
+                // Só existe em navegadores mobile modernos (Android/iOS); no computador cai no plano B.
+                const arquivo = new File([blob], nomeArquivo, { type: 'application/pdf' });
+                if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+                    try {
+                        await navigator.share({ files: [arquivo], title: `Orçamento ${cliente}`, text: mensagem });
+                        atualizarStatus('✅ PDF enviado para compartilhar!');
+                        registrarLog('WHATSAPP_ENVIADO', `Orçamento (PDF) para ${cliente} compartilhado`);
+                        return;
+                    } catch (e) {
+                        if (e.name === 'AbortError') { atualizarStatus('Envio cancelado'); return; } // usuário cancelou o compartilhamento
+                    }
+                }
+
+                // Plano B (computador ou navegador sem suporte a compartilhar arquivos):
+                // baixa o PDF e abre o WhatsApp com a mensagem — falta só anexar o arquivo na mão.
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = nomeArquivo; a.click();
+                URL.revokeObjectURL(url);
+                alert('📄 Seu navegador baixou o PDF, mas não consegue anexá-lo automaticamente ao WhatsApp. Vou abrir a conversa com a mensagem pronta — é só anexar o arquivo que acabou de baixar.');
+                window.open(`https://wa.me/${formatarTelefoneWhatsApp(clienteData?.telefone) || EMPRESA.whatsapp}?text=${encodeURIComponent(mensagem)}`, '_blank');
+                registrarLog('WHATSAPP_ENVIADO', `Orçamento para ${cliente}: PDF baixado + WhatsApp aberto`);
+            } catch (err) {
+                win.close();
+                alert('❌ Erro ao gerar o PDF para envio. Tente novamente.');
+            }
+        };
+        script.onerror = function () {
+            win.close();
+            alert('❌ Não foi possível carregar o gerador de PDF. Verifique sua internet e tente de novo.');
+        };
+        win.document.head.appendChild(script);
+    }, 1500);
 }
 
 // ============================================
