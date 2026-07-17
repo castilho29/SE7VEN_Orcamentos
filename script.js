@@ -40,10 +40,10 @@ const EMPRESA = {
     nomeAbreviado: 'SE7VEN',
     telefone: '(93) 98102-7290',
     whatsapp: '5593981027290',
-    email: 'contato@se7venenergia.com',
-    site: 'www.se7venenergia.com',
+    email: 'se7venenergia@gmail.com',
+    instagram: '@se7venenergia',
     cnpj: '62.008.856/0001-60',
-    endereco: 'Novo Progresso/PA',
+    endereco: 'Rua Dourados, 626 - Novo Progresso/PA',
     corPrimaria: '#1a237e',
     formasPagamento: ['Pix à vista', 'Cartão de Crédito (até 10x)', 'Boleto Bancário'],
     observacoes: [
@@ -989,7 +989,7 @@ function gerarPDF() {
         </div>
         <div class="empresa-dados">
             <strong>${EMPRESA.nome}</strong> — CNPJ: ${EMPRESA.cnpj}<br>
-            ${EMPRESA.endereco} &nbsp;|&nbsp; 📞 ${EMPRESA.telefone} &nbsp;|&nbsp; 📧 ${EMPRESA.email} &nbsp;|&nbsp; 🌐 ${EMPRESA.site}
+            ${EMPRESA.endereco} &nbsp;|&nbsp; 📞 ${EMPRESA.telefone} &nbsp;|&nbsp; 📧 ${EMPRESA.email} &nbsp;|&nbsp; 📷 ${EMPRESA.instagram}
         </div>
         <div class="cliente-box">
             <div class="titulo">CLIENTE:</div>
@@ -1011,7 +1011,7 @@ function gerarPDF() {
         <ul class="observacoes">
             ${EMPRESA.observacoes.map(obs => `<li>${obs}</li>`).join('')}
         </ul>
-        <div class="rodape"><p><span class="destaque">${EMPRESA.nome}</span> — CNPJ ${EMPRESA.cnpj}</p><p>📧 ${EMPRESA.email} | 📱 ${EMPRESA.telefone} | 🌐 ${EMPRESA.site}</p></div>
+        <div class="rodape"><p><span class="destaque">${EMPRESA.nome}</span> — CNPJ ${EMPRESA.cnpj}</p><p>📧 ${EMPRESA.email} | 📱 ${EMPRESA.telefone} | 📷 ${EMPRESA.instagram}</p></div>
     </body></html>
     `;
 
