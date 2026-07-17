@@ -887,6 +887,8 @@ function gerarPDF() {
         (data.getMonth() + 1).toString().padStart(2, '0') + '/' + data.getFullYear();
 
     const clienteData = clientes.find(c => c.nome === cliente);
+    const numeroOrcamento = 'ORC-' + Date.now().toString().slice(-6);
+    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
 
     const conteudo = `
     <!DOCTYPE html>
@@ -894,10 +896,15 @@ function gerarPDF() {
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: Arial, Helvetica, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; background: white; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .header h1 { color: #1a237e; font-size: 32px; font-weight: 900; letter-spacing: 3px; margin: 0; }
-            .header .subtitle { color: #666; font-size: 14px; font-weight: bold; margin: 0; letter-spacing: 2px; }
-            .data { text-align: right; font-size: 14px; margin-bottom: 20px; }
+            .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #1a237e; padding-bottom: 15px; margin-bottom: 15px; }
+            .header .marca { display: flex; align-items: center; gap: 12px; }
+            .header img { height: 55px; width: auto; border-radius: 8px; object-fit: contain; }
+            .header h1 { color: #1a237e; font-size: 22px; font-weight: 900; letter-spacing: 1px; margin: 0; }
+            .header .subtitle { color: #666; font-size: 11px; font-weight: bold; margin: 2px 0 0 0; letter-spacing: 1px; }
+            .header .doc-info { text-align: right; font-size: 12px; color: #444; }
+            .header .doc-info .tag { display: inline-block; background: #1a237e; color: white; font-weight: bold; font-size: 13px; padding: 4px 10px; border-radius: 4px; margin-bottom: 6px; }
+            .empresa-dados { font-size: 11px; color: #555; margin-bottom: 20px; line-height: 1.5; border-bottom: 1px solid #ddd; padding-bottom: 12px; }
+            .empresa-dados strong { color: #1a237e; }
             .cliente-box { background: #f5f5f5; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #1a237e; }
             .cliente-box .titulo { color: #1a237e; font-size: 14px; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
             .cliente-box p { margin: 3px 0; font-size: 14px; }
@@ -909,17 +916,34 @@ function gerarPDF() {
             table tr:last-child td { border-bottom: none; }
             .text-center { text-align: center; } .text-right { text-align: right; }
             .total-box { text-align: right; padding: 12px; font-size: 18px; font-weight: bold; border-top: 2px solid #1a237e; margin: 10px 0 30px 0; }
-            .pagamento { background: #e8f5e9; padding: 15px; border-radius: 4px; border-left: 4px solid #2e7d32; margin-top: 30px; }
+            .pagamento { background: #e8f5e9; padding: 15px; border-radius: 4px; border-left: 4px solid #2e7d32; margin-top: 20px; }
             .pagamento .titulo { font-weight: bold; color: #1a237e; }
             .pagamento p { margin: 0; font-size: 14px; }
-            .rodape { margin-top: 40px; text-align: center; color: #999; font-size: 11px; border-top: 1px solid #ddd; padding-top: 15px; }
+            .observacoes { margin-top: 15px; font-size: 11px; color: #666; }
+            .observacoes li { margin: 3px 0 3px 15px; }
+            .rodape { margin-top: 30px; text-align: center; color: #999; font-size: 11px; border-top: 1px solid #ddd; padding-top: 15px; }
             .rodape p { margin: 2px 0; } .rodape .destaque { color: #1a237e; font-weight: bold; }
             @media print { body { padding: 20px; } }
         </style>
     </head>
     <body>
-        <div class="header"><h1>SE7VEN ENERGIA</h1><p class="subtitle">ORÇAMENTO</p></div>
-        <div class="data"><strong>Data:</strong> ${dataInvertida}</div>
+        <div class="header">
+            <div class="marca">
+                <img src="${baseUrl}logo.png" alt="${EMPRESA.nomeAbreviado}" onerror="this.style.display='none'">
+                <div>
+                    <h1>${EMPRESA.nome}</h1>
+                    <p class="subtitle">ORÇAMENTO DE SERVIÇOS ELÉTRICOS</p>
+                </div>
+            </div>
+            <div class="doc-info">
+                <span class="tag">Nº ${numeroOrcamento}</span><br>
+                Data: ${dataInvertida}
+            </div>
+        </div>
+        <div class="empresa-dados">
+            <strong>${EMPRESA.nome}</strong> — CNPJ: ${EMPRESA.cnpj}<br>
+            ${EMPRESA.endereco} &nbsp;|&nbsp; 📞 ${EMPRESA.telefone} &nbsp;|&nbsp; 📧 ${EMPRESA.email} &nbsp;|&nbsp; 🌐 ${EMPRESA.site}
+        </div>
         <div class="cliente-box">
             <div class="titulo">CLIENTE:</div>
             <p><span class="label">Nome:</span> ${cliente}</p>
@@ -936,8 +960,11 @@ function gerarPDF() {
             </tbody>
         </table>
         <div class="total-box"><strong>Total: R$ ${total.toFixed(2)}</strong></div>
-        <div class="pagamento"><p class="titulo">FORMA DE PAGAMENTO</p><p>Aceitamos Pix à vista e Cartão de Crédito</p></div>
-        <div class="rodape"><p><span class="destaque">SE7VEN ENERGIA</span> - Orçamento gerado automaticamente</p><p>📧 contato@se7venenergia.com | 📱 (93) 98102-7290</p></div>
+        <div class="pagamento"><p class="titulo">FORMA DE PAGAMENTO</p><p>${EMPRESA.formasPagamento.join(' • ')}</p></div>
+        <ul class="observacoes">
+            ${EMPRESA.observacoes.map(obs => `<li>${obs}</li>`).join('')}
+        </ul>
+        <div class="rodape"><p><span class="destaque">${EMPRESA.nome}</span> — CNPJ ${EMPRESA.cnpj}</p><p>📧 ${EMPRESA.email} | 📱 ${EMPRESA.telefone} | 🌐 ${EMPRESA.site}</p></div>
     </body></html>
     `;
 
