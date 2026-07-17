@@ -52,12 +52,10 @@
         .sync-status .status.offline{color:#e74c3c;}
         .sync-status .status.sincronizando{color:#f39c12;}
         
-        .backup-info{background:#e8f5e9;padding:10px 15px;border-radius:8px;margin-bottom:15px;}
-        .backup-info strong{color:#2e7d32;font-size:13px;display:block;margin-bottom:5px;}
-        .backup-buttons{display:flex;gap:8px;flex-wrap:wrap;}
-        .backup-buttons button{font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;font-weight:bold;}
         .btn-backup{background:#27ae60;color:white;}
         .btn-restore{background:#f39c12;color:white;}
+        .backup-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+        .backup-grid button{padding:12px 8px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;color:white;text-align:center;line-height:1.3;}
         
         .tab-container{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap;}
         .tab-btn{padding:8px 16px;border:1px solid #bdc3c7;background:white;border-radius:4px;cursor:pointer;font-size:12px;transition:all 0.3s;}
@@ -224,17 +222,7 @@
             <div id="syncProgress" style="display:none;margin-top:5px;font-size:12px;color:#1a237e;">⏳ Sincronizando...</div>
         </div>
 
-        <!-- BACKUP -->
-        <div class="backup-info">
-            <strong>💾 BACKUP</strong>
-            <div class="backup-buttons">
-                <button class="btn-backup" onclick="exportarDados()">📤 Exportar JSON</button>
-                <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📥 Importar JSON</button>
-                <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
-                <button class="btn-backup" onclick="backupGit()" style="background:#24292e;color:white;">🐙 Backup Git</button>
-                <button class="btn-backup" onclick="backupGoogleDrive()" style="background:#4285f4;color:white;">☁️ Google Drive</button>
-            </div>
-        </div>
+        <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
 
         <!-- ABAS -->
         <div class="tab-container">
@@ -403,34 +391,20 @@
         <div id="tabConfig" class="tab-content">
             <section>
                 <h2>⚙️ Configurações</h2>
-                
-                <!-- Backup Google Drive -->
-                <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid #4285f4;">
-                    <h3 style="color:#4285f4;font-size:15px;margin-bottom:10px;">☁️ Backup Google Drive</h3>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <button onclick="backupGoogleDrive()" style="background:#4285f4;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">📤 Backup Drive</button>
-                        <button onclick="restaurarGoogleDrive()" style="background:#34a853;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">📥 Restaurar Drive</button>
+
+                <!-- Backup e Dados -->
+                <div style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #1a237e;">
+                    <h3 style="color:#1a237e;font-size:15px;margin-bottom:5px;">💾 Backup e Dados</h3>
+                    <div class="backup-grid">
+                        <button onclick="exportarDados()" style="background:#27ae60;">📤 Exportar JSON</button>
+                        <button onclick="document.getElementById('fileInput').click()" style="background:#f39c12;">📥 Importar JSON</button>
+                        <button onclick="backupGit()" style="background:#24292e;">🐙 Backup Git</button>
+                        <button onclick="backupGoogleDrive()" style="background:#4285f4;">☁️ Backup Drive</button>
+                        <button onclick="restaurarGoogleDrive()" style="background:#34a853;">📥 Restaurar Drive</button>
+                        <button onclick="recarregarDados()" style="background:#3498db;">🔄 Recarregar</button>
+                        <button onclick="limparDadosLocais()" style="background:#e74c3c;grid-column:span 2;">🗑️ Limpar cache local</button>
                     </div>
-                </div>
-                
-                <!-- Backup Git -->
-                <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid #24292e;">
-                    <h3 style="color:#24292e;font-size:15px;margin-bottom:10px;">🐙 Backup Git</h3>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <button onclick="backupGit()" style="background:#24292e;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">📤 Backup Git</button>
-                    </div>
-                </div>
-                
-                <!-- Dados -->
-                <div style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #e74c3c;">
-                    <h3 style="color:#e74c3c;font-size:15px;margin-bottom:10px;">🗄️ Gerenciar Dados</h3>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-                        <button onclick="exportarDados()" class="btn-backup">📤 Exportar</button>
-                        <button onclick="document.getElementById('fileInput').click()" class="btn-restore">📥 Importar</button>
-                        <button onclick="recarregarDados()" class="btn-info" style="background:#3498db;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">🔄 Recarregar</button>
-                        <button onclick="limparDadosLocais()" class="btn-danger" style="padding:6px 12px;">🗑️ Limpar cache local</button>
-                    </div>
-                    <div style="font-size:12px;color:#666;background:white;padding:10px;border-radius:4px;">
+                    <div style="font-size:12px;color:#666;background:white;padding:10px;border-radius:4px;margin-top:12px;">
                         <strong>📊 Estatísticas:</strong><br>
                         <span id="statsClientes">Clientes: 0</span><br>
                         <span id="statsProdutos">Produtos: 0</span><br>
@@ -447,7 +421,7 @@
     
     <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
     
-    <div id="modalOS" class="modal"><div class="modal-content" style="max-width:500px;"><h3>🔧 Detalhes da OS</h3><div id="detalhesOS"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnAprovarOS" class="btn-success" style="display:none;">✅ Aprovar</button><button id="btnIniciarOS" class="btn-warning" style="display:none;">🔧 Iniciar</button><button id="btnConcluirOS" class="btn-success" style="display:none;">✅ Concluir</button><button id="btnCancelarOS" class="btn-danger" style="display:none;">❌ Cancelar</button><button id="btnEmitirRecibo" class="btn-primary" style="display:none;">💰 Recibo</button><button id="btnFecharOS" class="btn-secondary">Fechar</button></div></div></div>
+    <div id="modalOS" class="modal"><div class="modal-content" style="max-width:500px;"><h3>🔧 Detalhes da OS</h3><div id="detalhesOS"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnEditarOS" class="btn-info">✏️ Editar</button><button id="btnReimprimirOS" class="btn-primary">🖨️ Reimprimir PDF</button><button id="btnAprovarOS" class="btn-success" style="display:none;">✅ Aprovar</button><button id="btnIniciarOS" class="btn-warning" style="display:none;">🔧 Iniciar</button><button id="btnConcluirOS" class="btn-success" style="display:none;">✅ Concluir</button><button id="btnCancelarOS" class="btn-danger" style="display:none;">❌ Cancelar</button><button id="btnEmitirRecibo" class="btn-primary" style="display:none;">💰 Recibo</button><button id="btnFecharOS" class="btn-secondary">Fechar</button></div></div></div>
     
     <div id="modalRecibo" class="modal"><div class="modal-content" style="max-width:500px;"><h3>💰 Recibo</h3><div id="conteudoRecibo" class="recibo-area"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnMarcarPago" class="btn-success">✅ Marcar Pago</button><button id="btnImprimirRecibo" class="btn-primary">🖨️ Imprimir</button><button id="btnFecharRecibo" class="btn-secondary">Fechar</button></div></div></div>
 
