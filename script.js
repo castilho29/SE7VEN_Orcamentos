@@ -69,6 +69,7 @@ let syncTimeout = null;
 let realtimeChannel = null;
 let osAtual = null;
 let reciboAtual = null;
+let editandoOSId = null;
 let sincronizando = false;
 let ultimaSync = null;
 
@@ -592,8 +593,7 @@ function renderSelectProdutos() {
 // ORÇAMENTO
 // ============================================
 
-function adicionarItem() {
-    if (produtos.length === 0) { alert('⚠️ Cadastre um produto primeiro!'); return; }
+function criarLinhaItem(nomeSelecionado = '', qtd = 1) {
     const div = document.createElement('div');
     div.className = 'item-orcamento';
     div.innerHTML = `
@@ -601,12 +601,18 @@ function adicionarItem() {
             <option value="">Selecione um produto</option>
             ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('')}
         </select>
-        <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
+        <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="${qtd}">
         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
     `;
-    document.getElementById('itensOrcamento').appendChild(div);
+    if (nomeSelecionado) div.querySelector('.selProduto').value = nomeSelecionado;
     div.querySelector('.selProduto').addEventListener('change', updateTotal);
     div.querySelector('.qtdProduto').addEventListener('input', updateTotal);
+    return div;
+}
+
+function adicionarItem() {
+    if (produtos.length === 0) { alert('⚠️ Cadastre um produto primeiro!'); return; }
+    document.getElementById('itensOrcamento').appendChild(criarLinhaItem());
     updateTotal();
 }
 
@@ -638,19 +644,11 @@ function pegarItensOrcamentoAtual() {
 function limparOrcamento() {
     if (!confirm('Limpar todos os itens?')) return;
     document.getElementById('itensOrcamento').innerHTML = '';
-    const div = document.createElement('div');
-    div.className = 'item-orcamento';
-    div.innerHTML = `
-        <select class="selProduto"><option value="">Selecione um produto</option>${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('')}</select>
-        <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
-        <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
-    `;
-    document.getElementById('itensOrcamento').appendChild(div);
-    div.querySelector('.selProduto').addEventListener('change', updateTotal);
-    div.querySelector('.qtdProduto').addEventListener('input', updateTotal);
+    document.getElementById('itensOrcamento').appendChild(criarLinhaItem());
     updateTotal();
     document.getElementById('selCliente').value = '';
     document.getElementById('resultadoProjeto').innerHTML = '';
+    editandoOSId = null;
     atualizarStatus('🧹 Orçamento limpo!');
 }
 
@@ -661,6 +659,30 @@ async function salvarOrcamento() {
     if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item!'); return; }
     const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
     const clienteData = clientes.find(c => c.nome === cliente);
+
+    // Editando um orçamento já existente: atualiza em vez de criar um novo
+    if (editandoOSId) {
+        const osExistente = ordensServico.find(o => o.id === editandoOSId);
+        if (!osExistente) { alert('⚠️ Não encontrei esse orçamento — talvez tenha sido removido.'); editandoOSId = null; return; }
+        const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total };
+        try {
+            const { error } = await sb.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
+            if (error) throw error;
+            const idx = ordensServico.findIndex(o => o.id === editandoOSId);
+            if (idx >= 0) ordensServico[idx] = osAtualizada;
+            listarOS();
+            atualizarStatus(`✅ Orçamento ${osAtualizada.numero} atualizado!`);
+            registrarLog('OS_EDITADA', `OS ${osAtualizada.numero} editada`);
+            alert(`✅ Orçamento ${osAtualizada.numero} atualizado!\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
+            editandoOSId = null;
+            limparOrcamento();
+            abrirTab('tabOS');
+        } catch (e) {
+            alert('❌ Erro ao atualizar orçamento: ' + e.message);
+        }
+        return;
+    }
+
     const novaOS = {
         id: gerarId(),
         numero: 'OS-' + (ordensServico.length + 1).toString().padStart(4, '0'),
@@ -745,6 +767,32 @@ function abrirOS(id) {
     document.getElementById('btnEmitirRecibo').style.display = os.status === 'concluido' ? 'inline-block' : 'none';
     osAtual = os;
     abrirModal('modalOS');
+}
+
+function editarOS(id) {
+    const os = ordensServico.find(o => o.id === id) || osAtual;
+    if (!os) return;
+    editandoOSId = os.id;
+    document.getElementById('selCliente').value = os.cliente_nome;
+    const container = document.getElementById('itensOrcamento');
+    container.innerHTML = '';
+    (os.itens && os.itens.length ? os.itens : [{ nome: '', qtd: 1 }]).forEach(item => {
+        container.appendChild(criarLinhaItem(item.nome, item.qtd));
+    });
+    updateTotal();
+    fecharModal('modalOS');
+    abrirTab('tabOrcamento');
+    atualizarStatus(`✏️ Editando orçamento ${os.numero} — altere os itens e clique em Salvar`);
+}
+
+function reimprimirOS(id) {
+    const os = ordensServico.find(o => o.id === id) || osAtual;
+    if (!os) return;
+    const clienteData = clientes.find(c => c.nome === os.cliente_nome);
+    const { conteudo } = montarConteudoOrcamentoPDF(os.cliente_nome, os.itens || [], os.total || 0, clienteData);
+    const nomeArquivo = `Orcamento_${EMPRESA.nomeAbreviado}_${os.numero}_${os.cliente_nome.replace(/\s/g, '_')}.pdf`;
+    fecharModal('modalOS');
+    baixarPDFDoConteudo(conteudo, nomeArquivo);
 }
 
 async function atualizarStatusOS(novoStatus, mensagem, acao) {
@@ -1010,16 +1058,7 @@ function montarConteudoOrcamentoPDF(cliente, itens, total, clienteData) {
     return { conteudo, dataFormatada, numeroOrcamento };
 }
 
-function gerarPDF() {
-    const cliente = document.getElementById('selCliente').value;
-    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
-    const itens = pegarItensOrcamentoAtual();
-    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
-
-    const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
-    const clienteData = clientes.find(c => c.nome === cliente);
-    const { conteudo, dataFormatada } = montarConteudoOrcamentoPDF(cliente, itens, total, clienteData);
-
+function baixarPDFDoConteudo(conteudo, nomeArquivo) {
     const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
     if (!win) { alert('⚠️ Por favor, permita pop-ups para gerar o PDF'); return; }
     win.document.write(conteudo);
@@ -1033,7 +1072,7 @@ function gerarPDF() {
                 const element = win.document.body;
                 const opt = {
                     margin: 0.5,
-                    filename: `Orcamento_${EMPRESA.nomeAbreviado}_${cliente.replace(/\s/g, '_')}_${dataFormatada.replace(/\//g, '-')}.pdf`,
+                    filename: nomeArquivo,
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
                     jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -1056,6 +1095,19 @@ function gerarPDF() {
             alert('❌ Erro ao gerar PDF. Tente novamente.');
         }
     }, 1500);
+}
+
+function gerarPDF() {
+    const cliente = document.getElementById('selCliente').value;
+    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
+
+    const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
+    const clienteData = clientes.find(c => c.nome === cliente);
+    const { conteudo, dataFormatada } = montarConteudoOrcamentoPDF(cliente, itens, total, clienteData);
+    const nomeArquivo = `Orcamento_${EMPRESA.nomeAbreviado}_${cliente.replace(/\s/g, '_')}_${dataFormatada.replace(/\//g, '-')}.pdf`;
+    baixarPDFDoConteudo(conteudo, nomeArquivo);
 }
 
 // ============================================
@@ -1579,6 +1631,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('btnFecharRecibo')?.addEventListener('click', function () { fecharModal('modalRecibo'); });
 
     // Eventos da OS
+    document.getElementById('btnEditarOS')?.addEventListener('click', () => editarOS(osAtual?.id));
+    document.getElementById('btnReimprimirOS')?.addEventListener('click', () => reimprimirOS(osAtual?.id));
     document.getElementById('btnAprovarOS')?.addEventListener('click', aprovarOS);
     document.getElementById('btnIniciarOS')?.addEventListener('click', iniciarOS);
     document.getElementById('btnConcluirOS')?.addEventListener('click', concluirOS);
