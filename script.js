@@ -305,6 +305,87 @@ async function semearProdutosPadrao() {
 }
 
 // ============================================
+// LEITOR DE CÓDIGO DE BARRAS (câmera do celular)
+// Não existe base pública/gratuita de nome+preço por código de barras
+// (diferente do CNPJ, que é registro público). O que dá pra automatizar
+// de verdade é a LEITURA do código e o reconhecimento dentro do seu
+// próprio catálogo já cadastrado.
+// ============================================
+
+let scannerStream = null;
+let scannerAtivo = false;
+
+async function abrirScanner(aoDetectar) {
+    if (!('BarcodeDetector' in window)) {
+        alert('⚠️ Seu navegador não suporta leitura de código de barras pela câmera (funciona no Chrome/Android). Digite o código manualmente.');
+        return;
+    }
+    const video = document.getElementById('videoScanner');
+    const statusEl = document.getElementById('scannerStatus');
+    try {
+        scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = scannerStream;
+        abrirModal('modalScanner');
+        statusEl.textContent = 'Aponte a câmera para o código de barras';
+        scannerAtivo = true;
+
+        const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
+        const loop = async () => {
+            if (!scannerAtivo) return;
+            try {
+                const codigos = await detector.detect(video);
+                if (codigos.length > 0) {
+                    const valor = codigos[0].rawValue;
+                    statusEl.textContent = `✅ Código lido: ${valor}`;
+                    fecharScanner();
+                    aoDetectar(valor);
+                    return;
+                }
+            } catch (e) { /* frame sem leitura, ignora e tenta o próximo */ }
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    } catch (e) {
+        alert('❌ Não foi possível acessar a câmera. Verifique se você permitiu o acesso.');
+        fecharScanner();
+    }
+}
+
+function fecharScanner() {
+    scannerAtivo = false;
+    if (scannerStream) {
+        scannerStream.getTracks().forEach(t => t.stop());
+        scannerStream = null;
+    }
+    fecharModal('modalScanner');
+}
+
+function escanearParaProduto() {
+    abrirScanner((codigo) => {
+        const existente = produtos.findIndex(p => p.codigo_barras === codigo);
+        if (existente >= 0) {
+            atualizarStatus(`✅ Produto encontrado: ${produtos[existente].nome}`);
+            editarProduto(existente);
+        } else {
+            atualizarStatus('ℹ️ Código novo — complete o cadastro do produto');
+            document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
+            document.getElementById('nomeProduto').value = '';
+            document.getElementById('precoProduto').value = '';
+            document.getElementById('tipoProduto').value = 'material';
+            document.getElementById('codigoBarrasProduto').value = codigo;
+            abrirModal('modalProduto');
+            document.getElementById('nomeProduto').focus();
+        }
+    });
+}
+
+function escanearParaModalProduto() {
+    abrirScanner((codigo) => {
+        document.getElementById('codigoBarrasProduto').value = codigo;
+    });
+}
+
+// ============================================
 // BUSCA DE CNPJ (dados públicos da Receita Federal via BrasilAPI)
 // Só funciona para CNPJ. CPF não tem base pública/legal para consulta
 // de nome e endereço — dado pessoal protegido pela LGPD.
@@ -493,6 +574,7 @@ function renderProdutos() {
                 <strong>${p.nome}</strong>
                 <br><small>R$ ${Number(p.preco).toFixed(2)}</small>
                 <br><small>📂 ${p.tipo || 'outro'}</small>
+                ${p.codigo_barras ? `<br><small>🔢 ${p.codigo_barras}</small>` : ''}
             </span>
             <div style="display:flex;gap:5px;">
                 <button onclick="editarProduto(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
@@ -506,14 +588,16 @@ async function adicionarProduto() {
     const nome = document.getElementById('nomeProduto').value.trim();
     const preco = parseFloat(document.getElementById('precoProduto').value);
     const tipo = document.getElementById('tipoProduto').value;
+    const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
     if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
-    const novoProduto = { id: gerarId(), nome, preco, tipo };
+    const novoProduto = { id: gerarId(), nome, preco, tipo, codigo_barras: codigoBarras || null };
     try {
         const { error } = await sb.from('produtos').upsert(novoProduto, { onConflict: 'id' });
         if (error) throw error;
         produtos.push(novoProduto);
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
+        document.getElementById('codigoBarrasProduto').value = '';
         fecharModal('modalProduto');
         renderProdutos();
         renderSelectProdutos();
@@ -546,6 +630,7 @@ function editarProduto(index) {
     document.getElementById('nomeProduto').value = p.nome;
     document.getElementById('precoProduto').value = p.preco;
     document.getElementById('tipoProduto').value = p.tipo || 'outro';
+    document.getElementById('codigoBarrasProduto').value = p.codigo_barras || '';
     document.querySelector('#modalProduto h3').textContent = '✏️ Editar Produto';
     const btn = document.getElementById('salvarProduto');
     btn.textContent = '💾 Atualizar';
@@ -557,14 +642,16 @@ function editarProduto(index) {
         const nome = document.getElementById('nomeProduto').value.trim();
         const preco = parseFloat(document.getElementById('precoProduto').value);
         const tipo = document.getElementById('tipoProduto').value;
+        const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
         if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
-        const produtoAtualizado = { ...produtos[idx], nome, preco, tipo };
+        const produtoAtualizado = { ...produtos[idx], nome, preco, tipo, codigo_barras: codigoBarras || null };
         try {
             const { error } = await sb.from('produtos').upsert(produtoAtualizado, { onConflict: 'id' });
             if (error) throw error;
             produtos[idx] = produtoAtualizado;
             document.getElementById('nomeProduto').value = '';
             document.getElementById('precoProduto').value = '';
+            document.getElementById('codigoBarrasProduto').value = '';
             document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
             this.textContent = 'Salvar';
             this.dataset.index = '';
@@ -1335,7 +1422,7 @@ function carregarLogo() {
     const header = document.getElementById('headerLogo');
     if (!header) return;
     header.innerHTML = `
-        <img src="logo.png" alt="SE7VEN" style="height:35px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px;" onerror="this.style.display='none'">
+        <img src="logo.png" alt="SE7VEN" style="height:48px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px;" onerror="this.style.display='none'">
         <h1 class="logo-title">SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
     `;
 }
@@ -1604,15 +1691,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     // Eventos dos Botões
-    document.getElementById('btnNovo')?.addEventListener('click', function () {
-        abrirTab('tabOrcamento');
-        document.getElementById('tabOrcamento')?.scrollIntoView({ behavior: 'smooth' });
-    });
     document.getElementById('btnAddCliente')?.addEventListener('click', function () {
         abrirModal('modalCliente');
         document.getElementById('nomeCliente').focus();
     });
     document.getElementById('btnAddProduto')?.addEventListener('click', function () {
+        document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
+        document.getElementById('nomeProduto').value = '';
+        document.getElementById('precoProduto').value = '';
+        document.getElementById('codigoBarrasProduto').value = '';
         abrirModal('modalProduto');
         document.getElementById('nomeProduto').focus();
     });
@@ -1625,6 +1712,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('salvarCliente')?.addEventListener('click', adicionarCliente);
     document.getElementById('salvarProduto')?.addEventListener('click', adicionarProduto);
     document.getElementById('btnBuscarCNPJ')?.addEventListener('click', buscarCNPJ);
+    document.getElementById('btnEscanearProduto')?.addEventListener('click', escanearParaProduto);
+    document.getElementById('btnEscanearModalProduto')?.addEventListener('click', escanearParaModalProduto);
+    document.getElementById('btnFecharScanner')?.addEventListener('click', fecharScanner);
     document.getElementById('fecharModalCliente')?.addEventListener('click', function () { fecharModal('modalCliente'); });
     document.getElementById('fecharModalProduto')?.addEventListener('click', function () { fecharModal('modalProduto'); });
     document.getElementById('btnFecharOS')?.addEventListener('click', function () { fecharModal('modalOS'); });
