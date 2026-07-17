@@ -9,7 +9,7 @@ console.log('⚡ Carregando sistema...');
 // ============================================
 const CFG = window.CONFIG || {};
 if (!CFG.SUPABASE) {
-    CFG.SUPABASE = { url: 'https://se7ven-energia.supabase.co', publicKey: '' };
+    CFG.SUPABASE = { url: 'https://aqxrogqjeaxbckfxwbtt.supabase.co', publicKey: '' };
 }
 
 const SUPABASE_URL = CFG.SUPABASE.url;
