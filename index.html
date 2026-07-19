@@ -23,7 +23,7 @@
         
         header{display:flex;justify-content:space-between;align-items:center;background:white;padding:15px;border-radius:12px;margin-bottom:15px;box-shadow:0 2px 8px rgba(26,35,126,0.15);}
         .header-logo{display:flex;align-items:center;gap:10px;}
-        .header-logo img{height:48px;width:auto;border-radius:8px;object-fit:contain;}
+        .header-logo img{height:54px;width:auto;border-radius:8px;object-fit:contain;box-shadow:0 2px 6px rgba(26,35,126,0.25);}
         .header-logo .logo-title{font-size:18px;color:#1a237e;font-weight:900;letter-spacing:1px;}
         .btn-primary{background:#1a237e;color:white;border:none;padding:10px 18px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold;}
         .btn-secondary{background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;padding:8px 16px;border-radius:8px;font-size:14px;cursor:pointer;}
@@ -133,7 +133,7 @@
             .item-orcamento select,.item-orcamento input{width:100% !important;}
             .btn-remove-item{align-self:flex-end;margin-top:5px;}
             .footer-actions button{min-width:50px;font-size:10px;padding:6px 8px;}
-            .header-logo img{height:38px;}
+            .header-logo img{height:42px;}
             .header-logo .logo-title{font-size:14px;}
             .tab-btn{font-size:10px;padding:6px 10px;}
             .backup-buttons button{font-size:10px;padding:4px 8px;}
@@ -143,7 +143,7 @@
         }
         
         @media (max-width:360px){
-            .header-logo img{height:32px;}
+            .header-logo img{height:36px;}
             .header-logo .logo-title{font-size:12px;}
             .login-screen img{max-height:75px;}
             .login-screen h1{font-size:18px;}
@@ -191,12 +191,25 @@
         </div>
     </div>
 
+    <!-- ========== AGUARDANDO APROVAÇÃO ========== -->
+    <div id="pendingScreen" class="login-screen" style="display:none;">
+        <img src="logo.png" alt="SE7VEN ENERGIA" 
+             style="max-height:100px; width:auto; margin-bottom:10px; border-radius:12px; object-fit:contain;"
+             onerror="this.style.display='none'">
+        <h1>⏳ Aguardando aprovação</h1>
+        <p style="text-align:center;color:#666;font-size:14px;max-width:300px;margin-bottom:20px;">
+            Sua conta foi criada com sucesso! Um administrador do sistema precisa aprovar
+            seu acesso antes que você possa entrar. Fale com quem administra o SE7VEN ENERGIA.
+        </p>
+        <button onclick="fazerLogout()" class="btn-secondary" style="padding:10px 20px;">Sair</button>
+    </div>
+
     <!-- ========== SISTEMA ========== -->
     <div id="sistemaScreen" style="display:none;">
         <header>
             <div class="header-logo" id="headerLogo">
                 <img src="logo.png" alt="SE7VEN ENERGIA" 
-                     style="height:48px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px;"
+                     style="height:54px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px; box-shadow:0 2px 6px rgba(26,35,126,0.25);"
                      onerror="this.style.display='none'">
                 <h1 class="logo-title">SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
             </div>
@@ -383,8 +396,8 @@
                 <div id="listaUsuarios" class="user-list"></div>
                 <p style="font-size:12px;color:#666;margin-top:10px;">
                     Para adicionar alguém, peça para essa pessoa criar a própria conta na tela de login
-                    ("Criar uma agora"). Para torná-la administradora, isso é feito manualmente no
-                    painel do Supabase (tabela <code>profiles</code>, coluna <code>tipo</code>).
+                    ("Criar uma agora"). Ela vai entrar como <strong>⏳ Pendente</strong> até um administrador
+                    aprovar — se você for admin, escolha o perfil dela (Usuário ou Administrador) na lista acima.
                 </p>
             </section>
         </div>
@@ -398,11 +411,8 @@
                 <div style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #1a237e;">
                     <h3 style="color:#1a237e;font-size:15px;margin-bottom:5px;">💾 Backup e Dados</h3>
                     <div class="backup-grid">
-                        <button onclick="exportarDados()" style="background:#27ae60;">📤 Exportar JSON</button>
-                        <button onclick="document.getElementById('fileInput').click()" style="background:#f39c12;">📥 Importar JSON</button>
-                        <button onclick="backupGit()" style="background:#24292e;">🐙 Backup Git</button>
-                        <button onclick="backupGoogleDrive()" style="background:#4285f4;">☁️ Backup Drive</button>
-                        <button onclick="restaurarGoogleDrive()" style="background:#34a853;">📥 Restaurar Drive</button>
+                        <button onclick="enviarBackupGoogleDrive()" style="background:#4285f4;grid-column:span 2;">☁️ Enviar Backup para o Google Drive</button>
+                        <button onclick="document.getElementById('fileInput').click()" style="background:#f39c12;">📥 Restaurar Backup (JSON)</button>
                         <button onclick="recarregarDados()" style="background:#3498db;">🔄 Recarregar</button>
                         <button onclick="limparDadosLocais()" style="background:#e74c3c;grid-column:span 2;">🗑️ Limpar cache local</button>
                     </div>
@@ -421,7 +431,7 @@
     <!-- ========== MODAIS ========== -->
     <div id="modalCliente" class="modal"><div class="modal-content"><h3>👤 Novo Cliente</h3><input type="text" id="nomeCliente" placeholder="Nome *"><input type="tel" id="telefoneCliente" placeholder="Celular"><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="cpfCliente" placeholder="CPF/CNPJ" style="flex:1;"><button type="button" id="btnBuscarCNPJ" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">🔍 Buscar CNPJ</button></div><input type="text" id="enderecoCliente" placeholder="Endereço"><input type="email" id="emailCliente" placeholder="Email"><textarea id="observacoesCliente" placeholder="Observações (opcional)" style="width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;min-height:60px;resize:vertical;"></textarea><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
     
-    <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="codigoBarrasProduto" placeholder="Código de barras (opcional)" style="flex:1;"><button type="button" id="btnEscanearModalProduto" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">📷</button></div><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+    <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="codigoBarrasProduto" placeholder="Código de barras (opcional)" style="flex:1;"><button type="button" id="btnEscanearModalProduto" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">📷</button></div><label style="font-size:12px;color:#666;display:block;margin-top:8px;">📸 Foto do produto (opcional)</label><input type="file" id="fotoProduto" accept="image/*" capture="environment" style="padding:8px 0;"><img id="previewFotoProduto" style="display:none;max-width:120px;max-height:120px;border-radius:8px;margin:8px 0;object-fit:cover;"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
 
     <div id="modalScanner" class="modal"><div class="modal-content" style="max-width:420px;text-align:center;">
         <h3>📷 Escanear Código de Barras</h3>
@@ -437,6 +447,7 @@
     <!-- ========== BIBLIOTECAS ========== -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <!-- ========== CONFIGURAÇÃO E SCRIPT PRINCIPAL ========== -->
     <script src="config.js?v=2"></script>
