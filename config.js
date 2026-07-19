@@ -7,6 +7,12 @@ const CONFIG = {
     SUPABASE: {
         url: 'https://aqxrogqjeaxbckfxwbtt.supabase.co',
         publicKey: 'sb_publishable_23NQo9Pd7-hvhyhNQQrpHw_WP_o7DzM'
+    },
+    GOOGLE: {
+        // Client ID OAuth do Google Cloud Console (tipo "Web application").
+        // Veja o LEIA-ME.md para o passo a passo de como gerar o seu.
+        // Sem isso preenchido, o botão de backup no Drive avisa e permite baixar localmente.
+        driveClientId: ''
     }
 };
 if (typeof window !== 'undefined') {
