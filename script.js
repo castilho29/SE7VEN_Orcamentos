@@ -152,25 +152,39 @@ async function fazerLogout() {
 function mostrarTelaLogin() {
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('sistemaScreen').style.display = 'none';
+    document.getElementById('pendingScreen').style.display = 'none';
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginSenha').value = '';
 }
 
+function souAdmin() { return usuarioAtual?.tipo === 'admin'; }
+
 async function garantirPerfil(user) {
-    // Cria a linha em "profiles" na primeira vez que o usuário loga de verdade
+    // Cria a linha em "profiles" na primeira vez que o usuário loga de verdade.
+    // Novo cadastro entra como "pendente" — só passa a usar o sistema depois
+    // que um administrador aprovar (aba Usuários).
     const { data: existente } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if (existente) return existente;
     const nome = user.user_metadata?.nome || user.email;
     const { data: criado, error } = await sb.from('profiles')
-        .insert({ id: user.id, nome, tipo: 'usuario' })
+        .insert({ id: user.id, nome, tipo: 'pendente' })
         .select().single();
-    if (error) { console.warn('Não foi possível criar o perfil:', error.message); return { id: user.id, nome, tipo: 'usuario' }; }
+    if (error) { console.warn('Não foi possível criar o perfil:', error.message); return { id: user.id, nome, tipo: 'pendente' }; }
     return criado;
 }
 
 async function entrarNoSistema(user) {
     const perfil = await garantirPerfil(user);
     usuarioAtual = { id: user.id, email: user.email, nome: perfil.nome, tipo: perfil.tipo };
+
+    if (perfil.tipo === 'pendente') {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('sistemaScreen').style.display = 'none';
+        document.getElementById('pendingScreen').style.display = 'flex';
+        return;
+    }
+
+    document.getElementById('pendingScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('sistemaScreen').style.display = 'block';
     document.getElementById('nomeUsuario').textContent = usuarioAtual.nome;
@@ -570,11 +584,14 @@ function renderProdutos() {
     }
     lista.innerHTML = produtos.slice(0, 50).map((p, i) => `
         <li>
-            <span>
-                <strong>${p.nome}</strong>
-                <br><small>R$ ${Number(p.preco).toFixed(2)}</small>
-                <br><small>📂 ${p.tipo || 'outro'}</small>
-                ${p.codigo_barras ? `<br><small>🔢 ${p.codigo_barras}</small>` : ''}
+            <span style="display:flex;gap:10px;align-items:center;">
+                ${p.foto_url ? `<img src="${p.foto_url}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0;">` : ''}
+                <span>
+                    <strong>${p.nome}</strong>
+                    <br><small>R$ ${Number(p.preco).toFixed(2)}</small>
+                    <br><small>📂 ${p.tipo || 'outro'}</small>
+                    ${p.codigo_barras ? `<br><small>🔢 ${p.codigo_barras}</small>` : ''}
+                </span>
             </span>
             <div style="display:flex;gap:5px;">
                 <button onclick="editarProduto(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
@@ -584,20 +601,37 @@ function renderProdutos() {
     `).join('');
 }
 
+async function enviarFotoProduto(idProduto, arquivo) {
+    if (!arquivo) return null;
+    const extensao = arquivo.name.split('.').pop();
+    const caminho = `${idProduto}.${extensao}`;
+    const { error } = await sb.storage.from('produtos').upload(caminho, arquivo, { upsert: true });
+    if (error) throw error;
+    const { data } = sb.storage.from('produtos').getPublicUrl(caminho);
+    return data.publicUrl + '?t=' + Date.now(); // evita cache de imagem antiga
+}
+
 async function adicionarProduto() {
     const nome = document.getElementById('nomeProduto').value.trim();
     const preco = parseFloat(document.getElementById('precoProduto').value);
     const tipo = document.getElementById('tipoProduto').value;
     const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
+    const arquivoFoto = document.getElementById('fotoProduto').files[0];
     if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
-    const novoProduto = { id: gerarId(), nome, preco, tipo, codigo_barras: codigoBarras || null };
+    const novoProduto = { id: gerarId(), nome, preco, tipo, codigo_barras: codigoBarras || null, foto_url: null };
     try {
+        if (arquivoFoto) {
+            atualizarStatus('📸 Enviando foto...');
+            novoProduto.foto_url = await enviarFotoProduto(novoProduto.id, arquivoFoto);
+        }
         const { error } = await sb.from('produtos').upsert(novoProduto, { onConflict: 'id' });
         if (error) throw error;
         produtos.push(novoProduto);
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
         document.getElementById('codigoBarrasProduto').value = '';
+        document.getElementById('fotoProduto').value = '';
+        document.getElementById('previewFotoProduto').style.display = 'none';
         fecharModal('modalProduto');
         renderProdutos();
         renderSelectProdutos();
@@ -631,6 +665,9 @@ function editarProduto(index) {
     document.getElementById('precoProduto').value = p.preco;
     document.getElementById('tipoProduto').value = p.tipo || 'outro';
     document.getElementById('codigoBarrasProduto').value = p.codigo_barras || '';
+    document.getElementById('fotoProduto').value = '';
+    const preview = document.getElementById('previewFotoProduto');
+    if (p.foto_url) { preview.src = p.foto_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
     document.querySelector('#modalProduto h3').textContent = '✏️ Editar Produto';
     const btn = document.getElementById('salvarProduto');
     btn.textContent = '💾 Atualizar';
@@ -643,15 +680,22 @@ function editarProduto(index) {
         const preco = parseFloat(document.getElementById('precoProduto').value);
         const tipo = document.getElementById('tipoProduto').value;
         const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
+        const arquivoFoto = document.getElementById('fotoProduto').files[0];
         if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
         const produtoAtualizado = { ...produtos[idx], nome, preco, tipo, codigo_barras: codigoBarras || null };
         try {
+            if (arquivoFoto) {
+                atualizarStatus('📸 Enviando foto...');
+                produtoAtualizado.foto_url = await enviarFotoProduto(produtoAtualizado.id, arquivoFoto);
+            }
             const { error } = await sb.from('produtos').upsert(produtoAtualizado, { onConflict: 'id' });
             if (error) throw error;
             produtos[idx] = produtoAtualizado;
             document.getElementById('nomeProduto').value = '';
             document.getElementById('precoProduto').value = '';
             document.getElementById('codigoBarrasProduto').value = '';
+            document.getElementById('fotoProduto').value = '';
+            document.getElementById('previewFotoProduto').style.display = 'none';
             document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
             this.textContent = 'Salvar';
             this.dataset.index = '';
@@ -975,39 +1019,52 @@ function abrirRecibo(id) {
     reciboAtual = recibos.find(r => r.id === id);
     if (!reciboAtual) return;
     const data = new Date(reciboAtual.data_emissao).toLocaleDateString('pt-BR');
+    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
     let itensHTML = reciboAtual.itens?.map((item, i) => `
         <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
     `).join('') || '';
+    const statusPago = reciboAtual.status === 'pago';
     document.getElementById('conteudoRecibo').innerHTML = `
-        <div style="text-align:center;border-bottom:2px solid #1a237e;padding-bottom:10px;margin-bottom:15px;">
-            <h2 style="color:#1a237e;">${EMPRESA.nome}</h2>
-            <p style="color:#666;font-size:12px;">${EMPRESA.cnpj} | ${EMPRESA.endereco}</p>
-            <h3>RECIBO</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:3px solid #1a237e;padding-bottom:12px;margin-bottom:15px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <img src="${baseUrl}logo.png" alt="${EMPRESA.nomeAbreviado}" style="height:44px;width:auto;border-radius:6px;object-fit:contain;" onerror="this.style.display='none'">
+                <div>
+                    <div style="color:#1a237e;font-size:16px;font-weight:900;">${EMPRESA.nome}</div>
+                    <div style="color:#666;font-size:10px;">CNPJ: ${EMPRESA.cnpj}</div>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <span style="display:inline-block;background:#1a237e;color:white;font-size:12px;font-weight:bold;padding:3px 10px;border-radius:4px;">RECIBO</span>
+                <div style="font-size:11px;color:#666;margin-top:3px;">${reciboAtual.numero}</div>
+            </div>
         </div>
-        <div style="margin-bottom:10px;">
-            <p><strong>Nº:</strong> ${reciboAtual.numero}</p>
-            <p><strong>OS:</strong> ${reciboAtual.os_numero}</p>
-            <p><strong>Cliente:</strong> ${reciboAtual.cliente_nome}</p>
-            <p><strong>Data:</strong> ${data}</p>
-            <p><strong>Status:</strong> ${reciboAtual.status === 'pago' ? '✅ PAGO' : '⏳ PENDENTE'}</p>
+        <div style="font-size:10px;color:#777;margin-bottom:12px;">${EMPRESA.endereco} · 📞 ${EMPRESA.telefone} · 📧 ${EMPRESA.email}</div>
+        <div style="background:#f5f5f5;border-left:4px solid #1a237e;border-radius:4px;padding:12px;margin-bottom:15px;">
+            <p style="margin:2px 0;"><strong>Cliente:</strong> ${reciboAtual.cliente_nome}</p>
+            <p style="margin:2px 0;"><strong>Referente à OS:</strong> ${reciboAtual.os_numero}</p>
+            <p style="margin:2px 0;"><strong>Data de emissão:</strong> ${data}</p>
+            <p style="margin:2px 0;"><strong>Status:</strong> <span style="color:${statusPago ? '#27ae60' : '#e67e22'};font-weight:bold;">${statusPago ? '✅ PAGO' : '⏳ PENDENTE'}</span></p>
         </div>
         <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
                 <thead><tr style="background:#1a237e;color:white;">
-                    <th style="padding:5px;">#</th><th style="padding:5px;">Produto</th>
-                    <th style="padding:5px;">Qtd</th><th style="padding:5px;">Preço</th>
-                    <th style="padding:5px;">Subtotal</th>
+                    <th style="padding:8px 6px;text-align:left;">#</th><th style="padding:8px 6px;text-align:left;">Produto/Serviço</th>
+                    <th style="padding:8px 6px;text-align:right;">Qtd</th><th style="padding:8px 6px;text-align:right;">Preço</th>
+                    <th style="padding:8px 6px;text-align:right;">Subtotal</th>
                 </tr></thead>
                 <tbody>${itensHTML}</tbody>
             </table>
         </div>
-        <div style="text-align:right;padding:10px;font-size:18px;font-weight:bold;border-top:2px solid #1a237e;margin-top:10px;">
+        <div style="text-align:right;padding:12px 4px;font-size:19px;font-weight:bold;border-top:2px solid #1a237e;margin-top:8px;color:#1a237e;">
             TOTAL: R$ ${Number(reciboAtual.total || 0).toFixed(2)}
         </div>
-        <div class="assinatura">
-            <p>Assinatura do Cliente</p>
-            <div style="height:40px;"></div>
-            <p>_________________________</p>
+        <div class="assinatura" style="margin-top:30px;">
+            <div style="border-top:1px solid #333;width:80%;margin:0 auto;padding-top:6px;text-align:center;font-size:11px;color:#555;">
+                Assinatura do Cliente
+            </div>
+        </div>
+        <div style="margin-top:20px;text-align:center;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:10px;">
+            ${EMPRESA.nome} — CNPJ ${EMPRESA.cnpj} · 📷 ${EMPRESA.instagram}
         </div>
     `;
     document.getElementById('btnMarcarPago').style.display = reciboAtual.status === 'pendente' ? 'inline-block' : 'none';
@@ -1040,12 +1097,14 @@ function imprimirRecibo() {
     const win = window.open('', '_blank', 'width=800,height=600');
     win.document.write(`
         <html><head><title>Recibo ${reciboAtual.numero}</title>
-        <style>body{font-family:Arial;padding:40px;max-width:800px;margin:0 auto;}
-        .recibo-area{background:white;padding:20px;border:1px solid #ddd;}
-        table{width:100%;border-collapse:collapse;}th{background:#1a237e;color:white;padding:8px;text-align:left;}
-        td{padding:8px;border-bottom:1px solid #ddd;}.assinatura{border-top:1px solid #333;margin-top:20px;padding-top:10px;text-align:center;}
-        .total{text-align:right;font-size:18px;font-weight:bold;margin-top:10px;}
-        @media print{.no-print{display:none;}}</style>
+        <style>
+            * { box-sizing: border-box; }
+            body{font-family:Arial,Helvetica,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#222;}
+            .recibo-area{background:white;padding:10px;}
+            table{width:100%;border-collapse:collapse;}
+            td{padding:8px 6px;border-bottom:1px solid #ddd;}
+            @media print{ body{padding:15px;} }
+        </style>
         </head><body><div class="recibo-area">${conteudo}</div>
         <script>window.onload=function(){window.print();}<\/script></body></html>
     `);
@@ -1422,14 +1481,17 @@ function carregarLogo() {
     const header = document.getElementById('headerLogo');
     if (!header) return;
     header.innerHTML = `
-        <img src="logo.png" alt="SE7VEN" style="height:48px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px;" onerror="this.style.display='none'">
+        <img src="logo.png" alt="SE7VEN" style="height:54px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px; box-shadow:0 2px 6px rgba(26,35,126,0.25);" onerror="this.style.display='none'">
         <h1 class="logo-title">SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
     `;
 }
 
 // ============================================
-// USUÁRIOS (somente leitura - contas reais do Supabase Auth)
+// USUÁRIOS — administradores podem aprovar novos cadastros
+// e definir quem é admin ou usuário comum.
 // ============================================
+
+const ROTULOS_TIPO = { pendente: '⏳ Pendente', usuario: '👤 Usuário', admin: '👑 Administrador' };
 
 function listarUsuarios() {
     const container = document.getElementById('listaUsuarios');
@@ -1438,12 +1500,55 @@ function listarUsuarios() {
         container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum usuário encontrado</p>';
         return;
     }
-    container.innerHTML = perfis.map(p => `
-        <div class="user-item">
-            <span><strong>${p.nome}</strong></span>
-            <span class="role">${p.tipo}</span>
-        </div>
-    `).join('');
+
+    if (!souAdmin()) {
+        container.innerHTML = perfis.map(p => `
+            <div class="user-item">
+                <span><strong>${p.nome}</strong></span>
+                <span class="role">${ROTULOS_TIPO[p.tipo] || p.tipo}</span>
+            </div>
+        `).join('');
+        return;
+    }
+
+    // Visão de administrador: dá pra aprovar pendentes e trocar o perfil de qualquer um (menos o próprio).
+    container.innerHTML = perfis.map(p => {
+        const souEu = p.id === usuarioAtual.id;
+        const corBadge = p.tipo === 'pendente' ? 'background:#fff3cd;color:#856404;' : '';
+        if (souEu) {
+            return `
+            <div class="user-item">
+                <span><strong>${p.nome}</strong> <small style="color:#999;">(você)</small></span>
+                <span class="role" style="${corBadge}">${ROTULOS_TIPO[p.tipo] || p.tipo}</span>
+            </div>`;
+        }
+        return `
+            <div class="user-item" style="flex-wrap:wrap;gap:6px;">
+                <span style="flex:1;min-width:120px;"><strong>${p.nome}</strong><br><small style="color:#999;">${ROTULOS_TIPO[p.tipo] || p.tipo}</small></span>
+                <select onchange="atualizarPerfilUsuario('${p.id}', this.value, '${p.nome.replace(/'/g, "\\'")}')" style="width:auto;padding:6px;margin:0;font-size:12px;">
+                    <option value="pendente" ${p.tipo === 'pendente' ? 'selected' : ''}>⏳ Pendente</option>
+                    <option value="usuario" ${p.tipo === 'usuario' ? 'selected' : ''}>👤 Usuário</option>
+                    <option value="admin" ${p.tipo === 'admin' ? 'selected' : ''}>👑 Administrador</option>
+                </select>
+            </div>`;
+    }).join('');
+}
+
+async function atualizarPerfilUsuario(id, novoTipo, nome) {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem alterar perfis de usuário.'); return; }
+    if (!confirm(`Definir o perfil de "${nome}" como "${ROTULOS_TIPO[novoTipo]}"?`)) { listarUsuarios(); return; }
+    try {
+        const { error } = await sb.from('profiles').update({ tipo: novoTipo }).eq('id', id);
+        if (error) throw error;
+        const idx = perfis.findIndex(p => p.id === id);
+        if (idx >= 0) perfis[idx].tipo = novoTipo;
+        listarUsuarios();
+        atualizarStatus(`✅ Perfil de "${nome}" atualizado!`);
+        registrarLog('PERFIL_ALTERADO', `Perfil de "${nome}" alterado para ${novoTipo}`);
+    } catch (e) {
+        alert('❌ Erro ao atualizar perfil: ' + e.message);
+        listarUsuarios();
+    }
 }
 
 // ============================================
@@ -1565,17 +1670,21 @@ function gerarId() {
 // BACKUP (JSON local — continua útil como cópia de segurança extra)
 // ============================================
 
+function montarDadosBackup() {
+    return { clientes, produtos, ordensServico, recibos, logs, data: new Date().toISOString() };
+}
+
 function exportarDados() {
-    const dados = { clientes, produtos, ordensServico, recibos, logs, data: new Date().toISOString() };
+    const dados = montarDadosBackup();
     const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `backup_se7ven_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    atualizarStatus('✅ Backup exportado!');
-    registrarLog('EXPORTAR', 'Dados exportados');
+    atualizarStatus('✅ Backup baixado neste dispositivo!');
+    registrarLog('EXPORTAR', 'Backup baixado localmente');
 }
 
 async function importarDados(event) {
@@ -1603,14 +1712,66 @@ async function importarDados(event) {
     event.target.value = '';
 }
 
-function backupGit() { exportarDados(); }
+// ============================================
+// BACKUP NO GOOGLE DRIVE (upload de verdade)
+// Precisa de um Client ID OAuth do Google Cloud Console, configurado em
+// config.js (CONFIG.GOOGLE.driveClientId). Veja o LEIA-ME.md para o passo a passo.
+// ============================================
 
-function backupGoogleDrive() {
-    exportarDados();
-    setTimeout(() => { alert('📤 Backup criado!\n\nSalve o arquivo no Google Drive para ter seu backup na nuvem.'); }, 1000);
+let googleTokenClient = null;
+
+function enviarBackupGoogleDrive() {
+    if (!CFG.GOOGLE?.driveClientId) {
+        if (confirm('⚠️ O envio automático para o Google Drive ainda não foi configurado (falta o Client ID do Google no config.js).\n\nQuer baixar o backup neste dispositivo por enquanto?')) {
+            exportarDados();
+        }
+        return;
+    }
+    if (!window.google?.accounts?.oauth2) {
+        alert('⚠️ Não foi possível carregar o Google. Verifique sua internet e tente de novo.');
+        return;
+    }
+    if (!googleTokenClient) {
+        googleTokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CFG.GOOGLE.driveClientId,
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            callback: '' // definido abaixo, a cada chamada
+        });
+    }
+
+    atualizarStatus('☁️ Conectando ao Google Drive...');
+    googleTokenClient.callback = async (resposta) => {
+        if (resposta.error) {
+            alert('❌ Não foi possível autorizar o acesso ao Google Drive.');
+            return;
+        }
+        try {
+            const dados = montarDadosBackup();
+            const nomeArquivo = `backup_se7ven_${new Date().toISOString().split('T')[0]}.json`;
+            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+
+            const metadata = { name: nomeArquivo, mimeType: 'application/json' };
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', blob);
+
+            atualizarStatus('☁️ Enviando backup para o Google Drive...');
+            const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${resposta.access_token}` },
+                body: form
+            });
+            if (!uploadResp.ok) throw new Error(`Falha no envio (${uploadResp.status})`);
+
+            atualizarStatus('✅ Backup enviado para o Google Drive!');
+            registrarLog('BACKUP_DRIVE', `Backup enviado para o Google Drive: ${nomeArquivo}`);
+            alert(`✅ Backup "${nomeArquivo}" enviado para o seu Google Drive!`);
+        } catch (e) {
+            alert('❌ Erro ao enviar para o Google Drive: ' + e.message);
+        }
+    };
+    googleTokenClient.requestAccessToken();
 }
-
-function restaurarGoogleDrive() { document.getElementById('fileInput').click(); }
 
 function atualizarEstatisticas() {
     try {
@@ -1700,8 +1861,17 @@ document.addEventListener('DOMContentLoaded', async function () {
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
         document.getElementById('codigoBarrasProduto').value = '';
+        document.getElementById('fotoProduto').value = '';
+        document.getElementById('previewFotoProduto').style.display = 'none';
         abrirModal('modalProduto');
         document.getElementById('nomeProduto').focus();
+    });
+    document.getElementById('fotoProduto')?.addEventListener('change', function (e) {
+        const arquivo = e.target.files[0];
+        const preview = document.getElementById('previewFotoProduto');
+        if (!arquivo) { preview.style.display = 'none'; return; }
+        preview.src = URL.createObjectURL(arquivo);
+        preview.style.display = 'block';
     });
     document.getElementById('btnAddItem')?.addEventListener('click', adicionarItem);
     document.getElementById('btnLimpar')?.addEventListener('click', limparOrcamento);
