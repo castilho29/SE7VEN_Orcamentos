@@ -706,26 +706,11 @@ async function removerFotoProduto(idProduto) {
     try { await sb.storage.from('produtos').remove([`${idProduto}.jpg`]); } catch (e) { /* sem problema se não existir */ }
 }
 
-async function enviarFotoProduto(idProduto, arquivo) {
-    if (!arquivo) return null;
-    const extensao = arquivo.name.split('.').pop();
-    const caminho = `${idProduto}.${extensao}`;
-    const { error } = await sb.storage.from('produtos').upload(caminho, arquivo, { upsert: true });
-    if (error) throw error;
-    const { data } = sb.storage.from('produtos').getPublicUrl(caminho);
-    return data.publicUrl + '?t=' + Date.now(); // evita cache de imagem antiga
-}
-
 async function adicionarProduto() {
     const nome = document.getElementById('nomeProduto').value.trim();
     const preco = parseFloat(document.getElementById('precoProduto').value);
     const tipo = document.getElementById('tipoProduto').value;
     const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
-<<<<<<< Updated upstream
-    const arquivoFoto = document.getElementById('fotoProduto').files[0];
-    if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
-    const novoProduto = { id: gerarId(), nome, preco, tipo, codigo_barras: codigoBarras || null, foto_url: null };
-=======
     const quantidadeVal = document.getElementById('quantidadeProduto').value;
     const estoqueMinimoVal = document.getElementById('estoqueMinimoProduto').value;
     const arquivoFoto = document.getElementById('fotoProduto').files[0];
@@ -812,10 +797,6 @@ function editarProduto(index) {
         const tipo = document.getElementById('tipoProduto').value;
         const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
 <<<<<<< Updated upstream
-        const arquivoFoto = document.getElementById('fotoProduto').files[0];
-        if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
-        const produtoAtualizado = { ...produtos[idx], nome, preco, tipo, codigo_barras: codigoBarras || null };
-=======
         const quantidadeVal = document.getElementById('quantidadeProduto').value;
         const estoqueMinimoVal = document.getElementById('estoqueMinimoProduto').value;
         const arquivoFoto = document.getElementById('fotoProduto').files[0];
@@ -950,7 +931,6 @@ async function salvarOrcamento() {
         const osExistente = ordensServico.find(o => o.id === editandoOSId);
         if (!osExistente) { alert('⚠️ Não encontrei esse orçamento — talvez tenha sido removido.'); editandoOSId = null; return; }
 <<<<<<< Updated upstream
-        const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total };
 =======
         const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total, forma_pagamento: formaPagamento, parcelas };
 >>>>>>> Stashed changes
@@ -2040,4 +2020,369 @@ function gerarProdutos() {
         { nome: 'Cabo de Cobre 1,5mm² (100m)', preco: 180.00, tipo: 'material' },
         { nome: 'Cabo de Cobre 2,5mm² (100m)', preco: 280.00, tipo: 'material' },
         { nome: 'Cabo de Cobre 4mm² (100m)', preco: 420.00, tipo: 'material' },
-        { nome: 'Cabo de Cobre 6mm² (100m)', preco: 580.00, 
+        { nome: 'Cabo de Cobre 6mm² (100m)', preco: 580.00, tipo: 'material' },
+        { nome: 'Cabo de Cobre 10mm² (100m)', preco: 890.00, tipo: 'material' },
+        { nome: 'Eletroduto PVC 20mm (3m)', preco: 15.00, tipo: 'material' },
+        { nome: 'Eletroduto PVC 25mm (3m)', preco: 20.00, tipo: 'material' },
+        { nome: 'Eletroduto PVC 32mm (3m)', preco: 28.00, tipo: 'material' },
+        { nome: 'Disjuntor Monofásico 10A', preco: 25.00, tipo: 'material' },
+        { nome: 'Disjuntor Monofásico 16A', preco: 28.00, tipo: 'material' },
+        { nome: 'Disjuntor Monofásico 20A', preco: 30.00, tipo: 'material' },
+        { nome: 'Disjuntor Bifásico 10A', preco: 45.00, tipo: 'material' },
+        { nome: 'Disjuntor Bifásico 16A', preco: 50.00, tipo: 'material' },
+        { nome: 'Disjuntor Trifásico 10A', preco: 65.00, tipo: 'material' },
+        { nome: 'Disjuntor Trifásico 16A', preco: 75.00, tipo: 'material' },
+        { nome: 'Interruptor Simples Branco', preco: 8.00, tipo: 'material' },
+        { nome: 'Interruptor Duplo Branco', preco: 14.00, tipo: 'material' },
+        { nome: 'Tomada 10A 2P+T Branca', preco: 12.00, tipo: 'material' },
+        { nome: 'Tomada 20A 2P+T Branca', preco: 18.00, tipo: 'material' },
+        { nome: 'Tomada com USB Branca', preco: 65.00, tipo: 'material' },
+        { nome: 'Lâmpada LED 9W Branca', preco: 15.00, tipo: 'material' },
+        { nome: 'Lâmpada LED 12W Branca', preco: 20.00, tipo: 'material' },
+        { nome: 'Lâmpada LED 15W Branca', preco: 28.00, tipo: 'material' },
+        { nome: 'Lâmpada LED 20W Branca', preco: 38.00, tipo: 'material' },
+        { nome: 'Lâmpada LED 30W Branca', preco: 55.00, tipo: 'material' },
+        { nome: 'Lâmpada LED 50W Branca', preco: 85.00, tipo: 'material' },
+        { nome: 'Refletor LED 50W', preco: 120.00, tipo: 'material' },
+        { nome: 'Refletor LED 100W', preco: 200.00, tipo: 'material' },
+        { nome: 'Quadro de Distribuição 4 Caminhos', preco: 120.00, tipo: 'material' },
+        { nome: 'Quadro de Distribuição 6 Caminhos', preco: 160.00, tipo: 'material' },
+        { nome: 'Fita Isolante 19mm x 20m', preco: 8.00, tipo: 'material' },
+        { nome: 'Fita Isolante 19mm x 50m', preco: 18.00, tipo: 'material' },
+        { nome: 'DR 40A 30mA', preco: 250.00, tipo: 'material' },
+        { nome: 'DR 63A 30mA', preco: 320.00, tipo: 'material' },
+        { nome: 'Inversor Solar 1kW', preco: 1200.00, tipo: 'equipamento' },
+        { nome: 'Inversor Solar 3kW', preco: 2800.00, tipo: 'equipamento' },
+        { nome: 'Inversor Solar 5kW', preco: 4200.00, tipo: 'equipamento' },
+        { nome: 'Kit Solar 1kW', preco: 3500.00, tipo: 'equipamento' },
+        { nome: 'Kit Solar 3kW', preco: 9500.00, tipo: 'equipamento' },
+        { nome: 'Kit Solar 5kW', preco: 15500.00, tipo: 'equipamento' },
+        { nome: 'Placa Solar 300W', preco: 800.00, tipo: 'equipamento' },
+        { nome: 'Placa Solar 450W', preco: 1200.00, tipo: 'equipamento' },
+        { nome: 'Transformador 1kVA', preco: 800.00, tipo: 'equipamento' },
+        { nome: 'Transformador 5kVA', preco: 2200.00, tipo: 'equipamento' },
+        { nome: 'Instalação Elétrica Residencial (por m²)', preco: 120.00, tipo: 'servico' },
+        { nome: 'Instalação Elétrica Comercial (por m²)', preco: 150.00, tipo: 'servico' },
+        { nome: 'Instalação de Quadro de Distribuição', preco: 500.00, tipo: 'servico' },
+        { nome: 'Instalação de Sistema Solar (por kWp)', preco: 600.00, tipo: 'servico' },
+        { nome: 'Instalação de Tomadas (por ponto)', preco: 80.00, tipo: 'servico' },
+        { nome: 'Instalação de Interruptores (por ponto)', preco: 70.00, tipo: 'servico' },
+        { nome: 'Instalação de Lâmpadas (por ponto)', preco: 60.00, tipo: 'servico' },
+        { nome: 'Manutenção Preventiva Elétrica', preco: 80.00, tipo: 'servico' },
+        { nome: 'Manutenção Corretiva Elétrica (por hora)', preco: 120.00, tipo: 'servico' },
+        { nome: 'Projeto Elétrico Residencial', preco: 800.00, tipo: 'servico' },
+        { nome: 'Projeto Elétrico Comercial', preco: 1200.00, tipo: 'servico' },
+        { nome: 'Projeto de Energia Solar', preco: 3000.00, tipo: 'servico' },
+        { nome: 'Laudo Técnico Elétrico', preco: 800.00, tipo: 'servico' },
+        { nome: 'Inspeção Técnica Elétrica', preco: 600.00, tipo: 'servico' }
+    ];
+    let id = 1;
+    return lista.map(item => ({ id: String(id++), nome: item.nome, preco: item.preco, tipo: item.tipo }));
+}
+
+function gerarId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+// ============================================
+// BACKUP (JSON local — continua útil como cópia de segurança extra)
+// ============================================
+
+function montarDadosBackup() {
+    return { clientes, produtos, ordensServico, recibos, logs, data: new Date().toISOString() };
+}
+
+function exportarDados() {
+    const dados = montarDadosBackup();
+    const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_se7ven_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    atualizarStatus('✅ Backup baixado neste dispositivo!');
+    registrarLog('EXPORTAR', 'Backup baixado localmente');
+}
+
+async function importarDados(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async function (e) {
+        try {
+            const dados = JSON.parse(e.target.result);
+            if (!dados.clientes) { alert('❌ Arquivo inválido!'); return; }
+            if (!confirm('Isso vai enviar os dados do backup para o Supabase (mesclando com o que já existe). Continuar?')) return;
+            if (dados.clientes?.length) await sb.from('clientes').upsert(dados.clientes, { onConflict: 'id' });
+            if (dados.produtos?.length) await sb.from('produtos').upsert(dados.produtos, { onConflict: 'id' });
+            if (dados.ordensServico?.length) await sb.from('ordens_servico').upsert(dados.ordensServico, { onConflict: 'id' });
+            if (dados.recibos?.length) await sb.from('recibos').upsert(dados.recibos, { onConflict: 'id' });
+            await sincronizarDados();
+            atualizarStatus('✅ Dados importados!');
+            registrarLog('IMPORTAR', 'Dados importados do JSON');
+            alert('✅ Dados importados com sucesso!');
+        } catch (err) {
+            alert('❌ Erro ao importar: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+// ============================================
+// BACKUP NO GOOGLE DRIVE (upload de verdade)
+// Precisa de um Client ID OAuth do Google Cloud Console, configurado em
+// config.js (CONFIG.GOOGLE.driveClientId). Veja o LEIA-ME.md para o passo a passo.
+// ============================================
+
+let googleTokenClient = null;
+
+function enviarBackupGoogleDrive() {
+    if (!CFG.GOOGLE?.driveClientId) {
+        if (confirm('⚠️ O envio automático para o Google Drive ainda não foi configurado (falta o Client ID do Google no config.js).\n\nQuer baixar o backup neste dispositivo por enquanto?')) {
+            exportarDados();
+        }
+        return;
+    }
+    if (!window.google?.accounts?.oauth2) {
+        alert('⚠️ Não foi possível carregar o Google. Verifique sua internet e tente de novo.');
+        return;
+    }
+    if (!googleTokenClient) {
+        googleTokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CFG.GOOGLE.driveClientId,
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            callback: '' // definido abaixo, a cada chamada
+        });
+    }
+
+    atualizarStatus('☁️ Conectando ao Google Drive...');
+    googleTokenClient.callback = async (resposta) => {
+        if (resposta.error) {
+            alert('❌ Não foi possível autorizar o acesso ao Google Drive.');
+            return;
+        }
+        try {
+            const dados = montarDadosBackup();
+            const nomeArquivo = `backup_se7ven_${new Date().toISOString().split('T')[0]}.json`;
+            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+
+            const metadata = { name: nomeArquivo, mimeType: 'application/json' };
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', blob);
+
+            atualizarStatus('☁️ Enviando backup para o Google Drive...');
+            const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${resposta.access_token}` },
+                body: form
+            });
+            if (!uploadResp.ok) throw new Error(`Falha no envio (${uploadResp.status})`);
+
+            atualizarStatus('✅ Backup enviado para o Google Drive!');
+            registrarLog('BACKUP_DRIVE', `Backup enviado para o Google Drive: ${nomeArquivo}`);
+            alert(`✅ Backup "${nomeArquivo}" enviado para o seu Google Drive!`);
+        } catch (e) {
+            alert('❌ Erro ao enviar para o Google Drive: ' + e.message);
+        }
+    };
+    googleTokenClient.requestAccessToken();
+}
+
+function atualizarEstatisticas() {
+    try {
+        const el1 = document.getElementById('statsClientes');
+        const el2 = document.getElementById('statsProdutos');
+        const el3 = document.getElementById('statsOS');
+        const el4 = document.getElementById('statsRecibos');
+        if (el1) el1.textContent = `Clientes: ${clientes.length}`;
+        if (el2) el2.textContent = `Produtos: ${produtos.length}`;
+        if (el3) el3.textContent = `Ordens de Serviço: ${ordensServico.length}`;
+        if (el4) el4.textContent = `Recibos: ${recibos.length}`;
+    } catch (e) {}
+}
+
+function limparDadosLocais() {
+    if (!confirm('Isso limpa apenas o cache local deste navegador (os dados no Supabase continuam intactos). Continuar?')) return;
+    try {
+        localStorage.clear();
+        atualizarStatus('🗑️ Cache local limpo! Recarregando...');
+        setTimeout(() => location.reload(), 800);
+    } catch (e) {}
+}
+
+function recarregarDados() {
+    sincronizarDados();
+    atualizarStatus('🔄 Dados recarregados!');
+}
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
+function init() {
+    console.log('🚀 Inicializando sistema...');
+    renderClientes();
+    renderProdutos();
+    renderSelectClientes();
+    renderSelectProdutos();
+    updateTotal();
+    listarOS();
+    listarRecibos();
+    listarDespesas();
+    listarVisitas();
+    atualizarDashboard();
+    renderizarLogs();
+    listarUsuarios();
+    carregarLogo();
+    iniciarSincronizacaoAutomatica();
+    atualizarStatus(`✅ Sistema pronto!`);
+    console.log('✅ Sistema inicializado!');
+}
+
+// ============================================
+// EVENTOS
+// ============================================
+
+document.addEventListener('DOMContentLoaded', async function () {
+    console.log('📄 DOM carregado!');
+
+    if (sb) {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+            await entrarNoSistema(session.user);
+        } else {
+            mostrarTelaLogin();
+        }
+        sb.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session && !usuarioAtual) entrarNoSistema(session.user);
+            if (event === 'SIGNED_OUT') mostrarTelaLogin();
+        });
+    } else {
+        mostrarTelaLogin();
+    }
+
+    // Eventos de Login
+    document.getElementById('loginEmail')?.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') document.getElementById('loginSenha').focus();
+    });
+    document.getElementById('loginSenha')?.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') fazerLogin();
+    });
+
+    // Eventos dos Botões
+    document.getElementById('btnAddCliente')?.addEventListener('click', function () {
+        abrirModal('modalCliente');
+        document.getElementById('nomeCliente').focus();
+    });
+    document.getElementById('btnAddProduto')?.addEventListener('click', function () {
+        document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
+        document.getElementById('nomeProduto').value = '';
+        document.getElementById('precoProduto').value = '';
+        document.getElementById('codigoBarrasProduto').value = '';
+        document.getElementById('fotoProduto').value = '';
+        document.getElementById('previewFotoProduto').style.display = 'none';
+        abrirModal('modalProduto');
+        document.getElementById('nomeProduto').focus();
+    });
+    document.getElementById('fotoProduto')?.addEventListener('change', function (e) {
+        const arquivo = e.target.files[0];
+        const preview = document.getElementById('previewFotoProduto');
+        if (!arquivo) { preview.style.display = 'none'; return; }
+        preview.src = URL.createObjectURL(arquivo);
+        preview.style.display = 'block';
+    });
+    document.getElementById('btnAddItem')?.addEventListener('click', adicionarItem);
+    document.getElementById('btnLimpar')?.addEventListener('click', limparOrcamento);
+    document.getElementById('btnSalvarOrcamento')?.addEventListener('click', salvarOrcamento);
+    document.getElementById('btnGerarPDF')?.addEventListener('click', gerarPDF);
+    document.getElementById('btnEnviarPDF')?.addEventListener('click', enviarPDFWhatsApp);
+    document.getElementById('btnWhatsApp')?.addEventListener('click', enviarWhatsApp);
+    document.getElementById('salvarCliente')?.addEventListener('click', adicionarCliente);
+    document.getElementById('salvarProduto')?.addEventListener('click', adicionarProduto);
+    document.getElementById('btnBuscarCNPJ')?.addEventListener('click', buscarCNPJ);
+    document.getElementById('btnEscanearProduto')?.addEventListener('click', escanearParaProduto);
+    document.getElementById('btnEscanearModalProduto')?.addEventListener('click', escanearParaModalProduto);
+    document.getElementById('btnFecharScanner')?.addEventListener('click', fecharScanner);
+    document.getElementById('fecharModalCliente')?.addEventListener('click', function () { fecharModal('modalCliente'); });
+    document.getElementById('fecharModalProduto')?.addEventListener('click', function () { fecharModal('modalProduto'); });
+    document.getElementById('btnFecharOS')?.addEventListener('click', function () { fecharModal('modalOS'); });
+    document.getElementById('btnFecharRecibo')?.addEventListener('click', function () { fecharModal('modalRecibo'); });
+
+    // Paginação
+    document.getElementById('btnPagAnteriorClientes')?.addEventListener('click', paginaAnteriorClientes);
+    document.getElementById('btnPagProximaClientes')?.addEventListener('click', paginaProximaClientes);
+    document.getElementById('btnPagAnteriorProdutos')?.addEventListener('click', paginaAnteriorProdutos);
+    document.getElementById('btnPagProximaProdutos')?.addEventListener('click', paginaProximaProdutos);
+
+    // Despesas
+    document.getElementById('btnAddDespesa')?.addEventListener('click', function () {
+        document.getElementById('descricaoDespesa').value = '';
+        document.getElementById('valorDespesa').value = '';
+        document.getElementById('dataDespesa').value = new Date().toISOString().split('T')[0];
+        abrirModal('modalDespesa');
+    });
+    document.getElementById('salvarDespesa')?.addEventListener('click', adicionarDespesa);
+    document.getElementById('fecharModalDespesa')?.addEventListener('click', function () { fecharModal('modalDespesa'); });
+
+    // Agenda de visitas
+    document.getElementById('btnAddVisita')?.addEventListener('click', function () {
+        document.getElementById('clienteVisita').value = '';
+        document.getElementById('dataHoraVisita').value = '';
+        document.getElementById('descricaoVisita').value = '';
+        abrirModal('modalVisita');
+    });
+    document.getElementById('salvarVisita')?.addEventListener('click', adicionarVisita);
+    document.getElementById('fecharModalVisita')?.addEventListener('click', function () { fecharModal('modalVisita'); });
+
+    // Histórico do cliente
+    document.getElementById('btnFecharHistorico')?.addEventListener('click', function () { fecharModal('modalHistoricoCliente'); });
+
+    // Forma de pagamento do orçamento: mostra parcelas só quando é cartão
+    document.getElementById('formaPagamentoOrcamento')?.addEventListener('change', function () {
+        document.getElementById('parcelasOrcamento').style.display = this.value === 'Cartão de Crédito' ? 'block' : 'none';
+    });
+
+    // Eventos da OS
+    document.getElementById('btnEditarOS')?.addEventListener('click', () => editarOS(osAtual?.id));
+    document.getElementById('btnReimprimirOS')?.addEventListener('click', () => reimprimirOS(osAtual?.id));
+    document.getElementById('btnAprovarOS')?.addEventListener('click', aprovarOS);
+    document.getElementById('btnIniciarOS')?.addEventListener('click', iniciarOS);
+    document.getElementById('btnConcluirOS')?.addEventListener('click', concluirOS);
+    document.getElementById('btnCancelarOS')?.addEventListener('click', cancelarOS);
+    document.getElementById('btnEmitirRecibo')?.addEventListener('click', emitirRecibo);
+
+    // Eventos do Recibo
+    document.getElementById('btnMarcarPago')?.addEventListener('click', marcarPago);
+    document.getElementById('btnImprimirRecibo')?.addEventListener('click', imprimirRecibo);
+
+    // Fechar modal clicando fora
+    window.addEventListener('click', function (e) {
+        if (e.target.classList.contains('modal')) e.target.style.display = 'none';
+    });
+
+    // Busca Clientes
+    document.getElementById('buscaCliente')?.addEventListener('input', function (e) {
+        filtroClientes = e.target.value.toLowerCase().trim();
+        paginaClientes = 0;
+        renderClientes();
+    });
+
+    // Busca Produtos
+    document.getElementById('buscaProduto')?.addEventListener('input', function (e) {
+        filtroProdutos = e.target.value.toLowerCase().trim();
+        paginaProdutos = 0;
+        renderProdutos();
+    });
+
+    // Enter nos modais
+    document.getElementById('nomeCliente')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') adicionarCliente(); });
+    document.getElementById('nomeProduto')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') adicionarProduto(); });
+    document.getElementById('precoProduto')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') adicionarProduto(); });
+
+    console.log('✅ Eventos configurados!');
+});
+
+console.log('⚡ SE7VEN ENERGIA - Sistema carregado!');
