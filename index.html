@@ -56,6 +56,16 @@
         .btn-restore{background:#f39c12;color:white;}
         .backup-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
         .backup-grid button{padding:12px 8px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;color:white;text-align:center;line-height:1.3;}
+<<<<<<< Updated upstream
+=======
+        .dash-card{padding:14px 12px;border-radius:8px;}
+        .dash-label{font-size:11px;color:#555;font-weight:bold;margin-bottom:4px;}
+        .dash-valor{font-size:18px;font-weight:900;color:#222;}
+        .estoque-baixo{color:#e74c3c;font-weight:bold;}
+        .paginacao{display:flex;justify-content:center;gap:10px;margin-top:10px;}
+        .paginacao button{padding:6px 16px;border-radius:6px;border:1px solid #bdc3c7;background:white;cursor:pointer;font-size:12px;}
+        .paginacao button:disabled{opacity:0.4;cursor:not-allowed;}
+>>>>>>> Stashed changes
         
         .tab-container{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap;}
         .tab-btn{padding:8px 16px;border:1px solid #bdc3c7;background:white;border-radius:4px;cursor:pointer;font-size:12px;transition:all 0.3s;}
@@ -238,23 +248,66 @@
 
         <!-- ABAS -->
         <div class="tab-container">
-            <button class="tab-btn active" onclick="abrirTab('tabClientes')">👤 Clientes</button>
+            <button class="tab-btn active" onclick="abrirTab('tabDashboard')">📊 Resumo</button>
+            <button class="tab-btn" onclick="abrirTab('tabClientes')">👤 Clientes</button>
             <button class="tab-btn" onclick="abrirTab('tabProdutos')">📦 Produtos</button>
             <button class="tab-btn" onclick="abrirTab('tabOrcamento')">📄 Orçamento</button>
             <button class="tab-btn" onclick="abrirTab('tabOS')">🔧 OS</button>
             <button class="tab-btn" onclick="abrirTab('tabRecibos')">💰 Recibos</button>
+            <button class="tab-btn" onclick="abrirTab('tabDespesas')">💸 Despesas</button>
+            <button class="tab-btn" onclick="abrirTab('tabAgenda')">📅 Agenda</button>
             <button class="tab-btn" onclick="abrirTab('tabCalculos')">🧮 Cálculos</button>
             <button class="tab-btn" onclick="abrirTab('tabLogs')">📋 Logs</button>
             <button class="tab-btn" onclick="abrirTab('tabUsuarios')">👥 Usuários</button>
             <button class="tab-btn" onclick="abrirTab('tabConfig')">⚙️ Config</button>
         </div>
 
+        <!-- TAB DASHBOARD -->
+        <div id="tabDashboard" class="tab-content active">
+            <section>
+                <h2>📊 Resumo do Negócio</h2>
+                <div id="dashboardGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="dash-card" style="background:#e8f5e9;border-left:4px solid #27ae60;">
+                        <div class="dash-label">💰 A receber</div>
+                        <div class="dash-valor" id="dashAReceber">R$ 0,00</div>
+                    </div>
+                    <div class="dash-card" style="background:#e3f2fd;border-left:4px solid #1a237e;">
+                        <div class="dash-label">✅ Recebido no mês</div>
+                        <div class="dash-valor" id="dashRecebidoMes">R$ 0,00</div>
+                    </div>
+                    <div class="dash-card" style="background:#fdecea;border-left:4px solid #e74c3c;">
+                        <div class="dash-label">💸 Despesas no mês</div>
+                        <div class="dash-valor" id="dashDespesasMes">R$ 0,00</div>
+                    </div>
+                    <div class="dash-card" style="background:#fff8e1;border-left:4px solid #f39c12;">
+                        <div class="dash-label">🔧 OS em andamento</div>
+                        <div class="dash-valor" id="dashOSAndamento">0</div>
+                    </div>
+                    <div class="dash-card" style="background:#f3e5f5;border-left:4px solid #8e24aa;">
+                        <div class="dash-label">👤 Clientes cadastrados</div>
+                        <div class="dash-valor" id="dashClientes">0</div>
+                    </div>
+                    <div class="dash-card" style="background:#fbe9e7;border-left:4px solid #d84315;">
+                        <div class="dash-label">📦 Estoque baixo</div>
+                        <div class="dash-valor" id="dashEstoqueBaixo">0</div>
+                    </div>
+                </div>
+                <div id="dashProximasVisitas" style="margin-top:15px;"></div>
+            </section>
+        </div>
+
+
         <!-- TAB CLIENTES -->
-        <div id="tabClientes" class="tab-content active">
+        <div id="tabClientes" class="tab-content">
             <section>
                 <h2>👤 Clientes</h2>
                 <input type="text" id="buscaCliente" placeholder="🔍 Buscar cliente...">
                 <ul id="listaClientes"></ul>
+                <div class="paginacao">
+                    <button id="btnPagAnteriorClientes">‹ Anteriores</button>
+                    <span id="infoPagClientes" style="font-size:12px;color:#666;align-self:center;"></span>
+                    <button id="btnPagProximaClientes">Próximos ›</button>
+                </div>
                 <button id="btnAddCliente" class="btn-secondary">+ Adicionar Cliente</button>
             </section>
         </div>
@@ -265,6 +318,14 @@
                 <h2>📦 Produtos</h2>
                 <input type="text" id="buscaProduto" placeholder="🔍 Buscar produto (nome ou código de barras)...">
                 <ul id="listaProdutos"></ul>
+<<<<<<< Updated upstream
+=======
+                <div class="paginacao">
+                    <button id="btnPagAnteriorProdutos">‹ Anteriores</button>
+                    <span id="infoPagProdutos" style="font-size:12px;color:#666;align-self:center;"></span>
+                    <button id="btnPagProximaProdutos">Próximos ›</button>
+                </div>
+>>>>>>> Stashed changes
                 <div style="display:flex;gap:8px;">
                     <button id="btnAddProduto" class="btn-secondary" style="flex:1;">+ Adicionar Produto</button>
                     <button id="btnEscanearProduto" class="btn-info" style="flex:1;background:#3498db;color:white;border:none;border-radius:8px;">📷 Escanear Código</button>
@@ -299,6 +360,25 @@
                     <div id="resultadoProjeto" style="margin-top:10px;"></div>
                 </div>
 
+                <div style="display:flex;gap:8px;margin-top:10px;">
+                    <select id="formaPagamentoOrcamento" style="flex:1;">
+                        <option value="Pix à vista">Pix à vista</option>
+                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                        <option value="Boleto Bancário">Boleto Bancário</option>
+                    </select>
+                    <select id="parcelasOrcamento" style="flex:1;display:none;">
+                        <option value="1">1x sem juros</option>
+                        <option value="2">2x</option>
+                        <option value="3">3x</option>
+                        <option value="4">4x</option>
+                        <option value="5">5x</option>
+                        <option value="6">6x</option>
+                        <option value="7">7x</option>
+                        <option value="8">8x</option>
+                        <option value="9">9x</option>
+                        <option value="10">10x</option>
+                    </select>
+                </div>
                 <div id="totalOrcamento"><strong>Total: R$ <span id="totalValor">0,00</span></strong></div>
                 
                 <div class="footer-actions">
@@ -343,6 +423,32 @@
                     <button class="btn-info" onclick="filtrarRecibos()">🔍 Filtrar</button>
                 </div>
                 <div id="listaRecibos"><p style="color:#999;text-align:center;padding:20px;">Nenhum recibo emitido</p></div>
+            </section>
+        </div>
+
+        <!-- TAB DESPESAS -->
+        <div id="tabDespesas" class="tab-content">
+            <section>
+                <h2>💸 Despesas</h2>
+                <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+                    <select id="filtroDespesa" style="flex:1;min-width:120px;">
+                        <option value="todos">Todas</option>
+                        <option value="pendente">⏳ Pendente</option>
+                        <option value="pago">✅ Pago</option>
+                    </select>
+                    <button class="btn-info" onclick="filtrarDespesas()">🔍 Filtrar</button>
+                </div>
+                <div id="listaDespesas"><p style="color:#999;text-align:center;padding:20px;">Nenhuma despesa lançada</p></div>
+                <button id="btnAddDespesa" class="btn-secondary" style="margin-top:10px;">+ Lançar Despesa</button>
+            </section>
+        </div>
+
+        <!-- TAB AGENDA -->
+        <div id="tabAgenda" class="tab-content">
+            <section>
+                <h2>📅 Agenda de Visitas</h2>
+                <div id="listaVisitas"><p style="color:#999;text-align:center;padding:20px;">Nenhuma visita agendada</p></div>
+                <button id="btnAddVisita" class="btn-secondary" style="margin-top:10px;">+ Agendar Visita</button>
             </section>
         </div>
 
@@ -431,7 +537,11 @@
     <!-- ========== MODAIS ========== -->
     <div id="modalCliente" class="modal"><div class="modal-content"><h3>👤 Novo Cliente</h3><input type="text" id="nomeCliente" placeholder="Nome *"><input type="tel" id="telefoneCliente" placeholder="Celular"><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="cpfCliente" placeholder="CPF/CNPJ" style="flex:1;"><button type="button" id="btnBuscarCNPJ" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">🔍 Buscar CNPJ</button></div><input type="text" id="enderecoCliente" placeholder="Endereço"><input type="email" id="emailCliente" placeholder="Email"><textarea id="observacoesCliente" placeholder="Observações (opcional)" style="width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;min-height:60px;resize:vertical;"></textarea><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
     
+<<<<<<< Updated upstream
     <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="codigoBarrasProduto" placeholder="Código de barras (opcional)" style="flex:1;"><button type="button" id="btnEscanearModalProduto" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">📷</button></div><label style="font-size:12px;color:#666;display:block;margin-top:8px;">📸 Foto do produto (opcional) — tirar foto ou escolher da galeria</label><input type="file" id="fotoProduto" accept="image/*" style="padding:8px 0;"><img id="previewFotoProduto" style="display:none;max-width:120px;max-height:120px;border-radius:8px;margin:8px 0;object-fit:cover;"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+=======
+    <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:8px;"><input type="number" id="quantidadeProduto" placeholder="Qtd em estoque" min="0" style="flex:1;"><input type="number" id="estoqueMinimoProduto" placeholder="Estoque mínimo" min="0" style="flex:1;"></div><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="codigoBarrasProduto" placeholder="Código de barras (opcional)" style="flex:1;"><button type="button" id="btnEscanearModalProduto" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">📷</button></div><label style="font-size:12px;color:#666;display:block;margin-top:8px;">📸 Foto do produto (opcional) — tirar foto ou escolher da galeria</label><input type="file" id="fotoProduto" accept="image/*" style="padding:8px 0;"><img id="previewFotoProduto" style="display:none;max-width:120px;max-height:120px;border-radius:8px;margin:8px 0;object-fit:cover;"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+>>>>>>> Stashed changes
 
     <div id="modalScanner" class="modal"><div class="modal-content" style="max-width:420px;text-align:center;">
         <h3>📷 Escanear Código de Barras</h3>
@@ -443,6 +553,12 @@
     <div id="modalOS" class="modal"><div class="modal-content" style="max-width:500px;"><h3>🔧 Detalhes da OS</h3><div id="detalhesOS"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnEditarOS" class="btn-info">✏️ Editar</button><button id="btnReimprimirOS" class="btn-primary">🖨️ Reimprimir PDF</button><button id="btnAprovarOS" class="btn-success" style="display:none;">✅ Aprovar</button><button id="btnIniciarOS" class="btn-warning" style="display:none;">🔧 Iniciar</button><button id="btnConcluirOS" class="btn-success" style="display:none;">✅ Concluir</button><button id="btnCancelarOS" class="btn-danger" style="display:none;">❌ Cancelar</button><button id="btnEmitirRecibo" class="btn-primary" style="display:none;">💰 Recibo</button><button id="btnFecharOS" class="btn-secondary">Fechar</button></div></div></div>
     
     <div id="modalRecibo" class="modal"><div class="modal-content" style="max-width:500px;"><h3>💰 Recibo</h3><div id="conteudoRecibo" class="recibo-area"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnMarcarPago" class="btn-success">✅ Marcar Pago</button><button id="btnImprimirRecibo" class="btn-primary">🖨️ Imprimir</button><button id="btnFecharRecibo" class="btn-secondary">Fechar</button></div></div></div>
+
+    <div id="modalDespesa" class="modal"><div class="modal-content"><h3>💸 Nova Despesa</h3><input type="text" id="descricaoDespesa" placeholder="Descrição *"><input type="number" id="valorDespesa" placeholder="Valor *" step="0.01"><select id="categoriaDespesa"><option value="material">Material/Compra</option><option value="combustivel">Combustível</option><option value="ferramenta">Ferramenta</option><option value="aluguel">Aluguel</option><option value="salario">Salário</option><option value="outro">Outro</option></select><input type="date" id="dataDespesa"><select id="statusDespesa"><option value="pendente">⏳ Pendente</option><option value="pago">✅ Pago</option></select><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarDespesa" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalDespesa" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+
+    <div id="modalVisita" class="modal"><div class="modal-content"><h3>📅 Agendar Visita</h3><select id="clienteVisita"><option value="">Selecione um cliente</option></select><input type="datetime-local" id="dataHoraVisita"><textarea id="descricaoVisita" placeholder="Descrição / motivo da visita" style="width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;min-height:60px;resize:vertical;"></textarea><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarVisita" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalVisita" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+
+    <div id="modalHistoricoCliente" class="modal"><div class="modal-content" style="max-width:500px;"><h3 id="tituloHistoricoCliente">📋 Histórico</h3><div id="conteudoHistoricoCliente"></div><button id="btnFecharHistorico" class="btn-secondary" style="width:100%;margin-top:10px;">Fechar</button></div></div>
 
     <!-- ========== BIBLIOTECAS ========== -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>

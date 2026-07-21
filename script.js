@@ -70,6 +70,14 @@ let realtimeChannel = null;
 let osAtual = null;
 let reciboAtual = null;
 let editandoOSId = null;
+<<<<<<< Updated upstream
+=======
+let despesas = [];
+let visitas = [];
+let paginaClientes = 0;
+let paginaProdutos = 0;
+const ITENS_POR_PAGINA = 20;
+>>>>>>> Stashed changes
 let sincronizando = false;
 let ultimaSync = null;
 
@@ -260,10 +268,13 @@ async function sincronizarDados() {
             carregarOSSupabase(),
             carregarRecibosSupabase(),
             carregarPerfisSupabase(),
-            carregarLogsSupabase()
+            carregarLogsSupabase(),
+            carregarDespesasSupabase(),
+            carregarVisitasSupabase()
         ]);
 
         await semearProdutosPadrao();
+        atualizarDashboard();
 
         ultimaSync = new Date();
         ultimaSyncElement.textContent = `Última: ${ultimaSync.toLocaleString('pt-BR')}`;
@@ -295,6 +306,8 @@ function iniciarSincronizacaoAutomatica() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, () => sincronizarDados())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'recibos' }, () => sincronizarDados())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, () => sincronizarDados())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'despesas' }, () => sincronizarDados())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'visitas' }, () => sincronizarDados())
         .subscribe();
 
     // Rede de segurança: sincroniza a cada 60s mesmo que o realtime perca algum evento
@@ -444,14 +457,24 @@ async function buscarCNPJ() {
 // CLIENTES
 // ============================================
 
+let filtroClientes = '';
+
 function renderClientes() {
     const lista = document.getElementById('listaClientes');
     if (!lista) return;
-    if (clientes.length === 0) {
-        lista.innerHTML = '<li style="color:#999;text-align:center;padding:20px;">Nenhum cliente cadastrado</li>';
+    const filtrados = filtroClientes
+        ? clientes.filter(c => `${c.nome} ${c.telefone || ''} ${c.email || ''}`.toLowerCase().includes(filtroClientes))
+        : clientes;
+    if (filtrados.length === 0) {
+        lista.innerHTML = `<li style="color:#999;text-align:center;padding:20px;">${clientes.length === 0 ? 'Nenhum cliente cadastrado' : 'Nenhum cliente encontrado'}</li>`;
+        atualizarControlesPaginacao('Clientes', 0, 0);
         return;
     }
-    lista.innerHTML = clientes.map((c, i) => `
+    const inicio = paginaClientes * ITENS_POR_PAGINA;
+    const pagina = filtrados.slice(inicio, inicio + ITENS_POR_PAGINA);
+    lista.innerHTML = pagina.map((c) => {
+        const i = clientes.findIndex(x => x.id === c.id);
+        return `
         <li>
             <span>
                 <strong>${c.nome}</strong>
@@ -460,11 +483,36 @@ function renderClientes() {
                 ${c.observacoes ? `<br><small>📝 ${c.observacoes}</small>` : ''}
             </span>
             <div style="display:flex;gap:5px;">
-                <button onclick="editarCliente(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
-                <button onclick="excluirCliente(${i})" class="btn-secondary" style="padding:4px 8px;">🗑️</button>
+                <button onclick="abrirHistoricoCliente('${c.id}')" class="btn-secondary" style="padding:4px 8px;">📋</button>
+                ${souAdmin() ? `
+                    <button onclick="editarCliente(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
+                    <button onclick="excluirCliente(${i})" class="btn-secondary" style="padding:4px 8px;">🗑️</button>
+                ` : ''}
             </div>
         </li>
-    `).join('');
+    `; }).join('');
+    atualizarControlesPaginacao('Clientes', paginaClientes, filtrados.length);
+}
+
+function atualizarControlesPaginacao(sufixo, pagina, total) {
+    const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
+    const infoEl = document.getElementById(`infoPag${sufixo}`);
+    const btnAnterior = document.getElementById(`btnPagAnterior${sufixo}`);
+    const btnProxima = document.getElementById(`btnPagProxima${sufixo}`);
+    if (infoEl) infoEl.textContent = total > 0 ? `Página ${pagina + 1} de ${totalPaginas}` : '';
+    if (btnAnterior) btnAnterior.disabled = pagina <= 0;
+    if (btnProxima) btnProxima.disabled = pagina >= totalPaginas - 1;
+}
+
+function paginaAnteriorClientes() { if (paginaClientes > 0) { paginaClientes--; renderClientes(); } }
+function paginaProximaClientes() {
+    const totalPaginas = Math.max(1, Math.ceil(clientes.length / ITENS_POR_PAGINA));
+    if (paginaClientes < totalPaginas - 1) { paginaClientes++; renderClientes(); }
+}
+function paginaAnteriorProdutos() { if (paginaProdutos > 0) { paginaProdutos--; renderProdutos(); } }
+function paginaProximaProdutos() {
+    const totalPaginas = Math.max(1, Math.ceil(produtos.length / ITENS_POR_PAGINA));
+    if (paginaProdutos < totalPaginas - 1) { paginaProdutos++; renderProdutos(); }
 }
 
 async function adicionarCliente() {
@@ -569,20 +617,33 @@ function renderSelectClientes() {
     if (!sel) return;
     sel.innerHTML = '<option value="">Selecione um cliente</option>' +
         clientes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+    renderSelectClienteVisita();
 }
 
 // ============================================
 // PRODUTOS
 // ============================================
 
+let filtroProdutos = '';
+
 function renderProdutos() {
     const lista = document.getElementById('listaProdutos');
     if (!lista) return;
-    if (produtos.length === 0) {
-        lista.innerHTML = '<li style="color:#999;text-align:center;padding:20px;">Nenhum produto cadastrado</li>';
+    const filtrados = filtroProdutos
+        ? produtos.filter(p => `${p.nome} ${p.codigo_barras || ''}`.toLowerCase().includes(filtroProdutos))
+        : produtos;
+    if (filtrados.length === 0) {
+        lista.innerHTML = `<li style="color:#999;text-align:center;padding:20px;">${produtos.length === 0 ? 'Nenhum produto cadastrado' : 'Nenhum produto encontrado'}</li>`;
+        atualizarControlesPaginacao('Produtos', 0, 0);
         return;
     }
-    lista.innerHTML = produtos.slice(0, 50).map((p, i) => `
+    const inicio = paginaProdutos * ITENS_POR_PAGINA;
+    const pagina = filtrados.slice(inicio, inicio + ITENS_POR_PAGINA);
+    lista.innerHTML = pagina.map((p) => {
+        const i = produtos.findIndex(x => x.id === p.id);
+        const temEstoque = p.quantidade !== null && p.quantidade !== undefined;
+        const estoqueBaixo = temEstoque && p.estoque_minimo !== null && p.estoque_minimo !== undefined && Number(p.quantidade) <= Number(p.estoque_minimo);
+        return `
         <li>
             <span style="display:flex;gap:10px;align-items:center;">
                 ${p.foto_url ? `<img src="${p.foto_url}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0;">` : ''}
@@ -591,14 +652,54 @@ function renderProdutos() {
                     <br><small>R$ ${Number(p.preco).toFixed(2)}</small>
                     <br><small>📂 ${p.tipo || 'outro'}</small>
                     ${p.codigo_barras ? `<br><small>🔢 ${p.codigo_barras}</small>` : ''}
+<<<<<<< Updated upstream
+=======
+                    ${temEstoque ? `<br><small class="${estoqueBaixo ? 'estoque-baixo' : ''}">📦 Estoque: ${p.quantidade}${estoqueBaixo ? ' ⚠️ baixo!' : ''}</small>` : ''}
+>>>>>>> Stashed changes
                 </span>
             </span>
             <div style="display:flex;gap:5px;">
-                <button onclick="editarProduto(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
-                <button onclick="excluirProduto(${i})" class="btn-secondary" style="padding:4px 8px;">🗑️</button>
+                ${souAdmin() ? `
+                    <button onclick="editarProduto(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
+                    <button onclick="excluirProduto(${i})" class="btn-secondary" style="padding:4px 8px;">🗑️</button>
+                ` : ''}
             </div>
         </li>
-    `).join('');
+    `; }).join('');
+    atualizarControlesPaginacao('Produtos', paginaProdutos, filtrados.length);
+}
+
+function comprimirImagem(arquivo, maxLado = 800, qualidade = 0.72) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(arquivo);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            let { width, height } = img;
+            if (width > height && width > maxLado) { height = Math.round(height * (maxLado / width)); width = maxLado; }
+            else if (height > maxLado) { width = Math.round(width * (maxLado / height)); height = maxLado; }
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Falha ao comprimir imagem')), 'image/jpeg', qualidade);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível ler a imagem')); };
+        img.src = url;
+    });
+}
+
+async function enviarFotoProduto(idProduto, arquivo) {
+    if (!arquivo) return null;
+    const comprimida = await comprimirImagem(arquivo);
+    const caminho = `${idProduto}.jpg`; // extensão sempre igual: trocar a foto sobrescreve, não deixa lixo
+    const { error } = await sb.storage.from('produtos').upload(caminho, comprimida, { upsert: true, contentType: 'image/jpeg' });
+    if (error) throw error;
+    const { data } = sb.storage.from('produtos').getPublicUrl(caminho);
+    return data.publicUrl + '?t=' + Date.now(); // evita cache de imagem antiga
+}
+
+async function removerFotoProduto(idProduto) {
+    try { await sb.storage.from('produtos').remove([`${idProduto}.jpg`]); } catch (e) { /* sem problema se não existir */ }
 }
 
 async function enviarFotoProduto(idProduto, arquivo) {
@@ -616,9 +717,21 @@ async function adicionarProduto() {
     const preco = parseFloat(document.getElementById('precoProduto').value);
     const tipo = document.getElementById('tipoProduto').value;
     const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
+<<<<<<< Updated upstream
     const arquivoFoto = document.getElementById('fotoProduto').files[0];
     if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
     const novoProduto = { id: gerarId(), nome, preco, tipo, codigo_barras: codigoBarras || null, foto_url: null };
+=======
+    const quantidadeVal = document.getElementById('quantidadeProduto').value;
+    const estoqueMinimoVal = document.getElementById('estoqueMinimoProduto').value;
+    const arquivoFoto = document.getElementById('fotoProduto').files[0];
+    if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
+    const novoProduto = {
+        id: gerarId(), nome, preco, tipo, codigo_barras: codigoBarras || null, foto_url: null,
+        quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
+        estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
+    };
+>>>>>>> Stashed changes
     try {
         if (arquivoFoto) {
             atualizarStatus('📸 Enviando foto...');
@@ -630,6 +743,11 @@ async function adicionarProduto() {
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
         document.getElementById('codigoBarrasProduto').value = '';
+<<<<<<< Updated upstream
+=======
+        document.getElementById('quantidadeProduto').value = '';
+        document.getElementById('estoqueMinimoProduto').value = '';
+>>>>>>> Stashed changes
         document.getElementById('fotoProduto').value = '';
         document.getElementById('previewFotoProduto').style.display = 'none';
         fecharModal('modalProduto');
@@ -649,6 +767,7 @@ async function excluirProduto(index) {
     try {
         const { error } = await sb.from('produtos').delete().eq('id', produto.id);
         if (error) throw error;
+        if (produto.foto_url) await removerFotoProduto(produto.id);
         produtos.splice(index, 1);
         renderProdutos();
         renderSelectProdutos();
@@ -665,6 +784,11 @@ function editarProduto(index) {
     document.getElementById('precoProduto').value = p.preco;
     document.getElementById('tipoProduto').value = p.tipo || 'outro';
     document.getElementById('codigoBarrasProduto').value = p.codigo_barras || '';
+<<<<<<< Updated upstream
+=======
+    document.getElementById('quantidadeProduto').value = (p.quantidade ?? '');
+    document.getElementById('estoqueMinimoProduto').value = (p.estoque_minimo ?? '');
+>>>>>>> Stashed changes
     document.getElementById('fotoProduto').value = '';
     const preview = document.getElementById('previewFotoProduto');
     if (p.foto_url) { preview.src = p.foto_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
@@ -680,9 +804,21 @@ function editarProduto(index) {
         const preco = parseFloat(document.getElementById('precoProduto').value);
         const tipo = document.getElementById('tipoProduto').value;
         const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
+<<<<<<< Updated upstream
         const arquivoFoto = document.getElementById('fotoProduto').files[0];
         if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
         const produtoAtualizado = { ...produtos[idx], nome, preco, tipo, codigo_barras: codigoBarras || null };
+=======
+        const quantidadeVal = document.getElementById('quantidadeProduto').value;
+        const estoqueMinimoVal = document.getElementById('estoqueMinimoProduto').value;
+        const arquivoFoto = document.getElementById('fotoProduto').files[0];
+        if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
+        const produtoAtualizado = {
+            ...produtos[idx], nome, preco, tipo, codigo_barras: codigoBarras || null,
+            quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
+            estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
+        };
+>>>>>>> Stashed changes
         try {
             if (arquivoFoto) {
                 atualizarStatus('📸 Enviando foto...');
@@ -694,6 +830,11 @@ function editarProduto(index) {
             document.getElementById('nomeProduto').value = '';
             document.getElementById('precoProduto').value = '';
             document.getElementById('codigoBarrasProduto').value = '';
+<<<<<<< Updated upstream
+=======
+            document.getElementById('quantidadeProduto').value = '';
+            document.getElementById('estoqueMinimoProduto').value = '';
+>>>>>>> Stashed changes
             document.getElementById('fotoProduto').value = '';
             document.getElementById('previewFotoProduto').style.display = 'none';
             document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
@@ -790,12 +931,21 @@ async function salvarOrcamento() {
     if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item!'); return; }
     const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
     const clienteData = clientes.find(c => c.nome === cliente);
+<<<<<<< Updated upstream
+=======
+    const formaPagamento = document.getElementById('formaPagamentoOrcamento').value;
+    const parcelas = formaPagamento === 'Cartão de Crédito' ? parseInt(document.getElementById('parcelasOrcamento').value) : 1;
+>>>>>>> Stashed changes
 
     // Editando um orçamento já existente: atualiza em vez de criar um novo
     if (editandoOSId) {
         const osExistente = ordensServico.find(o => o.id === editandoOSId);
         if (!osExistente) { alert('⚠️ Não encontrei esse orçamento — talvez tenha sido removido.'); editandoOSId = null; return; }
+<<<<<<< Updated upstream
         const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total };
+=======
+        const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total, forma_pagamento: formaPagamento, parcelas };
+>>>>>>> Stashed changes
         try {
             const { error } = await sb.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
             if (error) throw error;
@@ -822,6 +972,8 @@ async function salvarOrcamento() {
         itens: itens,
         total: total,
         status: 'orcamento',
+        forma_pagamento: formaPagamento,
+        parcelas: parcelas,
         data_criacao: new Date().toISOString()
     };
     try {
@@ -872,12 +1024,16 @@ function abrirOS(id) {
     let itensHTML = os.itens?.map((item, i) => `
         <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
     `).join('') || '';
+    const pagamentoTexto = os.forma_pagamento
+        ? os.forma_pagamento + (os.forma_pagamento === 'Cartão de Crédito' && os.parcelas > 1 ? ` (${os.parcelas}x)` : '')
+        : '—';
     document.getElementById('detalhesOS').innerHTML = `
         <div style="margin-bottom:10px;">
             <p><strong>Nº:</strong> ${os.numero}</p>
             <p><strong>Cliente:</strong> ${os.cliente_nome}</p>
             <p><strong>Status:</strong> ${os.status}</p>
             <p><strong>Data:</strong> ${data}</p>
+            <p><strong>Forma de pagamento:</strong> ${pagamentoTexto}</p>
             <p><strong>Total:</strong> R$ ${Number(os.total || 0).toFixed(2)}</p>
         </div>
         <div style="overflow-x:auto;">
@@ -891,11 +1047,12 @@ function abrirOS(id) {
             </table>
         </div>
     `;
-    document.getElementById('btnAprovarOS').style.display = os.status === 'orcamento' ? 'inline-block' : 'none';
-    document.getElementById('btnIniciarOS').style.display = os.status === 'aprovado' ? 'inline-block' : 'none';
-    document.getElementById('btnConcluirOS').style.display = os.status === 'em_andamento' ? 'inline-block' : 'none';
-    document.getElementById('btnCancelarOS').style.display = os.status !== 'cancelado' && os.status !== 'concluido' ? 'inline-block' : 'none';
-    document.getElementById('btnEmitirRecibo').style.display = os.status === 'concluido' ? 'inline-block' : 'none';
+    document.getElementById('btnAprovarOS').style.display = (souAdmin() && os.status === 'orcamento') ? 'inline-block' : 'none';
+    document.getElementById('btnIniciarOS').style.display = (souAdmin() && os.status === 'aprovado') ? 'inline-block' : 'none';
+    document.getElementById('btnConcluirOS').style.display = (souAdmin() && os.status === 'em_andamento') ? 'inline-block' : 'none';
+    document.getElementById('btnCancelarOS').style.display = (souAdmin() && os.status !== 'cancelado' && os.status !== 'concluido') ? 'inline-block' : 'none';
+    document.getElementById('btnEmitirRecibo').style.display = (souAdmin() && os.status === 'concluido') ? 'inline-block' : 'none';
+    document.getElementById('btnEditarOS').style.display = souAdmin() ? 'inline-block' : 'none';
     osAtual = os;
     abrirModal('modalOS');
 }
@@ -972,6 +1129,7 @@ async function emitirRecibo() {
         os_id: osAtual.id, os_numero: osAtual.numero,
         cliente_id: osAtual.cliente_id, cliente_nome: osAtual.cliente_nome,
         itens: osAtual.itens, total: osAtual.total,
+        forma_pagamento: osAtual.forma_pagamento || null, parcelas: osAtual.parcelas || 1,
         status: 'pendente', data_emissao: new Date().toISOString(), data_pagamento: null
     };
     try {
@@ -1043,6 +1201,10 @@ function abrirRecibo(id) {
             <p style="margin:2px 0;"><strong>Cliente:</strong> ${reciboAtual.cliente_nome}</p>
             <p style="margin:2px 0;"><strong>Referente à OS:</strong> ${reciboAtual.os_numero}</p>
             <p style="margin:2px 0;"><strong>Data de emissão:</strong> ${data}</p>
+<<<<<<< Updated upstream
+=======
+            ${reciboAtual.forma_pagamento ? `<p style="margin:2px 0;"><strong>Forma de pagamento:</strong> ${reciboAtual.forma_pagamento}${reciboAtual.forma_pagamento === 'Cartão de Crédito' && reciboAtual.parcelas > 1 ? ` (${reciboAtual.parcelas}x)` : ''}</p>` : ''}
+>>>>>>> Stashed changes
             <p style="margin:2px 0;"><strong>Status:</strong> <span style="color:${statusPago ? '#27ae60' : '#e67e22'};font-weight:bold;">${statusPago ? '✅ PAGO' : '⏳ PENDENTE'}</span></p>
         </div>
         <div style="overflow-x:auto;">
@@ -1582,6 +1744,7 @@ function renderizarLogs() {
 }
 
 async function limparLogs() {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem limpar os logs.'); return; }
     if (!confirm('Limpar todos os logs (de todos os dispositivos)?')) return;
     try {
         await sb.from('logs').delete().neq('id', 0);
@@ -1591,6 +1754,273 @@ async function limparLogs() {
     } catch (e) {
         alert('❌ Erro ao limpar logs: ' + e.message);
     }
+}
+
+// ============================================
+// DESPESAS (contas a pagar da empresa)
+// ============================================
+
+const CATEGORIAS_DESPESA = { material: '🧰 Material/Compra', combustivel: '⛽ Combustível', ferramenta: '🔧 Ferramenta', aluguel: '🏠 Aluguel', salario: '💵 Salário', outro: '📦 Outro' };
+
+async function carregarDespesasSupabase() {
+    const { data, error } = await sb.from('despesas').select('*').order('data', { ascending: false });
+    if (error) throw error;
+    despesas = data || [];
+    listarDespesas();
+}
+
+function listarDespesas(filtro = 'todos') {
+    const container = document.getElementById('listaDespesas');
+    if (!container) return;
+    let lista = filtro !== 'todos' ? despesas.filter(d => d.status === filtro) : despesas;
+    if (lista.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Nenhuma despesa lançada</p>';
+        return;
+    }
+    container.innerHTML = lista.map(d => {
+        const dataFmt = d.data ? new Date(d.data + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+        const pago = d.status === 'pago';
+        return `
+        <div class="os-card">
+            <div><strong>${d.descricao}</strong> <span class="status-badge ${pago ? 'status-recebido' : 'status-orcamento'}">${pago ? '✅ Pago' : '⏳ Pendente'}</span></div>
+            <div style="font-size:12px;color:#666;">${CATEGORIAS_DESPESA[d.categoria] || d.categoria || ''} · ${dataFmt}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;">
+                <strong style="color:#e74c3c;">R$ ${Number(d.valor).toFixed(2)}</strong>
+                ${souAdmin() ? `<button onclick="excluirDespesa('${d.id}')" class="btn-secondary" style="padding:4px 8px;">🗑️</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function filtrarDespesas() { listarDespesas(document.getElementById('filtroDespesa').value); }
+
+async function adicionarDespesa() {
+    const descricao = document.getElementById('descricaoDespesa').value.trim();
+    const valor = parseFloat(document.getElementById('valorDespesa').value);
+    const categoria = document.getElementById('categoriaDespesa').value;
+    const data = document.getElementById('dataDespesa').value || new Date().toISOString().split('T')[0];
+    const status = document.getElementById('statusDespesa').value;
+    if (!descricao || isNaN(valor) || valor <= 0) { alert('⚠️ Descrição e valor válido são obrigatórios'); return; }
+    const nova = { id: gerarId(), descricao, valor, categoria, data, status, criado_por: usuarioAtual?.nome || '' };
+    try {
+        const { error } = await sb.from('despesas').upsert(nova, { onConflict: 'id' });
+        if (error) throw error;
+        despesas.unshift(nova);
+        document.getElementById('descricaoDespesa').value = '';
+        document.getElementById('valorDespesa').value = '';
+        document.getElementById('dataDespesa').value = '';
+        fecharModal('modalDespesa');
+        listarDespesas();
+        atualizarDashboard();
+        atualizarStatus(`✅ Despesa "${descricao}" lançada!`);
+        registrarLog('DESPESA_LANCADA', `Despesa "${descricao}" de R$ ${valor.toFixed(2)} lançada`);
+    } catch (e) {
+        alert('❌ Erro ao lançar despesa: ' + e.message);
+    }
+}
+
+async function excluirDespesa(id) {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem excluir despesas.'); return; }
+    const despesa = despesas.find(d => d.id === id);
+    if (!despesa || !confirm(`Excluir despesa "${despesa.descricao}"?`)) return;
+    try {
+        const { error } = await sb.from('despesas').delete().eq('id', id);
+        if (error) throw error;
+        despesas = despesas.filter(d => d.id !== id);
+        listarDespesas();
+        atualizarDashboard();
+        atualizarStatus('🗑️ Despesa removida');
+        registrarLog('DESPESA_EXCLUIDA', `Despesa "${despesa.descricao}" excluída`);
+    } catch (e) {
+        alert('❌ Erro ao excluir despesa: ' + e.message);
+    }
+}
+
+// ============================================
+// AGENDA DE VISITAS TÉCNICAS
+// ============================================
+
+async function carregarVisitasSupabase() {
+    const { data, error } = await sb.from('visitas').select('*').order('data_hora', { ascending: true });
+    if (error) throw error;
+    visitas = data || [];
+    listarVisitas();
+}
+
+function listarVisitas() {
+    const container = document.getElementById('listaVisitas');
+    if (!container) return;
+    if (visitas.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Nenhuma visita agendada</p>';
+        return;
+    }
+    const badges = { agendada: '📅 Agendada', concluida: '✅ Concluída', cancelada: '❌ Cancelada' };
+    container.innerHTML = visitas.map(v => {
+        const dataHora = new Date(v.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+        return `
+        <div class="os-card">
+            <div><strong>${v.cliente_nome}</strong> <span class="status-badge status-orcamento">${badges[v.status] || v.status}</span></div>
+            <div style="font-size:12px;color:#666;">🕐 ${dataHora}</div>
+            ${v.descricao ? `<div style="font-size:12px;color:#666;">${v.descricao}</div>` : ''}
+            <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
+                ${v.status === 'agendada' ? `
+                    <button onclick="concluirVisita('${v.id}')" class="btn-success" style="padding:4px 8px;font-size:11px;">✅ Concluir</button>
+                    <button onclick="cancelarVisita('${v.id}')" class="btn-danger" style="padding:4px 8px;font-size:11px;">❌ Cancelar</button>
+                ` : ''}
+                ${souAdmin() ? `<button onclick="excluirVisita('${v.id}')" class="btn-secondary" style="padding:4px 8px;">🗑️</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderSelectClienteVisita() {
+    const sel = document.getElementById('clienteVisita');
+    if (!sel) return;
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Selecione um cliente</option>' + clientes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+    sel.value = atual;
+}
+
+async function adicionarVisita() {
+    const clienteNome = document.getElementById('clienteVisita').value;
+    const dataHora = document.getElementById('dataHoraVisita').value;
+    const descricao = document.getElementById('descricaoVisita').value.trim();
+    if (!clienteNome || !dataHora) { alert('⚠️ Selecione o cliente e a data/hora!'); return; }
+    const clienteData = clientes.find(c => c.nome === clienteNome);
+    const nova = {
+        id: gerarId(), cliente_id: clienteData?.id || '', cliente_nome: clienteNome,
+        data_hora: new Date(dataHora).toISOString(), descricao, status: 'agendada', criado_por: usuarioAtual?.nome || ''
+    };
+    try {
+        const { error } = await sb.from('visitas').upsert(nova, { onConflict: 'id' });
+        if (error) throw error;
+        visitas.push(nova);
+        visitas.sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
+        document.getElementById('clienteVisita').value = '';
+        document.getElementById('dataHoraVisita').value = '';
+        document.getElementById('descricaoVisita').value = '';
+        fecharModal('modalVisita');
+        listarVisitas();
+        atualizarDashboard();
+        atualizarStatus(`✅ Visita agendada para ${clienteNome}!`);
+        registrarLog('VISITA_AGENDADA', `Visita agendada para ${clienteNome}`);
+    } catch (e) {
+        alert('❌ Erro ao agendar visita: ' + e.message);
+    }
+}
+
+async function atualizarStatusVisita(id, novoStatus) {
+    const visita = visitas.find(v => v.id === id);
+    if (!visita) return;
+    const atualizada = { ...visita, status: novoStatus };
+    try {
+        const { error } = await sb.from('visitas').upsert(atualizada, { onConflict: 'id' });
+        if (error) throw error;
+        const idx = visitas.findIndex(v => v.id === id);
+        if (idx >= 0) visitas[idx] = atualizada;
+        listarVisitas();
+        atualizarDashboard();
+        atualizarStatus('✅ Visita atualizada!');
+        registrarLog('VISITA_ATUALIZADA', `Visita de ${visita.cliente_nome} marcada como ${novoStatus}`);
+    } catch (e) {
+        alert('❌ Erro ao atualizar visita: ' + e.message);
+    }
+}
+function concluirVisita(id) { atualizarStatusVisita(id, 'concluida'); }
+function cancelarVisita(id) { if (confirm('Cancelar essa visita?')) atualizarStatusVisita(id, 'cancelada'); }
+
+async function excluirVisita(id) {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem excluir visitas.'); return; }
+    if (!confirm('Excluir essa visita?')) return;
+    try {
+        const { error } = await sb.from('visitas').delete().eq('id', id);
+        if (error) throw error;
+        visitas = visitas.filter(v => v.id !== id);
+        listarVisitas();
+        atualizarDashboard();
+        atualizarStatus('🗑️ Visita removida');
+    } catch (e) {
+        alert('❌ Erro ao excluir visita: ' + e.message);
+    }
+}
+
+// ============================================
+// DASHBOARD (resumo do negócio)
+// ============================================
+
+function atualizarDashboard() {
+    const aReceber = recibos.filter(r => r.status === 'pendente').reduce((s, r) => s + Number(r.total || 0), 0);
+    const agora = new Date();
+    const mesAtual = agora.getMonth(), anoAtual = agora.getFullYear();
+    const recebidoMes = recibos.filter(r => r.status === 'pago' && r.data_pagamento &&
+        new Date(r.data_pagamento).getMonth() === mesAtual && new Date(r.data_pagamento).getFullYear() === anoAtual)
+        .reduce((s, r) => s + Number(r.total || 0), 0);
+    const despesasMes = despesas.filter(d => d.data &&
+        new Date(d.data + 'T00:00:00').getMonth() === mesAtual && new Date(d.data + 'T00:00:00').getFullYear() === anoAtual)
+        .reduce((s, d) => s + Number(d.valor || 0), 0);
+    const osAndamento = ordensServico.filter(o => o.status === 'aprovado' || o.status === 'em_andamento').length;
+    const estoqueBaixoCount = produtos.filter(p =>
+        p.quantidade !== null && p.quantidade !== undefined &&
+        p.estoque_minimo !== null && p.estoque_minimo !== undefined &&
+        Number(p.quantidade) <= Number(p.estoque_minimo)
+    ).length;
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('dashAReceber', `R$ ${aReceber.toFixed(2)}`);
+    set('dashRecebidoMes', `R$ ${recebidoMes.toFixed(2)}`);
+    set('dashDespesasMes', `R$ ${despesasMes.toFixed(2)}`);
+    set('dashOSAndamento', osAndamento);
+    set('dashClientes', clientes.length);
+    set('dashEstoqueBaixo', estoqueBaixoCount);
+
+    const proximasVisitas = visitas.filter(v => v.status === 'agendada' && new Date(v.data_hora) >= new Date())
+        .sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora)).slice(0, 5);
+    const container = document.getElementById('dashProximasVisitas');
+    if (container) {
+        if (proximasVisitas.length === 0) {
+            container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;font-size:12px;">Nenhuma visita agendada em breve</p>';
+        } else {
+            container.innerHTML = `<h3 style="font-size:14px;color:#1a237e;margin-bottom:8px;">📅 Próximas visitas</h3>` + proximasVisitas.map(v => `
+                <div style="background:#f8f9fa;padding:8px 12px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                    <strong>${v.cliente_nome}</strong> — ${new Date(v.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                </div>
+            `).join('');
+        }
+    }
+}
+
+// ============================================
+// HISTÓRICO DO CLIENTE
+// ============================================
+
+function abrirHistoricoCliente(clienteId) {
+    const cliente = clientes.find(c => c.id === clienteId);
+    if (!cliente) return;
+    document.getElementById('tituloHistoricoCliente').textContent = `📋 Histórico — ${cliente.nome}`;
+    const osDoCliente = ordensServico.filter(o => o.cliente_id === clienteId || o.cliente_nome === cliente.nome);
+    const recibosDoCliente = recibos.filter(r => r.cliente_id === clienteId || r.cliente_nome === cliente.nome);
+    const visitasDoCliente = visitas.filter(v => v.cliente_id === clienteId || v.cliente_nome === cliente.nome);
+
+    let html = '';
+    if (!osDoCliente.length && !recibosDoCliente.length && !visitasDoCliente.length) {
+        html = '<p style="color:#999;text-align:center;padding:20px;">Nenhum histórico encontrado para esse cliente</p>';
+    } else {
+        const badgesOS = { orcamento: '📄 Orçamento', aprovado: '✅ Aprovado', em_andamento: '🔧 Em Andamento', concluido: '✅ Concluído', cancelado: '❌ Cancelado' };
+        if (osDoCliente.length) {
+            html += `<h4 style="color:#1a237e;font-size:13px;margin:10px 0 6px;">📄 Orçamentos/OS</h4>`;
+            html += osDoCliente.map(o => `<div style="font-size:12px;background:#f8f9fa;padding:6px 10px;border-radius:6px;margin-bottom:4px;">${o.numero} — ${badgesOS[o.status] || o.status} — R$ ${Number(o.total || 0).toFixed(2)}</div>`).join('');
+        }
+        if (recibosDoCliente.length) {
+            html += `<h4 style="color:#1a237e;font-size:13px;margin:10px 0 6px;">💰 Recibos</h4>`;
+            html += recibosDoCliente.map(r => `<div style="font-size:12px;background:#f8f9fa;padding:6px 10px;border-radius:6px;margin-bottom:4px;">${r.numero} — ${r.status === 'pago' ? '✅ Pago' : '⏳ Pendente'} — R$ ${Number(r.total || 0).toFixed(2)}</div>`).join('');
+        }
+        if (visitasDoCliente.length) {
+            html += `<h4 style="color:#1a237e;font-size:13px;margin:10px 0 6px;">📅 Visitas</h4>`;
+            html += visitasDoCliente.map(v => `<div style="font-size:12px;background:#f8f9fa;padding:6px 10px;border-radius:6px;margin-bottom:4px;">${new Date(v.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} — ${v.status}</div>`).join('');
+        }
+    }
+    document.getElementById('conteudoHistoricoCliente').innerHTML = html;
+    abrirModal('modalHistoricoCliente');
 }
 
 // ============================================
@@ -1813,6 +2243,9 @@ function init() {
     updateTotal();
     listarOS();
     listarRecibos();
+    listarDespesas();
+    listarVisitas();
+    atualizarDashboard();
     renderizarLogs();
     listarUsuarios();
     carregarLogo();
@@ -1890,6 +2323,40 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('btnFecharOS')?.addEventListener('click', function () { fecharModal('modalOS'); });
     document.getElementById('btnFecharRecibo')?.addEventListener('click', function () { fecharModal('modalRecibo'); });
 
+    // Paginação
+    document.getElementById('btnPagAnteriorClientes')?.addEventListener('click', paginaAnteriorClientes);
+    document.getElementById('btnPagProximaClientes')?.addEventListener('click', paginaProximaClientes);
+    document.getElementById('btnPagAnteriorProdutos')?.addEventListener('click', paginaAnteriorProdutos);
+    document.getElementById('btnPagProximaProdutos')?.addEventListener('click', paginaProximaProdutos);
+
+    // Despesas
+    document.getElementById('btnAddDespesa')?.addEventListener('click', function () {
+        document.getElementById('descricaoDespesa').value = '';
+        document.getElementById('valorDespesa').value = '';
+        document.getElementById('dataDespesa').value = new Date().toISOString().split('T')[0];
+        abrirModal('modalDespesa');
+    });
+    document.getElementById('salvarDespesa')?.addEventListener('click', adicionarDespesa);
+    document.getElementById('fecharModalDespesa')?.addEventListener('click', function () { fecharModal('modalDespesa'); });
+
+    // Agenda de visitas
+    document.getElementById('btnAddVisita')?.addEventListener('click', function () {
+        document.getElementById('clienteVisita').value = '';
+        document.getElementById('dataHoraVisita').value = '';
+        document.getElementById('descricaoVisita').value = '';
+        abrirModal('modalVisita');
+    });
+    document.getElementById('salvarVisita')?.addEventListener('click', adicionarVisita);
+    document.getElementById('fecharModalVisita')?.addEventListener('click', function () { fecharModal('modalVisita'); });
+
+    // Histórico do cliente
+    document.getElementById('btnFecharHistorico')?.addEventListener('click', function () { fecharModal('modalHistoricoCliente'); });
+
+    // Forma de pagamento do orçamento: mostra parcelas só quando é cartão
+    document.getElementById('formaPagamentoOrcamento')?.addEventListener('change', function () {
+        document.getElementById('parcelasOrcamento').style.display = this.value === 'Cartão de Crédito' ? 'block' : 'none';
+    });
+
     // Eventos da OS
     document.getElementById('btnEditarOS')?.addEventListener('click', () => editarOS(osAtual?.id));
     document.getElementById('btnReimprimirOS')?.addEventListener('click', () => reimprimirOS(osAtual?.id));
@@ -1910,21 +2377,16 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Busca Clientes
     document.getElementById('buscaCliente')?.addEventListener('input', function (e) {
-        const termo = e.target.value.toLowerCase().trim();
-        document.querySelectorAll('#listaClientes li').forEach(li => {
-            const texto = li.textContent?.toLowerCase() || '';
-            li.style.display = texto.includes(termo) ? 'flex' : 'none';
-        });
+        filtroClientes = e.target.value.toLowerCase().trim();
+        paginaClientes = 0;
+        renderClientes();
     });
 
     // Busca Produtos
     document.getElementById('buscaProduto')?.addEventListener('input', function (e) {
-        const termo = e.target.value.toLowerCase().trim();
-        document.querySelectorAll('#listaProdutos li').forEach(li => {
-            const texto = li.textContent?.toLowerCase() || '';
-            const nome = texto.split('R$')[0].trim();
-            li.style.display = nome.includes(termo) ? 'flex' : 'none';
-        });
+        filtroProdutos = e.target.value.toLowerCase().trim();
+        paginaProdutos = 0;
+        renderProdutos();
     });
 
     // Enter nos modais
