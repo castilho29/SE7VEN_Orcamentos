@@ -56,8 +56,6 @@
         .btn-restore{background:#f39c12;color:white;}
         .backup-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
         .backup-grid button{padding:12px 8px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;color:white;text-align:center;line-height:1.3;}
-<<<<<<< Updated upstream
-=======
         .dash-card{padding:14px 12px;border-radius:8px;}
         .dash-label{font-size:11px;color:#555;font-weight:bold;margin-bottom:4px;}
         .dash-valor{font-size:18px;font-weight:900;color:#222;}
@@ -65,7 +63,6 @@
         .paginacao{display:flex;justify-content:center;gap:10px;margin-top:10px;}
         .paginacao button{padding:6px 16px;border-radius:6px;border:1px solid #bdc3c7;background:white;cursor:pointer;font-size:12px;}
         .paginacao button:disabled{opacity:0.4;cursor:not-allowed;}
->>>>>>> Stashed changes
         
         .tab-container{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap;}
         .tab-btn{padding:8px 16px;border:1px solid #bdc3c7;background:white;border-radius:4px;cursor:pointer;font-size:12px;transition:all 0.3s;}
@@ -318,14 +315,11 @@
                 <h2>📦 Produtos</h2>
                 <input type="text" id="buscaProduto" placeholder="🔍 Buscar produto (nome ou código de barras)...">
                 <ul id="listaProdutos"></ul>
-<<<<<<< Updated upstream
-=======
                 <div class="paginacao">
                     <button id="btnPagAnteriorProdutos">‹ Anteriores</button>
                     <span id="infoPagProdutos" style="font-size:12px;color:#666;align-self:center;"></span>
                     <button id="btnPagProximaProdutos">Próximos ›</button>
                 </div>
->>>>>>> Stashed changes
                 <div style="display:flex;gap:8px;">
                     <button id="btnAddProduto" class="btn-secondary" style="flex:1;">+ Adicionar Produto</button>
                     <button id="btnEscanearProduto" class="btn-info" style="flex:1;background:#3498db;color:white;border:none;border-radius:8px;">📷 Escanear Código</button>
@@ -380,7 +374,12 @@
                     </select>
                 </div>
                 <div id="totalOrcamento"><strong>Total: R$ <span id="totalValor">0,00</span></strong></div>
-                
+
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555;margin:8px 0;">
+                    <input type="checkbox" id="incluirFotosPDF" style="width:auto;margin:0;">
+                    📸 Incluir fotos dos produtos no PDF
+                </label>
+
                 <div class="footer-actions">
                     <button id="btnLimpar" class="btn-danger">🗑️ Limpar</button>
                     <button id="btnSalvarOrcamento" class="btn-success">💾 Salvar</button>
@@ -537,11 +536,7 @@
     <!-- ========== MODAIS ========== -->
     <div id="modalCliente" class="modal"><div class="modal-content"><h3>👤 Novo Cliente</h3><input type="text" id="nomeCliente" placeholder="Nome *"><input type="tel" id="telefoneCliente" placeholder="Celular"><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="cpfCliente" placeholder="CPF/CNPJ" style="flex:1;"><button type="button" id="btnBuscarCNPJ" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">🔍 Buscar CNPJ</button></div><input type="text" id="enderecoCliente" placeholder="Endereço"><input type="email" id="emailCliente" placeholder="Email"><textarea id="observacoesCliente" placeholder="Observações (opcional)" style="width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;min-height:60px;resize:vertical;"></textarea><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarCliente" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalCliente" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
     
-<<<<<<< Updated upstream
-    <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="codigoBarrasProduto" placeholder="Código de barras (opcional)" style="flex:1;"><button type="button" id="btnEscanearModalProduto" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">📷</button></div><label style="font-size:12px;color:#666;display:block;margin-top:8px;">📸 Foto do produto (opcional) — tirar foto ou escolher da galeria</label><input type="file" id="fotoProduto" accept="image/*" style="padding:8px 0;"><img id="previewFotoProduto" style="display:none;max-width:120px;max-height:120px;border-radius:8px;margin:8px 0;object-fit:cover;"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
-=======
     <div id="modalProduto" class="modal"><div class="modal-content"><h3>📦 Novo Produto</h3><input type="text" id="nomeProduto" placeholder="Nome *"><input type="number" id="precoProduto" placeholder="Preço *" step="0.01"><select id="tipoProduto"><option value="material">Material Elétrico</option><option value="servico">Serviço</option><option value="equipamento">Equipamento</option><option value="outro">Outro</option></select><div style="display:flex;gap:8px;"><input type="number" id="quantidadeProduto" placeholder="Qtd em estoque" min="0" style="flex:1;"><input type="number" id="estoqueMinimoProduto" placeholder="Estoque mínimo" min="0" style="flex:1;"></div><div style="display:flex;gap:8px;align-items:center;"><input type="text" id="codigoBarrasProduto" placeholder="Código de barras (opcional)" style="flex:1;"><button type="button" id="btnEscanearModalProduto" class="btn-secondary" style="white-space:nowrap;padding:10px 12px;margin:5px 0;">📷</button></div><label style="font-size:12px;color:#666;display:block;margin-top:8px;">📸 Foto do produto (opcional) — tirar foto ou escolher da galeria</label><input type="file" id="fotoProduto" accept="image/*" style="padding:8px 0;"><img id="previewFotoProduto" style="display:none;max-width:120px;max-height:120px;border-radius:8px;margin:8px 0;object-fit:cover;"><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarProduto" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalProduto" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
->>>>>>> Stashed changes
 
     <div id="modalScanner" class="modal"><div class="modal-content" style="max-width:420px;text-align:center;">
         <h3>📷 Escanear Código de Barras</h3>
