@@ -470,4 +470,1533 @@ function renderClientes() {
     const inicio = paginaClientes * ITENS_POR_PAGINA;
     const pagina = filtrados.slice(inicio, inicio + ITENS_POR_PAGINA);
     lista.innerHTML = pagina.map((c) => {
-        const i = clientes.fin
+        const i = clientes.findIndex(x => x.id === c.id);
+        return `
+        <li>
+            <span>
+                <strong>${c.nome}</strong>
+                ${c.telefone ? `<br><small>📱 ${c.telefone}</small>` : ''}
+                ${c.email ? `<br><small>✉️ ${c.email}</small>` : ''}
+                ${c.observacoes ? `<br><small>📝 ${c.observacoes}</small>` : ''}
+            </span>
+            <div style="display:flex;gap:5px;">
+                <button onclick="abrirHistoricoCliente('${c.id}')" class="btn-secondary" style="padding:4px 8px;">📋</button>
+                ${souAdmin() ? `
+                    <button onclick="editarCliente(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
+                    <button onclick="excluirCliente(${i})" class="btn-secondary" style="padding:4px 8px;">🗑️</button>
+                ` : ''}
+            </div>
+        </li>
+    `; }).join('');
+    atualizarControlesPaginacao('Clientes', paginaClientes, filtrados.length);
+}
+
+function atualizarControlesPaginacao(sufixo, pagina, total) {
+    const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
+    const infoEl = document.getElementById(`infoPag${sufixo}`);
+    const btnAnterior = document.getElementById(`btnPagAnterior${sufixo}`);
+    const btnProxima = document.getElementById(`btnPagProxima${sufixo}`);
+    if (infoEl) infoEl.textContent = total > 0 ? `Página ${pagina + 1} de ${totalPaginas}` : '';
+    if (btnAnterior) btnAnterior.disabled = pagina <= 0;
+    if (btnProxima) btnProxima.disabled = pagina >= totalPaginas - 1;
+}
+
+function paginaAnteriorClientes() { if (paginaClientes > 0) { paginaClientes--; renderClientes(); } }
+function paginaProximaClientes() {
+    const totalPaginas = Math.max(1, Math.ceil(clientes.length / ITENS_POR_PAGINA));
+    if (paginaClientes < totalPaginas - 1) { paginaClientes++; renderClientes(); }
+}
+function paginaAnteriorProdutos() { if (paginaProdutos > 0) { paginaProdutos--; renderProdutos(); } }
+function paginaProximaProdutos() {
+    const totalPaginas = Math.max(1, Math.ceil(produtos.length / ITENS_POR_PAGINA));
+    if (paginaProdutos < totalPaginas - 1) { paginaProdutos++; renderProdutos(); }
+}
+
+async function adicionarCliente() {
+    const nome = document.getElementById('nomeCliente').value.trim();
+    const telefone = document.getElementById('telefoneCliente').value.trim();
+    if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
+    const novoCliente = {
+        id: gerarId(), nome, telefone,
+        email: document.getElementById('emailCliente').value.trim() || '',
+        cpf: document.getElementById('cpfCliente').value.trim() || '',
+        endereco: document.getElementById('enderecoCliente').value.trim() || '',
+        observacoes: document.getElementById('observacoesCliente').value.trim() || ''
+    };
+    try {
+        const { error } = await sb.from('clientes').upsert(novoCliente, { onConflict: 'id' });
+        if (error) throw error;
+        clientes.push(novoCliente);
+        document.getElementById('nomeCliente').value = '';
+        document.getElementById('telefoneCliente').value = '';
+        document.getElementById('cpfCliente').value = '';
+        document.getElementById('enderecoCliente').value = '';
+        document.getElementById('emailCliente').value = '';
+        document.getElementById('observacoesCliente').value = '';
+        fecharModal('modalCliente');
+        renderClientes();
+        renderSelectClientes();
+        atualizarStatus(`✅ Cliente "${nome}" cadastrado!`);
+        registrarLog('CLIENTE_ADICIONADO', `Cliente "${nome}" adicionado`);
+    } catch (e) {
+        alert('❌ Erro ao salvar cliente: ' + e.message);
+    }
+}
+
+async function excluirCliente(index) {
+    const cliente = clientes[index];
+    if (!cliente) return;
+    if (!confirm(`Excluir "${cliente.nome}"?`)) return;
+    try {
+        const { error } = await sb.from('clientes').delete().eq('id', cliente.id);
+        if (error) throw error;
+        clientes.splice(index, 1);
+        renderClientes();
+        renderSelectClientes();
+        atualizarStatus(`🗑️ Cliente "${cliente.nome}" removido`);
+        registrarLog('CLIENTE_EXCLUIDO', `Cliente "${cliente.nome}" excluído`);
+    } catch (e) {
+        alert('❌ Erro ao excluir cliente: ' + e.message);
+    }
+}
+
+function editarCliente(index) {
+    const c = clientes[index];
+    if (!c) { alert('⚠️ Não encontrei esse cliente — a lista pode ter sido atualizada. Tente de novo.'); return; }
+    document.getElementById('nomeCliente').value = c.nome;
+    document.getElementById('telefoneCliente').value = c.telefone || '';
+    document.getElementById('cpfCliente').value = c.cpf || '';
+    document.getElementById('enderecoCliente').value = c.endereco || '';
+    document.getElementById('emailCliente').value = c.email || '';
+    document.getElementById('observacoesCliente').value = c.observacoes || '';
+    document.querySelector('#modalCliente h3').textContent = '✏️ Editar Cliente';
+    const btn = document.getElementById('salvarCliente');
+    btn.textContent = '💾 Atualizar';
+    btn.dataset.id = c.id;
+    const novoBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(novoBtn, btn);
+    novoBtn.addEventListener('click', async function () {
+        const idCliente = this.dataset.id;
+        const clienteOriginal = clientes.find(x => x.id === idCliente);
+        if (!clienteOriginal) { alert('⚠️ Esse cliente não existe mais (foi removido em outro dispositivo).'); fecharModal('modalCliente'); renderClientes(); return; }
+        const nome = document.getElementById('nomeCliente').value.trim();
+        const telefone = document.getElementById('telefoneCliente').value.trim();
+        const cpf = document.getElementById('cpfCliente').value.trim();
+        const endereco = document.getElementById('enderecoCliente').value.trim();
+        const email = document.getElementById('emailCliente').value.trim();
+        const observacoes = document.getElementById('observacoesCliente').value.trim();
+        if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
+        const clienteAtualizado = { ...clienteOriginal, nome, telefone, cpf, endereco, email, observacoes };
+        try {
+            const { error } = await sb.from('clientes').upsert(clienteAtualizado, { onConflict: 'id' });
+            if (error) throw error;
+            const idx = clientes.findIndex(x => x.id === idCliente);
+            if (idx >= 0) clientes[idx] = clienteAtualizado;
+            document.getElementById('nomeCliente').value = '';
+            document.getElementById('telefoneCliente').value = '';
+            document.getElementById('cpfCliente').value = '';
+            document.getElementById('enderecoCliente').value = '';
+            document.getElementById('emailCliente').value = '';
+            document.getElementById('observacoesCliente').value = '';
+            document.querySelector('#modalCliente h3').textContent = '👤 Novo Cliente';
+            this.textContent = 'Salvar';
+            this.dataset.id = '';
+            fecharModal('modalCliente');
+            renderClientes();
+            renderSelectClientes();
+            atualizarStatus(`✅ Cliente "${nome}" atualizado!`);
+            registrarLog('CLIENTE_EDITADO', `Cliente "${nome}" editado`);
+        } catch (e) {
+            alert('❌ Erro ao atualizar cliente: ' + e.message);
+        }
+    });
+    abrirModal('modalCliente');
+}
+
+function renderSelectClientes() {
+    const sel = document.getElementById('selCliente');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Selecione um cliente</option>' +
+        clientes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+    renderSelectClienteVisita();
+}
+
+// ============================================
+// PRODUTOS
+// ============================================
+
+let filtroProdutos = '';
+
+function renderProdutos() {
+    const lista = document.getElementById('listaProdutos');
+    if (!lista) return;
+    const filtrados = filtroProdutos
+        ? produtos.filter(p => `${p.nome} ${p.codigo_barras || ''}`.toLowerCase().includes(filtroProdutos))
+        : produtos;
+    if (filtrados.length === 0) {
+        lista.innerHTML = `<li style="color:#999;text-align:center;padding:20px;">${produtos.length === 0 ? 'Nenhum produto cadastrado' : 'Nenhum produto encontrado'}</li>`;
+        atualizarControlesPaginacao('Produtos', 0, 0);
+        return;
+    }
+    const inicio = paginaProdutos * ITENS_POR_PAGINA;
+    const pagina = filtrados.slice(inicio, inicio + ITENS_POR_PAGINA);
+    lista.innerHTML = pagina.map((p) => {
+        const i = produtos.findIndex(x => x.id === p.id);
+        const temEstoque = p.quantidade !== null && p.quantidade !== undefined;
+        const estoqueBaixo = temEstoque && p.estoque_minimo !== null && p.estoque_minimo !== undefined && Number(p.quantidade) <= Number(p.estoque_minimo);
+        return `
+        <li>
+            <span style="display:flex;gap:10px;align-items:center;">
+                ${p.foto_url ? `<img src="${p.foto_url}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0;">` : ''}
+                <span>
+                    <strong>${p.nome}</strong>
+                    <br><small>R$ ${Number(p.preco).toFixed(2)}</small>
+                    <br><small>📂 ${p.tipo || 'outro'}</small>
+                    ${p.codigo_barras ? `<br><small>🔢 ${p.codigo_barras}</small>` : ''}
+                    ${temEstoque ? `<br><small class="${estoqueBaixo ? 'estoque-baixo' : ''}">📦 Estoque: ${p.quantidade}${estoqueBaixo ? ' ⚠️ baixo!' : ''}</small>` : ''}
+                </span>
+            </span>
+            <div style="display:flex;gap:5px;">
+                <button onclick="enviarProdutoWhatsApp('${p.id}')" class="btn-whatsapp" style="padding:4px 8px;">💬</button>
+                ${souAdmin() ? `
+                    <button onclick="editarProduto(${i})" class="btn-secondary" style="padding:4px 8px;">✏️</button>
+                    <button onclick="excluirProduto(${i})" class="btn-secondary" style="padding:4px 8px;">🗑️</button>
+                ` : ''}
+            </div>
+        </li>
+    `; }).join('');
+    atualizarControlesPaginacao('Produtos', paginaProdutos, filtrados.length);
+}
+
+function comprimirImagem(arquivo, maxLado = 800, qualidade = 0.72) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(arquivo);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            let { width, height } = img;
+            if (width > height && width > maxLado) { height = Math.round(height * (maxLado / width)); width = maxLado; }
+            else if (height > maxLado) { width = Math.round(width * (maxLado / height)); height = maxLado; }
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Falha ao comprimir imagem')), 'image/jpeg', qualidade);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível ler a imagem')); };
+        img.src = url;
+    });
+}
+
+async function enviarFotoProduto(idProduto, arquivo) {
+    if (!arquivo) return null;
+    const comprimida = await comprimirImagem(arquivo);
+    const caminho = `${idProduto}.jpg`; // extensão sempre igual: trocar a foto sobrescreve, não deixa lixo
+    const { error } = await sb.storage.from('produtos').upload(caminho, comprimida, { upsert: true, contentType: 'image/jpeg' });
+    if (error) throw error;
+    const { data } = sb.storage.from('produtos').getPublicUrl(caminho);
+    return data.publicUrl + '?t=' + Date.now(); // evita cache de imagem antiga
+}
+
+async function removerFotoProduto(idProduto) {
+    try { await sb.storage.from('produtos').remove([`${idProduto}.jpg`]); } catch (e) { /* sem problema se não existir */ }
+}
+
+async function adicionarProduto() {
+    const nome = document.getElementById('nomeProduto').value.trim();
+    const preco = parseFloat(document.getElementById('precoProduto').value);
+    const tipo = document.getElementById('tipoProduto').value;
+    const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
+    const quantidadeVal = document.getElementById('quantidadeProduto').value;
+    const estoqueMinimoVal = document.getElementById('estoqueMinimoProduto').value;
+    const arquivoFoto = document.getElementById('fotoProduto').files[0];
+    if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
+    const novoProduto = {
+        id: gerarId(), nome, preco, tipo, codigo_barras: codigoBarras || null, foto_url: null,
+        quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
+        estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
+    };
+    try {
+        if (arquivoFoto) {
+            atualizarStatus('📸 Enviando foto...');
+            novoProduto.foto_url = await enviarFotoProduto(novoProduto.id, arquivoFoto);
+        }
+        const { error } = await sb.from('produtos').upsert(novoProduto, { onConflict: 'id' });
+        if (error) throw error;
+        produtos.push(novoProduto);
+        document.getElementById('nomeProduto').value = '';
+        document.getElementById('precoProduto').value = '';
+        document.getElementById('codigoBarrasProduto').value = '';
+        document.getElementById('quantidadeProduto').value = '';
+        document.getElementById('estoqueMinimoProduto').value = '';
+        document.getElementById('fotoProduto').value = '';
+        document.getElementById('previewFotoProduto').style.display = 'none';
+        fecharModal('modalProduto');
+        renderProdutos();
+        renderSelectProdutos();
+        atualizarStatus(`✅ Produto "${nome}" cadastrado!`);
+        registrarLog('PRODUTO_ADICIONADO', `Produto "${nome}" adicionado`);
+    } catch (e) {
+        alert('❌ Erro ao salvar produto: ' + e.message);
+    }
+}
+
+async function excluirProduto(index) {
+    const produto = produtos[index];
+    if (!produto) return;
+    if (!confirm(`Excluir "${produto.nome}"?`)) return;
+    try {
+        const { error } = await sb.from('produtos').delete().eq('id', produto.id);
+        if (error) throw error;
+        if (produto.foto_url) await removerFotoProduto(produto.id);
+        produtos.splice(index, 1);
+        renderProdutos();
+        renderSelectProdutos();
+        atualizarStatus(`🗑️ Produto "${produto.nome}" removido`);
+        registrarLog('PRODUTO_EXCLUIDO', `Produto "${produto.nome}" excluído`);
+    } catch (e) {
+        alert('❌ Erro ao excluir produto: ' + e.message);
+    }
+}
+
+function editarProduto(index) {
+    const p = produtos[index];
+    if (!p) { alert('⚠️ Não encontrei esse produto — a lista pode ter sido atualizada. Tente de novo.'); return; }
+    document.getElementById('nomeProduto').value = p.nome;
+    document.getElementById('precoProduto').value = p.preco;
+    document.getElementById('tipoProduto').value = p.tipo || 'outro';
+    document.getElementById('codigoBarrasProduto').value = p.codigo_barras || '';
+    document.getElementById('quantidadeProduto').value = (p.quantidade ?? '');
+    document.getElementById('estoqueMinimoProduto').value = (p.estoque_minimo ?? '');
+    document.getElementById('fotoProduto').value = '';
+    const preview = document.getElementById('previewFotoProduto');
+    if (p.foto_url) { preview.src = p.foto_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+    document.querySelector('#modalProduto h3').textContent = '✏️ Editar Produto';
+    const btn = document.getElementById('salvarProduto');
+    btn.textContent = '💾 Atualizar';
+    btn.dataset.id = p.id;
+    const novoBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(novoBtn, btn);
+    novoBtn.addEventListener('click', async function () {
+        const idProduto = this.dataset.id;
+        const produtoOriginal = produtos.find(x => x.id === idProduto);
+        if (!produtoOriginal) { alert('⚠️ Esse produto não existe mais (foi removido em outro dispositivo).'); fecharModal('modalProduto'); renderProdutos(); return; }
+        const nome = document.getElementById('nomeProduto').value.trim();
+        const preco = parseFloat(document.getElementById('precoProduto').value);
+        const tipo = document.getElementById('tipoProduto').value;
+        const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
+        const quantidadeVal = document.getElementById('quantidadeProduto').value;
+        const estoqueMinimoVal = document.getElementById('estoqueMinimoProduto').value;
+        const arquivoFoto = document.getElementById('fotoProduto').files[0];
+        if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
+        const produtoAtualizado = {
+            ...produtoOriginal, nome, preco, tipo, codigo_barras: codigoBarras || null,
+            quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
+            estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
+        };
+        try {
+            if (arquivoFoto) {
+                atualizarStatus('📸 Enviando foto...');
+                produtoAtualizado.foto_url = await enviarFotoProduto(produtoAtualizado.id, arquivoFoto);
+            }
+            const { error } = await sb.from('produtos').upsert(produtoAtualizado, { onConflict: 'id' });
+            if (error) throw error;
+            const idx = produtos.findIndex(x => x.id === idProduto);
+            if (idx >= 0) produtos[idx] = produtoAtualizado;
+            document.getElementById('nomeProduto').value = '';
+            document.getElementById('precoProduto').value = '';
+            document.getElementById('codigoBarrasProduto').value = '';
+            document.getElementById('quantidadeProduto').value = '';
+            document.getElementById('estoqueMinimoProduto').value = '';
+            document.getElementById('fotoProduto').value = '';
+            document.getElementById('previewFotoProduto').style.display = 'none';
+            document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
+            this.textContent = 'Salvar';
+            this.dataset.id = '';
+            fecharModal('modalProduto');
+            renderProdutos();
+            renderSelectProdutos();
+            atualizarStatus(`✅ Produto "${nome}" atualizado!`);
+            registrarLog('PRODUTO_EDITADO', `Produto "${nome}" editado`);
+        } catch (e) {
+            alert('❌ Erro ao atualizar produto: ' + e.message);
+        }
+    });
+    abrirModal('modalProduto');
+}
+
+function renderSelectProdutos() {
+    document.querySelectorAll('.selProduto').forEach(select => {
+        const current = select.value;
+        select.innerHTML = '<option value="">Selecione um produto</option>' +
+            produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('');
+        select.value = current;
+    });
+}
+
+// ============================================
+// ORÇAMENTO
+// ============================================
+
+function criarLinhaItem(nomeSelecionado = '', qtd = 1) {
+    const div = document.createElement('div');
+    div.className = 'item-orcamento';
+    div.innerHTML = `
+        <select class="selProduto">
+            <option value="">Selecione um produto</option>
+            ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('')}
+        </select>
+        <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="${qtd}">
+        <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
+    `;
+    if (nomeSelecionado) div.querySelector('.selProduto').value = nomeSelecionado;
+    div.querySelector('.selProduto').addEventListener('change', updateTotal);
+    div.querySelector('.qtdProduto').addEventListener('input', updateTotal);
+    return div;
+}
+
+function adicionarItem() {
+    if (produtos.length === 0) { alert('⚠️ Cadastre um produto primeiro!'); return; }
+    document.getElementById('itensOrcamento').appendChild(criarLinhaItem());
+    updateTotal();
+}
+
+function removerItem(btn) { btn.parentElement.remove(); updateTotal(); }
+
+function updateTotal() {
+    let total = 0;
+    document.querySelectorAll('.item-orcamento').forEach(item => {
+        const select = item.querySelector('.selProduto');
+        const qtd = parseInt(item.querySelector('.qtdProduto').value) || 0;
+        const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
+        total += preco * qtd;
+    });
+    document.getElementById('totalValor').textContent = total.toFixed(2);
+}
+
+function pegarItensOrcamentoAtual() {
+    const itens = [];
+    document.querySelectorAll('.item-orcamento').forEach(item => {
+        const select = item.querySelector('.selProduto');
+        const qtd = parseInt(item.querySelector('.qtdProduto').value) || 0;
+        const nome = select.value;
+        const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
+        if (nome && qtd > 0) itens.push({ nome, qtd, preco, subtotal: preco * qtd });
+    });
+    return itens;
+}
+
+function limparOrcamento() {
+    if (!confirm('Limpar todos os itens?')) return;
+    document.getElementById('itensOrcamento').innerHTML = '';
+    document.getElementById('itensOrcamento').appendChild(criarLinhaItem());
+    updateTotal();
+    document.getElementById('selCliente').value = '';
+    document.getElementById('resultadoProjeto').innerHTML = '';
+    editandoOSId = null;
+    atualizarStatus('🧹 Orçamento limpo!');
+}
+
+async function salvarOrcamento() {
+    const cliente = document.getElementById('selCliente').value;
+    if (!cliente) { alert('⚠️ Selecione um cliente!'); return; }
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item!'); return; }
+    const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
+    const clienteData = clientes.find(c => c.nome === cliente);
+    const formaPagamento = document.getElementById('formaPagamentoOrcamento').value;
+    const parcelas = formaPagamento === 'Cartão de Crédito' ? parseInt(document.getElementById('parcelasOrcamento').value) : 1;
+
+    // Editando um orçamento já existente: atualiza em vez de criar um novo
+    if (editandoOSId) {
+        const osExistente = ordensServico.find(o => o.id === editandoOSId);
+        if (!osExistente) { alert('⚠️ Não encontrei esse orçamento — talvez tenha sido removido.'); editandoOSId = null; return; }
+        const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total, forma_pagamento: formaPagamento, parcelas };
+        try {
+            const { error } = await sb.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
+            if (error) throw error;
+            const idx = ordensServico.findIndex(o => o.id === editandoOSId);
+            if (idx >= 0) ordensServico[idx] = osAtualizada;
+            listarOS();
+            atualizarStatus(`✅ Orçamento ${osAtualizada.numero} atualizado!`);
+            registrarLog('OS_EDITADA', `OS ${osAtualizada.numero} editada`);
+            alert(`✅ Orçamento ${osAtualizada.numero} atualizado!\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
+            editandoOSId = null;
+            limparOrcamento();
+            abrirTab('tabOS');
+        } catch (e) {
+            alert('❌ Erro ao atualizar orçamento: ' + e.message);
+        }
+        return;
+    }
+
+    const novaOS = {
+        id: gerarId(),
+        numero: 'OS-' + (ordensServico.length + 1).toString().padStart(4, '0'),
+        cliente_id: clienteData?.id || '',
+        cliente_nome: cliente,
+        itens: itens,
+        total: total,
+        status: 'orcamento',
+        forma_pagamento: formaPagamento,
+        parcelas: parcelas,
+        data_criacao: new Date().toISOString()
+    };
+    try {
+        const { error } = await sb.from('ordens_servico').upsert(novaOS, { onConflict: 'id' });
+        if (error) throw error;
+        ordensServico.push(novaOS);
+        listarOS();
+        atualizarStatus(`✅ Orçamento salvo! Nº ${novaOS.numero}`);
+        registrarLog('OS_CRIADA', `OS ${novaOS.numero} criada para ${cliente}`);
+        alert(`✅ Orçamento salvo!\nNº: ${novaOS.numero}\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
+        abrirTab('tabOS');
+    } catch (e) {
+        alert('❌ Erro ao salvar orçamento: ' + e.message);
+    }
+}
+
+// ============================================
+// ORDEM DE SERVIÇO
+// ============================================
+
+function listarOS(filtro = 'todos') {
+    const container = document.getElementById('listaOS');
+    if (!container) return;
+    let lista = filtro !== 'todos' ? ordensServico.filter(os => os.status === filtro) : ordensServico;
+    if (lista.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Nenhuma OS encontrada</p>';
+        return;
+    }
+    const badges = {
+        orcamento: '📄 Orçamento', aprovado: '✅ Aprovado', em_andamento: '🔧 Em Andamento',
+        concluido: '✅ Concluído', cancelado: '❌ Cancelado'
+    };
+    container.innerHTML = lista.map(os => `
+        <div class="os-card" onclick="abrirOS('${os.id}')">
+            <div><strong>${os.numero}</strong> <span class="status-badge status-orcamento">${badges[os.status] || os.status}</span></div>
+            <div><strong>Cliente:</strong> ${os.cliente_nome}</div>
+            <div style="font-size:12px;color:#666;">${os.itens?.length || 0} itens | Total: R$ ${Number(os.total || 0).toFixed(2)}</div>
+        </div>
+    `).join('');
+}
+
+function filtrarOS() { listarOS(document.getElementById('filtroStatusOS').value); }
+
+function abrirOS(id) {
+    const os = ordensServico.find(o => o.id === id);
+    if (!os) return;
+    const data = new Date(os.data_criacao).toLocaleDateString('pt-BR');
+    let itensHTML = os.itens?.map((item, i) => `
+        <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
+    `).join('') || '';
+    const pagamentoTexto = os.forma_pagamento
+        ? os.forma_pagamento + (os.forma_pagamento === 'Cartão de Crédito' && os.parcelas > 1 ? ` (${os.parcelas}x)` : '')
+        : '—';
+    document.getElementById('detalhesOS').innerHTML = `
+        <div style="margin-bottom:10px;">
+            <p><strong>Nº:</strong> ${os.numero}</p>
+            <p><strong>Cliente:</strong> ${os.cliente_nome}</p>
+            <p><strong>Status:</strong> ${os.status}</p>
+            <p><strong>Data:</strong> ${data}</p>
+            <p><strong>Forma de pagamento:</strong> ${pagamentoTexto}</p>
+            <p><strong>Total:</strong> R$ ${Number(os.total || 0).toFixed(2)}</p>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr style="background:#1a237e;color:white;">
+                    <th style="padding:5px;">#</th><th style="padding:5px;">Produto</th>
+                    <th style="padding:5px;">Qtd</th><th style="padding:5px;">Preço</th>
+                    <th style="padding:5px;">Subtotal</th>
+                </tr></thead>
+                <tbody>${itensHTML}</tbody>
+            </table>
+        </div>
+    `;
+    document.getElementById('btnAprovarOS').style.display = (souAdmin() && os.status === 'orcamento') ? 'inline-block' : 'none';
+    document.getElementById('btnIniciarOS').style.display = (souAdmin() && os.status === 'aprovado') ? 'inline-block' : 'none';
+    document.getElementById('btnConcluirOS').style.display = (souAdmin() && os.status === 'em_andamento') ? 'inline-block' : 'none';
+    document.getElementById('btnCancelarOS').style.display = (souAdmin() && os.status !== 'cancelado' && os.status !== 'concluido') ? 'inline-block' : 'none';
+    document.getElementById('btnEmitirRecibo').style.display = (souAdmin() && os.status === 'concluido') ? 'inline-block' : 'none';
+    document.getElementById('btnEditarOS').style.display = souAdmin() ? 'inline-block' : 'none';
+    osAtual = os;
+    abrirModal('modalOS');
+}
+
+function editarOS(id) {
+    const os = ordensServico.find(o => o.id === id) || osAtual;
+    if (!os) return;
+    editandoOSId = os.id;
+    document.getElementById('selCliente').value = os.cliente_nome;
+    const container = document.getElementById('itensOrcamento');
+    container.innerHTML = '';
+    (os.itens && os.itens.length ? os.itens : [{ nome: '', qtd: 1 }]).forEach(item => {
+        container.appendChild(criarLinhaItem(item.nome, item.qtd));
+    });
+    updateTotal();
+    fecharModal('modalOS');
+    abrirTab('tabOrcamento');
+    atualizarStatus(`✏️ Editando orçamento ${os.numero} — altere os itens e clique em Salvar`);
+}
+
+function reimprimirOS(id) {
+    const os = ordensServico.find(o => o.id === id) || osAtual;
+    if (!os) return;
+    const clienteData = clientes.find(c => c.nome === os.cliente_nome);
+    const { conteudo } = montarConteudoOrcamentoPDF(os.cliente_nome, os.itens || [], os.total || 0, clienteData);
+    const nomeArquivo = `Orcamento_${EMPRESA.nomeAbreviado}_${os.numero}_${os.cliente_nome.replace(/\s/g, '_')}.pdf`;
+    fecharModal('modalOS');
+    baixarPDFDoConteudo(conteudo, nomeArquivo);
+}
+
+async function atualizarStatusOS(novoStatus, mensagem, acao) {
+    if (!osAtual) return;
+    const osAtualizada = { ...osAtual, status: novoStatus };
+    if (novoStatus === 'aprovado') osAtualizada.data_aprovacao = new Date().toISOString();
+    if (novoStatus === 'em_andamento') osAtualizada.data_inicio = new Date().toISOString();
+    if (novoStatus === 'concluido') osAtualizada.data_conclusao = new Date().toISOString();
+    try {
+        const { error } = await sb.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
+        if (error) throw error;
+        const idx = ordensServico.findIndex(o => o.id === osAtualizada.id);
+        if (idx >= 0) ordensServico[idx] = osAtualizada;
+        osAtual = osAtualizada;
+        listarOS();
+        fecharModal('modalOS');
+        atualizarStatus(mensagem);
+        registrarLog(acao, `OS ${osAtualizada.numero}: ${mensagem}`);
+    } catch (e) {
+        alert('❌ Erro ao atualizar OS: ' + e.message);
+    }
+}
+
+async function aprovarOS() {
+    if (!osAtual || !confirm(`Aprovar OS ${osAtual.numero}?`)) return;
+    await atualizarStatusOS('aprovado', `✅ OS ${osAtual.numero} aprovada!`, 'OS_APROVADA');
+}
+async function iniciarOS() {
+    if (!osAtual || !confirm(`Iniciar OS ${osAtual.numero}?`)) return;
+    await atualizarStatusOS('em_andamento', `🔧 OS ${osAtual.numero} em andamento!`, 'OS_INICIADA');
+}
+async function concluirOS() {
+    if (!osAtual || !confirm(`Concluir OS ${osAtual.numero}?`)) return;
+    await atualizarStatusOS('concluido', `✅ OS ${osAtual.numero} concluída!`, 'OS_CONCLUIDA');
+}
+async function cancelarOS() {
+    if (!osAtual || !confirm(`Cancelar OS ${osAtual.numero}?`)) return;
+    await atualizarStatusOS('cancelado', `❌ OS ${osAtual.numero} cancelada!`, 'OS_CANCELADA');
+}
+
+async function emitirRecibo() {
+    if (!osAtual || osAtual.status !== 'concluido') { alert('⚠️ A OS precisa estar concluída!'); return; }
+    const recibo = {
+        id: gerarId(),
+        numero: 'REC-' + (recibos.length + 1).toString().padStart(4, '0'),
+        os_id: osAtual.id, os_numero: osAtual.numero,
+        cliente_id: osAtual.cliente_id, cliente_nome: osAtual.cliente_nome,
+        itens: osAtual.itens, total: osAtual.total,
+        forma_pagamento: osAtual.forma_pagamento || null, parcelas: osAtual.parcelas || 1,
+        status: 'pendente', data_emissao: new Date().toISOString(), data_pagamento: null
+    };
+    try {
+        const { error } = await sb.from('recibos').upsert(recibo, { onConflict: 'id' });
+        if (error) throw error;
+        recibos.push(recibo);
+        listarRecibos();
+        fecharModal('modalOS');
+        atualizarStatus(`💰 Recibo ${recibo.numero} emitido!`);
+        registrarLog('RECIBO_EMITIDO', `Recibo ${recibo.numero} emitido para ${osAtual.cliente_nome}`);
+        abrirRecibo(recibo.id);
+    } catch (e) {
+        alert('❌ Erro ao emitir recibo: ' + e.message);
+    }
+}
+
+// ============================================
+// RECIBOS
+// ============================================
+
+function listarRecibos(filtro = 'todos') {
+    const container = document.getElementById('listaRecibos');
+    if (!container) return;
+    let lista = filtro !== 'todos' ? recibos.filter(r => r.status === filtro) : recibos;
+    if (lista.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Nenhum recibo encontrado</p>';
+        return;
+    }
+    container.innerHTML = lista.map(r => {
+        const data = new Date(r.data_emissao).toLocaleDateString('pt-BR');
+        const status = r.status === 'pago' ? '✅ Pago' : '⏳ Pendente';
+        return `
+            <div class="os-card" onclick="abrirRecibo('${r.id}')">
+                <div><strong>${r.numero}</strong> <span class="status-badge ${r.status === 'pago' ? 'status-recebido' : 'status-orcamento'}">${status}</span></div>
+                <div><strong>Cliente:</strong> ${r.cliente_nome}</div>
+                <div style="font-size:12px;color:#666;">OS: ${r.os_numero} | Total: R$ ${Number(r.total || 0).toFixed(2)} | ${data}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filtrarRecibos() { listarRecibos(document.getElementById('filtroRecibo').value); }
+
+function abrirRecibo(id) {
+    reciboAtual = recibos.find(r => r.id === id);
+    if (!reciboAtual) return;
+    const data = new Date(reciboAtual.data_emissao).toLocaleDateString('pt-BR');
+    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+    let itensHTML = reciboAtual.itens?.map((item, i) => `
+        <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
+    `).join('') || '';
+    const statusPago = reciboAtual.status === 'pago';
+    document.getElementById('conteudoRecibo').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:3px solid #1a237e;padding-bottom:12px;margin-bottom:15px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <img src="${baseUrl}logo.png" alt="${EMPRESA.nomeAbreviado}" style="height:44px;width:auto;border-radius:6px;object-fit:contain;" onerror="this.style.display='none'">
+                <div>
+                    <div style="color:#1a237e;font-size:16px;font-weight:900;">${EMPRESA.nome}</div>
+                    <div style="color:#666;font-size:10px;">CNPJ: ${EMPRESA.cnpj}</div>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <span style="display:inline-block;background:#1a237e;color:white;font-size:12px;font-weight:bold;padding:3px 10px;border-radius:4px;">RECIBO</span>
+                <div style="font-size:11px;color:#666;margin-top:3px;">${reciboAtual.numero}</div>
+            </div>
+        </div>
+        <div style="font-size:10px;color:#777;margin-bottom:12px;">${EMPRESA.endereco} · 📞 ${EMPRESA.telefone} · 📧 ${EMPRESA.email}</div>
+        <div style="background:#f5f5f5;border-left:4px solid #1a237e;border-radius:4px;padding:12px;margin-bottom:15px;">
+            <p style="margin:2px 0;"><strong>Cliente:</strong> ${reciboAtual.cliente_nome}</p>
+            <p style="margin:2px 0;"><strong>Referente à OS:</strong> ${reciboAtual.os_numero}</p>
+            <p style="margin:2px 0;"><strong>Data de emissão:</strong> ${data}</p>
+            ${reciboAtual.forma_pagamento ? `<p style="margin:2px 0;"><strong>Forma de pagamento:</strong> ${reciboAtual.forma_pagamento}${reciboAtual.forma_pagamento === 'Cartão de Crédito' && reciboAtual.parcelas > 1 ? ` (${reciboAtual.parcelas}x)` : ''}</p>` : ''}
+            <p style="margin:2px 0;"><strong>Status:</strong> <span style="color:${statusPago ? '#27ae60' : '#e67e22'};font-weight:bold;">${statusPago ? '✅ PAGO' : '⏳ PENDENTE'}</span></p>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr style="background:#1a237e;color:white;">
+                    <th style="padding:8px 6px;text-align:left;">#</th><th style="padding:8px 6px;text-align:left;">Produto/Serviço</th>
+                    <th style="padding:8px 6px;text-align:right;">Qtd</th><th style="padding:8px 6px;text-align:right;">Preço</th>
+                    <th style="padding:8px 6px;text-align:right;">Subtotal</th>
+                </tr></thead>
+                <tbody>${itensHTML}</tbody>
+            </table>
+        </div>
+        <div style="text-align:right;padding:12px 4px;font-size:19px;font-weight:bold;border-top:2px solid #1a237e;margin-top:8px;color:#1a237e;">
+            TOTAL: R$ ${Number(reciboAtual.total || 0).toFixed(2)}
+        </div>
+        <div class="assinatura" style="margin-top:30px;">
+            <div style="border-top:1px solid #333;width:80%;margin:0 auto;padding-top:6px;text-align:center;font-size:11px;color:#555;">
+                Assinatura do Cliente
+            </div>
+        </div>
+        <div style="margin-top:20px;text-align:center;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:10px;">
+            ${EMPRESA.nome} — CNPJ ${EMPRESA.cnpj} · 📷 ${EMPRESA.instagram}
+        </div>
+    `;
+    document.getElementById('btnMarcarPago').style.display = reciboAtual.status === 'pendente' ? 'inline-block' : 'none';
+    abrirModal('modalRecibo');
+}
+
+async function marcarPago() {
+    if (!reciboAtual || !confirm(`Marcar recibo ${reciboAtual.numero} como PAGO?`)) return;
+    try {
+        const dataPagamento = new Date().toISOString();
+        const { error } = await sb.from('recibos')
+            .update({ status: 'pago', data_pagamento: dataPagamento }).eq('id', reciboAtual.id);
+        if (error) throw error;
+        reciboAtual.status = 'pago';
+        reciboAtual.data_pagamento = dataPagamento;
+        const idx = recibos.findIndex(r => r.id === reciboAtual.id);
+        if (idx >= 0) recibos[idx] = reciboAtual;
+        listarRecibos();
+        abrirRecibo(reciboAtual.id);
+        atualizarStatus(`✅ Recibo ${reciboAtual.numero} pago!`);
+        registrarLog('RECIBO_PAGO', `Recibo ${reciboAtual.numero} marcado como pago`);
+    } catch (e) {
+        alert('❌ Erro ao marcar como pago: ' + e.message);
+    }
+}
+
+function imprimirRecibo() {
+    if (!reciboAtual) return;
+    const conteudo = document.getElementById('conteudoRecibo').innerHTML;
+    const win = window.open('', '_blank', 'width=800,height=600');
+    win.document.write(`
+        <html><head><title>Recibo ${reciboAtual.numero}</title>
+        <style>
+            * { box-sizing: border-box; }
+            body{font-family:Arial,Helvetica,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#222;}
+            .recibo-area{background:white;padding:10px;}
+            table{width:100%;border-collapse:collapse;}
+            td{padding:8px 6px;border-bottom:1px solid #ddd;}
+            @media print{ body{padding:15px;} }
+        </style>
+        </head><body><div class="recibo-area">${conteudo}</div>
+        <script>window.onload=function(){window.print();}<\/script></body></html>
+    `);
+    win.document.close();
+}
+
+// ============================================
+// GERAR PDF - MODELO SE7VEN ENERGIA
+// ============================================
+
+function montarConteudoOrcamentoPDF(cliente, itens, total, clienteData, incluirFotos = false) {
+    const data = new Date();
+    const dataFormatada = data.toLocaleDateString('pt-BR');
+    const dataInvertida = data.getDate().toString().padStart(2, '0') + '/' +
+        (data.getMonth() + 1).toString().padStart(2, '0') + '/' + data.getFullYear();
+    const numeroOrcamento = 'ORC-' + Date.now().toString().slice(-6);
+    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+
+    const conteudo = `
+    <!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Orçamento ${EMPRESA.nome}</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, Helvetica, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; background: white; }
+            .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #1a237e; padding-bottom: 15px; margin-bottom: 15px; }
+            .header .marca { display: flex; align-items: center; gap: 12px; }
+            .header img { height: 55px; width: auto; border-radius: 8px; object-fit: contain; }
+            .header h1 { color: #1a237e; font-size: 22px; font-weight: 900; letter-spacing: 1px; margin: 0; }
+            .header .subtitle { color: #666; font-size: 11px; font-weight: bold; margin: 2px 0 0 0; letter-spacing: 1px; }
+            .header .doc-info { text-align: right; font-size: 12px; color: #444; }
+            .header .doc-info .tag { display: inline-block; background: #1a237e; color: white; font-weight: bold; font-size: 13px; padding: 4px 10px; border-radius: 4px; margin-bottom: 6px; }
+            .empresa-dados { font-size: 11px; color: #555; margin-bottom: 20px; line-height: 1.5; border-bottom: 1px solid #ddd; padding-bottom: 12px; }
+            .empresa-dados strong { color: #1a237e; }
+            .cliente-box { background: #f5f5f5; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #1a237e; }
+            .cliente-box .titulo { color: #1a237e; font-size: 14px; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
+            .cliente-box p { margin: 3px 0; font-size: 14px; }
+            .cliente-box .label { font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+            table thead { background: #1a237e; color: white; }
+            table th { padding: 10px 12px; text-align: left; }
+            table td { padding: 10px 12px; border-bottom: 1px solid #ddd; vertical-align: middle; }
+            table tr:last-child td { border-bottom: none; }
+            .text-center { text-align: center; } .text-right { text-align: right; }
+            .foto-item { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; display: block; }
+            .total-box { text-align: right; padding: 12px; font-size: 18px; font-weight: bold; border-top: 2px solid #1a237e; margin: 10px 0 30px 0; }
+            .pagamento { background: #e8f5e9; padding: 15px; border-radius: 4px; border-left: 4px solid #2e7d32; margin-top: 20px; }
+            .pagamento .titulo { font-weight: bold; color: #1a237e; }
+            .pagamento p { margin: 0; font-size: 14px; }
+            .observacoes { margin-top: 15px; font-size: 11px; color: #666; }
+            .observacoes li { margin: 3px 0 3px 15px; }
+            .rodape { margin-top: 30px; text-align: center; color: #999; font-size: 11px; border-top: 1px solid #ddd; padding-top: 15px; }
+            .rodape p { margin: 2px 0; } .rodape .destaque { color: #1a237e; font-weight: bold; }
+            @media print { body { padding: 20px; } }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="marca">
+                <img src="${baseUrl}logo.png" alt="${EMPRESA.nomeAbreviado}" onerror="this.style.display='none'">
+                <div>
+                    <h1>${EMPRESA.nome}</h1>
+                    <p class="subtitle">ORÇAMENTO DE SERVIÇOS ELÉTRICOS</p>
+                </div>
+            </div>
+            <div class="doc-info">
+                <span class="tag">Nº ${numeroOrcamento}</span><br>
+                Data: ${dataInvertida}
+            </div>
+        </div>
+        <div class="empresa-dados">
+            <strong>${EMPRESA.nome}</strong> — CNPJ: ${EMPRESA.cnpj}<br>
+            ${EMPRESA.endereco} &nbsp;|&nbsp; 📞 ${EMPRESA.telefone} &nbsp;|&nbsp; 📧 ${EMPRESA.email} &nbsp;|&nbsp; 📷 ${EMPRESA.instagram}
+        </div>
+        <div class="cliente-box">
+            <div class="titulo">CLIENTE:</div>
+            <p><span class="label">Nome:</span> ${cliente}</p>
+            ${clienteData?.telefone ? `<p><span class="label">Cel:</span> ${clienteData.telefone}</p>` : ''}
+            ${clienteData?.cpf ? `<p><span class="label">CPF/CNPJ:</span> ${clienteData.cpf}</p>` : ''}
+            ${clienteData?.endereco ? `<p><span class="label">Endereço:</span> ${clienteData.endereco}</p>` : ''}
+        </div>
+        <table>
+            <thead><tr>
+                ${incluirFotos ? '<th style="width:10%;">Foto</th>' : ''}
+                <th style="width:8%;">Nº</th><th style="width:${incluirFotos ? '32%' : '42%'};">Descrição</th><th style="width:15%;text-align:right;">Preço</th><th style="width:10%;text-align:center;">Qt.</th><th style="width:25%;text-align:right;">Total</th>
+            </tr></thead>
+            <tbody>
+                ${itens.map((item, index) => {
+                    const produtoRef = incluirFotos ? produtos.find(p => p.nome === item.nome) : null;
+                    const fotoTd = incluirFotos
+                        ? `<td>${produtoRef?.foto_url ? `<img src="${produtoRef.foto_url}" class="foto-item">` : ''}</td>`
+                        : '';
+                    return `<tr>${fotoTd}<td class="text-center">${index + 1}</td><td>${item.nome}</td><td class="text-right">R$ ${item.preco.toFixed(2)}</td><td class="text-center">${item.qtd}</td><td class="text-right"><strong>R$ ${item.subtotal.toFixed(2)}</strong></td></tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+        <div class="total-box"><strong>Total: R$ ${total.toFixed(2)}</strong></div>
+        <div class="pagamento"><p class="titulo">FORMA DE PAGAMENTO</p><p>${EMPRESA.formasPagamento.join(' • ')}</p></div>
+        <ul class="observacoes">
+            ${EMPRESA.observacoes.map(obs => `<li>${obs}</li>`).join('')}
+        </ul>
+        <div class="rodape"><p><span class="destaque">${EMPRESA.nome}</span> — CNPJ ${EMPRESA.cnpj}</p><p>📧 ${EMPRESA.email} | 📱 ${EMPRESA.telefone} | 📷 ${EMPRESA.instagram}</p></div>
+    </body></html>
+    `;
+
+    return { conteudo, dataFormatada, numeroOrcamento };
+}
+
+function baixarPDFDoConteudo(conteudo, nomeArquivo) {
+    const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+    if (!win) { alert('⚠️ Por favor, permita pop-ups para gerar o PDF'); return; }
+    win.document.write(conteudo);
+    win.document.close();
+
+    setTimeout(() => {
+        try {
+            const script = win.document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.onload = function () {
+                const element = win.document.body;
+                const opt = {
+                    margin: 0.5,
+                    filename: nomeArquivo,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
+                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                };
+                win.html2pdf().set(opt).from(element).save().then(() => {
+                    win.close();
+                    atualizarStatus('✅ PDF gerado com sucesso!');
+                }).catch(() => {
+                    win.document.body.innerHTML += `<div style="text-align:center;margin-top:20px;padding:20px;"><button onclick="window.print()" style="padding:12px 24px;background:#1a237e;color:white;border:none;border-radius:4px;font-size:16px;cursor:pointer;">🖨️ Salvar como PDF</button></div>`;
+                    atualizarStatus('⚠️ Use "Imprimir" para salvar o PDF');
+                });
+            };
+            script.onerror = function () {
+                win.document.body.innerHTML += `<div style="text-align:center;margin-top:20px;padding:20px;"><button onclick="window.print()" style="padding:12px 24px;background:#1a237e;color:white;border:none;border-radius:4px;font-size:16px;cursor:pointer;">🖨️ Salvar como PDF</button></div>`;
+                atualizarStatus('⚠️ Use "Imprimir" para salvar o PDF');
+            };
+            win.document.head.appendChild(script);
+        } catch (err) {
+            win.close();
+            alert('❌ Erro ao gerar PDF. Tente novamente.');
+        }
+    }, 1500);
+}
+
+function gerarPDF() {
+    const cliente = document.getElementById('selCliente').value;
+    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
+
+    const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
+    const clienteData = clientes.find(c => c.nome === cliente);
+    const incluirFotos = document.getElementById('incluirFotosPDF')?.checked || false;
+    const { conteudo, dataFormatada } = montarConteudoOrcamentoPDF(cliente, itens, total, clienteData, incluirFotos);
+    const nomeArquivo = `Orcamento_${EMPRESA.nomeAbreviado}_${cliente.replace(/\s/g, '_')}_${dataFormatada.replace(/\//g, '-')}.pdf`;
+    baixarPDFDoConteudo(conteudo, nomeArquivo);
+}
+
+// ============================================
+// WHATSAPP
+// ============================================
+
+function formatarTelefoneWhatsApp(telefone) {
+    let digitos = (telefone || '').replace(/\D/g, '');
+    if (!digitos) return null;
+    if (digitos.length <= 11) digitos = '55' + digitos; // adiciona DDI Brasil se não tiver
+    return digitos;
+}
+
+function montarMensagemOrcamento(cliente, itens, total) {
+    const data = new Date();
+    const dataFormatada = data.getDate().toString().padStart(2, '0') + '/' +
+        (data.getMonth() + 1).toString().padStart(2, '0') + '/' + data.getFullYear();
+
+    let msg = `*${EMPRESA.nomeAbreviado} ENERGIA - ORÇAMENTO*\n\n`;
+    msg += `📅 Data: ${dataFormatada}\n`;
+    msg += `👤 Cliente: ${cliente}\n\n`;
+    msg += `*ITENS:*\n`;
+    itens.forEach((item, i) => {
+        msg += `${i + 1}. ${item.nome} - ${item.qtd}x R$ ${item.preco.toFixed(2)} = R$ ${item.subtotal.toFixed(2)}\n`;
+    });
+    msg += `\n*TOTAL: R$ ${total.toFixed(2)}*\n\n`;
+    msg += `💳 *Formas de Pagamento:*\n`;
+    EMPRESA.formasPagamento.forEach(fp => { msg += `✅ ${fp}\n`; });
+    msg += `\n📱 *Entre em contato para mais informações!*`;
+    return msg;
+}
+
+function enviarWhatsApp() {
+    const cliente = document.getElementById('selCliente').value;
+    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
+    const total = itens.reduce((s, i) => s + i.subtotal, 0);
+    const clienteData = clientes.find(c => c.nome === cliente);
+    const numero = formatarTelefoneWhatsApp(clienteData?.telefone) || EMPRESA.whatsapp;
+    if (!clienteData?.telefone) alert('ℹ️ Esse cliente não tem celular cadastrado — a mensagem vai abrir para o número da própria empresa.');
+    const mensagem = montarMensagemOrcamento(cliente, itens, total);
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, '_blank');
+    registrarLog('WHATSAPP_ENVIADO', `Orçamento para ${cliente} aberto no WhatsApp`);
+}
+
+async function enviarProdutoWhatsApp(id) {
+    const produto = produtos.find(p => p.id === id);
+    if (!produto) return;
+
+    const mensagem = `*${produto.nome}*\n📂 ${produto.tipo || 'outro'}\n💰 R$ ${Number(produto.preco).toFixed(2)}`;
+
+    // Com foto: tenta abrir o menu nativo de compartilhar (celular), que anexa a
+    // imagem + texto direto na conversa do WhatsApp escolhida.
+    if (produto.foto_url && navigator.canShare) {
+        try {
+            atualizarStatus('📸 Preparando envio...');
+            const resposta = await fetch(produto.foto_url);
+            const blob = await resposta.blob();
+            const arquivo = new File([blob], `${produto.nome}.jpg`, { type: blob.type || 'image/jpeg' });
+            if (navigator.canShare({ files: [arquivo] })) {
+                await navigator.share({ files: [arquivo], title: produto.nome, text: mensagem });
+                atualizarStatus('✅ Produto compartilhado!');
+                registrarLog('PRODUTO_COMPARTILHADO', `Produto "${produto.nome}" compartilhado com foto`);
+                return;
+            }
+        } catch (e) {
+            if (e.name === 'AbortError') { atualizarStatus('Envio cancelado'); return; }
+            console.warn('Não foi possível compartilhar com foto, enviando só o texto:', e.message);
+        }
+    }
+
+    // Sem foto, ou navegador sem suporte a compartilhar arquivo: manda só o texto.
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, '_blank');
+    if (produto.foto_url) alert('ℹ️ Seu navegador não permite anexar a foto automaticamente aqui — abri o WhatsApp só com o texto. Baixe a foto e anexe na mão se quiser.');
+    registrarLog('PRODUTO_COMPARTILHADO', `Produto "${produto.nome}" enviado ao WhatsApp (texto)`);
+}
+
+async function enviarPDFWhatsApp() {
+    const cliente = document.getElementById('selCliente').value;
+    if (!cliente) { alert('⚠️ Selecione um cliente'); return; }
+    const itens = pegarItensOrcamentoAtual();
+    if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item ao orçamento'); return; }
+    const total = itens.reduce((s, i) => s + i.subtotal, 0);
+    const clienteData = clientes.find(c => c.nome === cliente);
+    const incluirFotos = document.getElementById('incluirFotosPDF')?.checked || false;
+    const { conteudo, dataFormatada } = montarConteudoOrcamentoPDF(cliente, itens, total, clienteData, incluirFotos);
+    const mensagem = montarMensagemOrcamento(cliente, itens, total);
+    const nomeArquivo = `Orcamento_${EMPRESA.nomeAbreviado}_${cliente.replace(/\s/g, '_')}_${dataFormatada.replace(/\//g, '-')}.pdf`;
+
+    atualizarStatus('⏳ Gerando PDF para compartilhar...');
+
+    const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+    if (!win) { alert('⚠️ Por favor, permita pop-ups para gerar o PDF'); return; }
+    win.document.write(conteudo);
+    win.document.close();
+
+    setTimeout(() => {
+        const script = win.document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        script.onload = async function () {
+            try {
+                const opt = {
+                    margin: 0.5,
+                    filename: nomeArquivo,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
+                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                };
+                const blob = await win.html2pdf().set(opt).from(win.document.body).outputPdf('blob');
+                win.close();
+
+                // Tenta o compartilhamento nativo do celular (anexa o PDF direto na conversa).
+                // Só existe em navegadores mobile modernos (Android/iOS); no computador cai no plano B.
+                const arquivo = new File([blob], nomeArquivo, { type: 'application/pdf' });
+                if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+                    try {
+                        await navigator.share({ files: [arquivo], title: `Orçamento ${cliente}`, text: mensagem });
+                        atualizarStatus('✅ PDF enviado para compartilhar!');
+                        registrarLog('WHATSAPP_ENVIADO', `Orçamento (PDF) para ${cliente} compartilhado`);
+                        return;
+                    } catch (e) {
+                        if (e.name === 'AbortError') { atualizarStatus('Envio cancelado'); return; } // usuário cancelou o compartilhamento
+                    }
+                }
+
+                // Plano B (computador ou navegador sem suporte a compartilhar arquivos):
+                // baixa o PDF e abre o WhatsApp com a mensagem — falta só anexar o arquivo na mão.
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = nomeArquivo; a.click();
+                URL.revokeObjectURL(url);
+                alert('📄 Seu navegador baixou o PDF, mas não consegue anexá-lo automaticamente ao WhatsApp. Vou abrir a conversa com a mensagem pronta — é só anexar o arquivo que acabou de baixar.');
+                window.open(`https://wa.me/${formatarTelefoneWhatsApp(clienteData?.telefone) || EMPRESA.whatsapp}?text=${encodeURIComponent(mensagem)}`, '_blank');
+                registrarLog('WHATSAPP_ENVIADO', `Orçamento para ${cliente}: PDF baixado + WhatsApp aberto`);
+            } catch (err) {
+                win.close();
+                alert('❌ Erro ao gerar o PDF para envio. Tente novamente.');
+            }
+        };
+        script.onerror = function () {
+            win.close();
+            alert('❌ Não foi possível carregar o gerador de PDF. Verifique sua internet e tente de novo.');
+        };
+        win.document.head.appendChild(script);
+    }, 1500);
+}
+
+// ============================================
+// CÁLCULOS ELÉTRICOS
+// ============================================
+
+function bitolaMinimaPorAmpacidade(corrente) {
+    for (const [b, cap] of Object.entries(TABELA_AMPACIDADE)) {
+        if (cap >= corrente) return parseFloat(b);
+    }
+    return null;
+}
+
+function calcularQuedaPercentual(corrente, distancia, bitola, tensao, fases) {
+    const fator = fases === 3 ? Math.sqrt(3) : 2;
+    const quedaVolts = (fator * distancia * corrente * RESISTIVIDADE_COBRE) / bitola;
+    return (quedaVolts / tensao) * 100;
+}
+
+function dimensionarCabos() {
+    const corrente = parseFloat(document.getElementById('correnteCabos').value);
+    if (!corrente || corrente <= 0) { alert('⚠️ Informe a corrente!'); return; }
+    const bitola = bitolaMinimaPorAmpacidade(corrente);
+    document.getElementById('resultadoCabos').innerHTML = bitola ?
+        `✅ Bitola recomendada: ${bitola} mm²` : '⚠️ Corrente muito alta! Consulte um projeto específico.';
+}
+
+function calcularQuedaTensao() {
+    const corrente = parseFloat(document.getElementById('correnteQueda').value);
+    const distancia = parseFloat(document.getElementById('distanciaQueda').value);
+    const bitola = parseFloat(document.getElementById('bitolaQueda').value);
+    const tensao = parseFloat(document.getElementById('tensaoQueda').value);
+    if (!corrente || !distancia || !bitola || !tensao) { alert('⚠️ Preencha todos os campos!'); return; }
+    const fases = tensao === 380 ? 3 : 1;
+    const quedaPercentual = calcularQuedaPercentual(corrente, distancia, bitola, tensao, fases);
+    const status = quedaPercentual <= 3 ? '✅ Dentro do recomendado (≤3%)'
+        : quedaPercentual <= 5 ? '⚠️ Aceitável, mas no limite (até 5%)'
+        : '❌ Acima do recomendado — considere um cabo mais grosso ou menor distância';
+    document.getElementById('resultadoQueda').innerHTML =
+        `📉 Queda de tensão: <strong>${quedaPercentual.toFixed(2)}%</strong><br>${status}`;
+}
+
+function calcularDemanda() {
+    const potencia = parseFloat(document.getElementById('potenciaDemanda').value);
+    const tensao = parseFloat(document.getElementById('tensaoDemanda').value);
+    const fp = parseFloat(document.getElementById('fpDemanda').value) || 0.92;
+    if (!potencia || !tensao) { alert('⚠️ Preencha potência e tensão!'); return; }
+    const fases = tensao === 380 ? 3 : 1;
+    const corrente = fases === 3 ? potencia / (Math.sqrt(3) * tensao * fp) : potencia / (tensao * fp);
+    const demandaKVA = potencia / (1000 * fp);
+    document.getElementById('resultadoDemanda').innerHTML =
+        `💡 Corrente estimada: <strong>${corrente.toFixed(2)} A</strong><br>Demanda: <strong>${demandaKVA.toFixed(2)} kVA</strong>`;
+}
+
+function calcularProjeto() {
+    const potencia = parseFloat(document.getElementById('potenciaProjeto').value);
+    const distancia = parseFloat(document.getElementById('distancia').value);
+    const tensao = parseFloat(document.getElementById('tensao').value);
+    const fp = parseFloat(document.getElementById('fp').value) || 0.92;
+    const quedaMax = parseFloat(document.getElementById('quedaMax').value) || 3;
+    if (!potencia || !distancia || !tensao) { alert('⚠️ Preencha ao menos a potência, distância e tensão!'); return; }
+
+    const fases = tensao === 380 ? 3 : 1;
+    const corrente = fases === 3 ? potencia / (Math.sqrt(3) * tensao * fp) : potencia / (tensao * fp);
+
+    let bitolaEscolhida = bitolaMinimaPorAmpacidade(corrente);
+    if (!bitolaEscolhida) {
+        document.getElementById('resultadoProjeto').innerHTML = '❌ Corrente muito alta para a tabela padrão — consulte um projeto específico.';
+        return;
+    }
+    // Sobe de bitola até a queda de tensão ficar dentro do limite escolhido
+    let quedaFinal = calcularQuedaPercentual(corrente, distancia, bitolaEscolhida, tensao, fases);
+    const bitolasOrdenadas = Object.keys(TABELA_AMPACIDADE).map(Number).sort((a, b) => a - b);
+    let i = bitolasOrdenadas.indexOf(bitolaEscolhida);
+    while (quedaFinal > quedaMax && i < bitolasOrdenadas.length - 1) {
+        i++;
+        bitolaEscolhida = bitolasOrdenadas[i];
+        quedaFinal = calcularQuedaPercentual(corrente, distancia, bitolaEscolhida, tensao, fases);
+    }
+
+    const statusQueda = quedaFinal <= quedaMax ? '✅ dentro do limite definido' : '⚠️ acima do limite — considere reduzir a distância';
+    document.getElementById('resultadoProjeto').innerHTML = `
+        ⚡ Corrente estimada: <strong>${corrente.toFixed(2)} A</strong><br>
+        📏 Bitola recomendada: <strong>${bitolaEscolhida} mm²</strong><br>
+        📉 Queda de tensão resultante: <strong>${quedaFinal.toFixed(2)}%</strong> (${statusQueda})
+    `;
+}
+
+// ============================================
+// FUNÇÕES DE INTERFACE
+// ============================================
+
+function atualizarStatus(msg, tipo = 'success') {
+    const bar = document.getElementById('statusBar');
+    if (!bar) return;
+    bar.textContent = msg;
+    bar.className = 'status-bar';
+    if (tipo === 'success') bar.classList.add('success');
+    else if (tipo === 'error') bar.classList.add('error');
+}
+
+function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
+function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
+
+function abrirTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+}
+
+function carregarLogo() {
+    const header = document.getElementById('headerLogo');
+    if (!header) return;
+    header.innerHTML = `
+        <img src="logo.png" alt="SE7VEN" style="height:54px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px; box-shadow:0 2px 6px rgba(26,35,126,0.25);" onerror="this.style.display='none'">
+        <h1 class="logo-title">SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
+    `;
+}
+
+// ============================================
+// USUÁRIOS — administradores podem aprovar novos cadastros
+// e definir quem é admin ou usuário comum.
+// ============================================
+
+const ROTULOS_TIPO = { pendente: '⏳ Pendente', usuario: '👤 Usuário', admin: '👑 Administrador' };
+
+function listarUsuarios() {
+    const container = document.getElementById('listaUsuarios');
+    if (!container) return;
+    if (!perfis.length) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum usuário encontrado</p>';
+        return;
+    }
+
+    if (!souAdmin()) {
+        container.innerHTML = perfis.map(p => `
+            <div class="user-item">
+                <span><strong>${p.nome}</strong></span>
+                <span class="role">${ROTULOS_TIPO[p.tipo] || p.tipo}</span>
+            </div>
+        `).join('');
+        return;
+    }
+
+    // Visão de administrador: dá pra aprovar pendentes e trocar o perfil de qualquer um (menos o próprio).
+    container.innerHTML = perfis.map(p => {
+        const souEu = p.id === usuarioAtual.id;
+        const corBadge = p.tipo === 'pendente' ? 'background:#fff3cd;color:#856404;' : '';
+        if (souEu) {
+            return `
+            <div class="user-item">
+                <span><strong>${p.nome}</strong> <small style="color:#999;">(você)</small></span>
+                <span class="role" style="${corBadge}">${ROTULOS_TIPO[p.tipo] || p.tipo}</span>
+            </div>`;
+        }
+        return `
+            <div class="user-item" style="flex-wrap:wrap;gap:6px;">
+                <span style="flex:1;min-width:120px;"><strong>${p.nome}</strong><br><small style="color:#999;">${ROTULOS_TIPO[p.tipo] || p.tipo}</small></span>
+                <select onchange="atualizarPerfilUsuario('${p.id}', this.value, '${p.nome.replace(/'/g, "\\'")}')" style="width:auto;padding:6px;margin:0;font-size:12px;">
+                    <option value="pendente" ${p.tipo === 'pendente' ? 'selected' : ''}>⏳ Pendente</option>
+                    <option value="usuario" ${p.tipo === 'usuario' ? 'selected' : ''}>👤 Usuário</option>
+                    <option value="admin" ${p.tipo === 'admin' ? 'selected' : ''}>👑 Administrador</option>
+                </select>
+            </div>`;
+    }).join('');
+}
+
+async function atualizarPerfilUsuario(id, novoTipo, nome) {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem alterar perfis de usuário.'); return; }
+    if (!confirm(`Definir o perfil de "${nome}" como "${ROTULOS_TIPO[novoTipo]}"?`)) { listarUsuarios(); return; }
+    try {
+        const { error } = await sb.from('profiles').update({ tipo: novoTipo }).eq('id', id);
+        if (error) throw error;
+        const idx = perfis.findIndex(p => p.id === id);
+        if (idx >= 0) perfis[idx].tipo = novoTipo;
+        listarUsuarios();
+        atualizarStatus(`✅ Perfil de "${nome}" atualizado!`);
+        registrarLog('PERFIL_ALTERADO', `Perfil de "${nome}" alterado para ${novoTipo}`);
+    } catch (e) {
+        alert('❌ Erro ao atualizar perfil: ' + e.message);
+        listarUsuarios();
+    }
+}
+
+// ============================================
+// LOGS (sincronizados com o Supabase)
+// ============================================
+
+async function registrarLog(acao, detalhes) {
+    const entry = { data: new Date().toISOString(), usuario: usuarioAtual?.nome || 'Sistema', acao, detalhes };
+    logs.unshift(entry);
+    renderizarLogs();
+    if (!sb) return;
+    try {
+        const { error } = await sb.from('logs').insert(entry);
+        if (error) console.warn('Não foi possível gravar o log:', error.message);
+    } catch (e) { console.warn('Não foi possível gravar o log:', e.message); }
+}
+
+function renderizarLogs() {
+    const container = document.getElementById('logList');
+    if (!container) return;
+    if (logs.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;">Nenhum registro de atividade</p>';
+        return;
+    }
+    container.innerHTML = logs.slice(0, 100).map(log => `
+        <div class="entry">
+            <span>${log.acao}: ${log.detalhes}</span>
+            <span class="time">${new Date(log.data).toLocaleString('pt-BR')} - ${log.usuario}</span>
+        </div>
+    `).join('');
+}
+
+async function limparLogs() {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem limpar os logs.'); return; }
+    if (!confirm('Limpar todos os logs (de todos os dispositivos)?')) return;
+    try {
+        await sb.from('logs').delete().neq('id', 0);
+        logs = [];
+        renderizarLogs();
+        atualizarStatus('🗑️ Logs limpos!');
+    } catch (e) {
+        alert('❌ Erro ao limpar logs: ' + e.message);
+    }
+}
+
+// ============================================
+// DESPESAS (contas a pagar da empresa)
+// ============================================
+
+const CATEGORIAS_DESPESA = { material: '🧰 Material/Compra', combustivel: '⛽ Combustível', ferramenta: '🔧 Ferramenta', aluguel: '🏠 Aluguel', salario: '💵 Salário', outro: '📦 Outro' };
+
+async function carregarDespesasSupabase() {
+    const { data, error } = await sb.from('despesas').select('*').order('data', { ascending: false });
+    if (error) throw error;
+    despesas = data || [];
+    listarDespesas();
+}
+
+function listarDespesas(filtro = 'todos') {
+    const container = document.getElementById('listaDespesas');
+    if (!container) return;
+    let lista = filtro !== 'todos' ? despesas.filter(d => d.status === filtro) : despesas;
+    if (lista.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Nenhuma despesa lançada</p>';
+        return;
+    }
+    container.innerHTML = lista.map(d => {
+        const dataFmt = d.data ? new Date(d.data + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+        const pago = d.status === 'pago';
+        return `
+        <div class="os-card">
+            <div><strong>${d.descricao}</strong> <span class="status-badge ${pago ? 'status-recebido' : 'status-orcamento'}">${pago ? '✅ Pago' : '⏳ Pendente'}</span></div>
+            <div style="font-size:12px;color:#666;">${CATEGORIAS_DESPESA[d.categoria] || d.categoria || ''} · ${dataFmt}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;">
+                <strong style="color:#e74c3c;">R$ ${Number(d.valor).toFixed(2)}</strong>
+                ${souAdmin() ? `<button onclick="excluirDespesa('${d.id}')" class="btn-secondary" style="padding:4px 8px;">🗑️</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function filtrarDespesas() { listarDespesas(document.getElementById('filtroDespesa').value); }
+
+async function adicionarDespesa() {
+    const descricao = document.getElementById('descricaoDespesa').value.trim();
+    const valor = parseFloat(document.getElementById('valorDespesa').value);
+    const categoria = document.getElementById('categoriaDespesa').value;
+    const data = document.getElementById('dataDespesa').value || new Date().toISOString().split('T')[0];
+    const status = document.getElementById('statusDespesa').value;
+    if (!descricao || isNaN(valor) || valor <= 0) { alert('⚠️ Descrição e valor válido são obrigatórios'); return; }
+    const nova = { id: gerarId(), descricao, valor, categoria, data, status, criado_por: usuarioAtual?.nome || '' };
+    try {
+        const { error } = await sb.from('despesas').upsert(nova, { onConflict: 'id' });
+        if (error) throw error;
+        despesas.unshift(nova);
+        document.getElementById('descricaoDespesa').value = '';
+        document.getElementById('valorDespesa').value = '';
+        document.getElementById('dataDespesa').value = '';
+        fecharModal('modalDespesa');
+        listarDespesas();
+        atualizarDashboard();
+        atualizarStatus(`✅ Despesa "${descricao}" lançada!`);
+        registrarLog('DESPESA_LANCADA', `Despesa "${descricao}" de R$ ${valor.toFixed(2)} lançada`);
+    } catch (e) {
+        alert('❌ Erro ao lançar despesa: ' + e.message);
+    }
+}
+
+async function excluirDespesa(id) {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem excluir despesas.'); return; }
+    const despesa = despesas.find(d => d.id === id);
+    if (!despesa || !confirm(`Excluir despesa "${despesa.descricao}"?`)) return;
+    try {
+        const { error } = await sb.from('despesas').delete().eq('id', id);
+        if (error) throw error;
+        despesas = despesas.filter(d => d.id !== id);
+        listarDespesas();
+        atualizarDashboard();
+        atualizarStatus('🗑️ Despesa removida');
+        registrarLog('DESPESA_EXCLUIDA', `Despesa "${despesa.descricao}" excluída`);
+    } catch (e) {
+        alert('❌ Erro ao excluir despesa: ' + e.message);
+    }
+}
+
+// ============================================
+// AGENDA DE VISITAS TÉCNICAS
+// ============================================
+
+async function carregarVisitasSupabase() {
+    const { data, error } = await sb.from('visitas').select('*').order('data_hora', { ascending: true });
+    if (error) throw error;
+    visitas = data || [];
+    listarVisitas();
+}
+
+function listarVisitas() {
+    const container = document.getElementById('listaVisitas');
+    if (!container) return;
+    if (visitas.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Nenhuma visita agendada</p>';
+        return;
+    }
+    const badges = { agendada: '📅 Agendada', concluida: '✅ Concluída', cancelada: '❌ Cancelada' };
+    container.innerHTML = visitas.map(v => {
+        const dataHora = new Date(v.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+        return `
+        <div class="os-card">
+            <div><strong>${v.cliente_nome}</strong> <span class="status-badge status-orcamento">${badges[v.status] || v.status}</span></div>
+            <div style="font-size:12px;color:#666;">🕐 ${dataHora}</div>
+            ${v.descricao ? `<div style="font-size:12px;color:#666;">${v.descricao}</div>` : ''}
+            <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
+                ${v.status === 'agendada' ? `
+                    <button onclick="concluirVisita('${v.id}')" class="btn-success" style="padding:4px 8px;font-size:11px;">✅ Concluir</button>
+                    <button onclick="cancelarVisita('${v.id}')" class="btn-danger" style="padding:4px 8px;font-size:11px;">❌ Cancelar</button>
+                ` : ''}
+                ${souAdmin() ? `<button onclick="excluirVisita('${v.id}')" class="btn-secondary" style="padding:4px 8px;">🗑️</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderSelectClienteVisita() {
+    const sel = document.getElementById('clienteVisita');
+    if (!sel) return;
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Selecione um cliente</option>' + clientes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+    sel.value = atual;
+}
+
+async function adicionarVisita() {
+    const clienteNome = document.getElementById('clienteVisita').value;
+    const dataHora = document.getElementById('dataHoraVisita').value;
+    const descricao = document.getElementById('descricaoVisita').value.trim();
+    if (!clienteNome || !dataHora) { alert('⚠️ Selecione o cliente e a data/hora!'); return; }
+    const clienteData = clientes.find(c => c.nome === clienteNome);
+    const nova = {
+        id: gerarId(), cliente_id: clienteData?.id || '', cliente_nome: clienteNome,
+        data_hora: new Date(dataHora).toISOString(), descricao, status: 'agendada', criado_por: usuarioAtual?.nome || ''
+    };
+    try {
+        const { error } = await sb.from('visitas').upsert(nova, { onConflict: 'id' });
+        if (error) throw error;
+        visitas.push(nova);
+        visitas.sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
+        document.getElementById('clienteVisita').value = '';
+        document.getElementById('dataHoraVisita').value = '';
+        document.getElementById('descricaoVisita').value = '';
+        fecharModal('modalVisita');
+        listarVisitas();
+        atualizarDashboard();
+        atualizarStatus(`✅ Visita agendada para ${clienteNome}!`);
+        registrarLog('VISITA_AGENDADA', `Visita agendada para ${clienteNome}`);
+    } catch (e) {
+        alert('❌ Erro ao agendar visita: ' + e.message);
+    }
+}
+
+async function atualizarStatusVisita(id, novoStatus) {
+    const visita = visitas.find(v => v.id === id);
+    if (!visita) return;
+    const atualizada = { ...visita, status: novoStatus };
+    try {
+        const { error } = await sb.from('visitas').upsert(atualizada, { onConflict: 'id' });
+        if (error) throw error;
+        const idx = visitas.findIndex(v => v.id === id);
+        if (idx >= 0) visitas[idx] = atualizada;
+        listarVisitas();
+        atualizarDashboard();
+        atualizarStatus('✅ Visita atualizada!');
+        registrarLog('VISITA_ATUALIZADA', `Visita de ${visita.cliente_nome} marcada como ${novoStatus}`);
+    } catch (e) {
+        alert('❌ Erro ao atualizar visita: ' + e.message);
+    }
+}
+function concluirVisita(id) { atualizarStatusVisita(id, 'concluida'); }
+function cancelarVisita(id) { if (confirm('Cancelar essa visita?')) atualizarStatusVisita(id, 'cancelada'); }
+
+async function excluirVisita(id) {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem excluir visitas.'); return; }
+    if (!confirm('Excluir essa visita?')) return;
+    try {
+        const { error } = await sb.from('visitas').delete().eq('id', id);
+        if (error) throw error;
+        visitas = visitas.filter(v => v.id !== id);
+        listarVisitas();
+        atualizarDashboard();
+        atualizarStatus('🗑️ Visita removida');
+    } catch (e) {
+        alert('❌ Erro ao excluir visita: ' + e.message);
+    }
+}
+
+// ============================================
+// DASHBOARD (resumo do negócio)
+// ============================================
+
+function atualizarDashboard() {
+    const aReceber = recibos.filter(r => r.status === 'pendente').reduce((s, r) => s + Number(r.total || 0), 0);
+    const agora = new Date();
+    const mesAtual = agora.getMonth(), anoAtual = agora.getFullYear();
+    const recebidoMes = recibos.filter(r => r.status === 'pago' && r.data_pagamento &&
+        new Date(r.data_pagamento).getMonth() === mesAtual && new Date(r.data_pagamento).getFullYear() === anoAtual)
+        .reduce((s, r) => s + Number(r.total || 0), 0);
+    const despesasMes = despesas.filter(d => d.data &&
+        new Date(d.data + 'T00:00:00').getMonth() === mesAtual && new Date(d.data + 'T00:00:00').getFullYear() === anoAtual)
+        .reduce((s, d) => s + Number(d.valor || 0), 0);
+    const osAndamento = ordensServico.filter(o => o.status === 'aprovado' || o.status === 'em_andamento').length;
+    const estoqueBaixoCount = produtos.filter(p =>
+        p.quantidade !== null && p.quantidade !== undefined &&
+        p.estoque_minimo !== null && p.estoque_minimo !== undefined &&
+        Number(p.quantidade) <= Number(p.estoque_minimo)
+    ).length;
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('dashAReceber', `R$ ${aReceber.toFixed(2)}`);
+    set('dashRecebidoMes', `R$ ${recebidoMes.toFixed(2)}`);
+    set('dashDespesasMes', `R$ ${despesasMes.toFixed(2)}`);
+    set('dashOSAndamento', osAndamento);
+    set('dashClientes', clientes.length);
+    set('dashEstoqueBaixo', estoqueBaixoCount);
+
+    const proximasVisitas = visitas.filter(v => v.status === 'agendada' && new Date(v.data_hora) >= new Date())
+        .sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora)).slice(0, 5);
+    const container = document.getElementById('dashProximasVisitas');
+    if (container) {
+        if (proximasVisitas.length === 0) {
+            container.innerHTML = '<p style="color:#999;text-align:center;padding:10px;font-size:12px;">Nenhuma visita agendada em breve</p>';
+        } else {
+            container.innerHTML = `<h3 style="font-size:14px;color:#1a237e;margin-bottom:8px;">📅 Próximas visitas</h3>` + proximasVisitas.map(v => `
+                <div style="background:#f8f9fa;padding:8px 12px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                    <strong>${v.cliente_nome}</strong> — ${new Date(v.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                </div>
+            `).join('');
+        }
+    }
+}
+
+// ============================================
+// HISTÓRICO DO CLIENTE
+// ============================================
+
+function abrirHistoricoCliente(clienteId) {
+    const cliente = clientes.find(c => c.id === clienteId);
+    if (!cliente) retur
