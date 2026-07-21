@@ -562,6 +562,7 @@ async function excluirCliente(index) {
 
 function editarCliente(index) {
     const c = clientes[index];
+    if (!c) { alert('⚠️ Não encontrei esse cliente — a lista pode ter sido atualizada. Tente de novo.'); return; }
     document.getElementById('nomeCliente').value = c.nome;
     document.getElementById('telefoneCliente').value = c.telefone || '';
     document.getElementById('cpfCliente').value = c.cpf || '';
@@ -571,11 +572,13 @@ function editarCliente(index) {
     document.querySelector('#modalCliente h3').textContent = '✏️ Editar Cliente';
     const btn = document.getElementById('salvarCliente');
     btn.textContent = '💾 Atualizar';
-    btn.dataset.index = index;
+    btn.dataset.id = c.id;
     const novoBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(novoBtn, btn);
     novoBtn.addEventListener('click', async function () {
-        const idx = parseInt(this.dataset.index);
+        const idCliente = this.dataset.id;
+        const clienteOriginal = clientes.find(x => x.id === idCliente);
+        if (!clienteOriginal) { alert('⚠️ Esse cliente não existe mais (foi removido em outro dispositivo).'); fecharModal('modalCliente'); renderClientes(); return; }
         const nome = document.getElementById('nomeCliente').value.trim();
         const telefone = document.getElementById('telefoneCliente').value.trim();
         const cpf = document.getElementById('cpfCliente').value.trim();
@@ -583,11 +586,12 @@ function editarCliente(index) {
         const email = document.getElementById('emailCliente').value.trim();
         const observacoes = document.getElementById('observacoesCliente').value.trim();
         if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
-        const clienteAtualizado = { ...clientes[idx], nome, telefone, cpf, endereco, email, observacoes };
+        const clienteAtualizado = { ...clienteOriginal, nome, telefone, cpf, endereco, email, observacoes };
         try {
             const { error } = await sb.from('clientes').upsert(clienteAtualizado, { onConflict: 'id' });
             if (error) throw error;
-            clientes[idx] = clienteAtualizado;
+            const idx = clientes.findIndex(x => x.id === idCliente);
+            if (idx >= 0) clientes[idx] = clienteAtualizado;
             document.getElementById('nomeCliente').value = '';
             document.getElementById('telefoneCliente').value = '';
             document.getElementById('cpfCliente').value = '';
@@ -596,7 +600,7 @@ function editarCliente(index) {
             document.getElementById('observacoesCliente').value = '';
             document.querySelector('#modalCliente h3').textContent = '👤 Novo Cliente';
             this.textContent = 'Salvar';
-            this.dataset.index = '';
+            this.dataset.id = '';
             fecharModal('modalCliente');
             renderClientes();
             renderSelectClientes();
@@ -755,6 +759,7 @@ async function excluirProduto(index) {
 
 function editarProduto(index) {
     const p = produtos[index];
+    if (!p) { alert('⚠️ Não encontrei esse produto — a lista pode ter sido atualizada. Tente de novo.'); return; }
     document.getElementById('nomeProduto').value = p.nome;
     document.getElementById('precoProduto').value = p.preco;
     document.getElementById('tipoProduto').value = p.tipo || 'outro';
@@ -767,11 +772,13 @@ function editarProduto(index) {
     document.querySelector('#modalProduto h3').textContent = '✏️ Editar Produto';
     const btn = document.getElementById('salvarProduto');
     btn.textContent = '💾 Atualizar';
-    btn.dataset.index = index;
+    btn.dataset.id = p.id;
     const novoBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(novoBtn, btn);
     novoBtn.addEventListener('click', async function () {
-        const idx = parseInt(this.dataset.index);
+        const idProduto = this.dataset.id;
+        const produtoOriginal = produtos.find(x => x.id === idProduto);
+        if (!produtoOriginal) { alert('⚠️ Esse produto não existe mais (foi removido em outro dispositivo).'); fecharModal('modalProduto'); renderProdutos(); return; }
         const nome = document.getElementById('nomeProduto').value.trim();
         const preco = parseFloat(document.getElementById('precoProduto').value);
         const tipo = document.getElementById('tipoProduto').value;
@@ -781,7 +788,7 @@ function editarProduto(index) {
         const arquivoFoto = document.getElementById('fotoProduto').files[0];
         if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
         const produtoAtualizado = {
-            ...produtos[idx], nome, preco, tipo, codigo_barras: codigoBarras || null,
+            ...produtoOriginal, nome, preco, tipo, codigo_barras: codigoBarras || null,
             quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
             estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
         };
@@ -792,7 +799,8 @@ function editarProduto(index) {
             }
             const { error } = await sb.from('produtos').upsert(produtoAtualizado, { onConflict: 'id' });
             if (error) throw error;
-            produtos[idx] = produtoAtualizado;
+            const idx = produtos.findIndex(x => x.id === idProduto);
+            if (idx >= 0) produtos[idx] = produtoAtualizado;
             document.getElementById('nomeProduto').value = '';
             document.getElementById('precoProduto').value = '';
             document.getElementById('codigoBarrasProduto').value = '';
@@ -802,7 +810,7 @@ function editarProduto(index) {
             document.getElementById('previewFotoProduto').style.display = 'none';
             document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
             this.textContent = 'Salvar';
-            this.dataset.index = '';
+            this.dataset.id = '';
             fecharModal('modalProduto');
             renderProdutos();
             renderSelectProdutos();
