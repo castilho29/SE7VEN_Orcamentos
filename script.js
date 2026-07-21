@@ -70,14 +70,11 @@ let realtimeChannel = null;
 let osAtual = null;
 let reciboAtual = null;
 let editandoOSId = null;
-<<<<<<< Updated upstream
-=======
 let despesas = [];
 let visitas = [];
 let paginaClientes = 0;
 let paginaProdutos = 0;
 const ITENS_POR_PAGINA = 20;
->>>>>>> Stashed changes
 let sincronizando = false;
 let ultimaSync = null;
 
@@ -656,10 +653,7 @@ function renderProdutos() {
                     <br><small>R$ ${Number(p.preco).toFixed(2)}</small>
                     <br><small>📂 ${p.tipo || 'outro'}</small>
                     ${p.codigo_barras ? `<br><small>🔢 ${p.codigo_barras}</small>` : ''}
-<<<<<<< Updated upstream
-=======
                     ${temEstoque ? `<br><small class="${estoqueBaixo ? 'estoque-baixo' : ''}">📦 Estoque: ${p.quantidade}${estoqueBaixo ? ' ⚠️ baixo!' : ''}</small>` : ''}
->>>>>>> Stashed changes
                 </span>
             </span>
             <div style="display:flex;gap:5px;">
@@ -720,7 +714,6 @@ async function adicionarProduto() {
         quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
         estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
     };
->>>>>>> Stashed changes
     try {
         if (arquivoFoto) {
             atualizarStatus('📸 Enviando foto...');
@@ -732,11 +725,8 @@ async function adicionarProduto() {
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
         document.getElementById('codigoBarrasProduto').value = '';
-<<<<<<< Updated upstream
-=======
         document.getElementById('quantidadeProduto').value = '';
         document.getElementById('estoqueMinimoProduto').value = '';
->>>>>>> Stashed changes
         document.getElementById('fotoProduto').value = '';
         document.getElementById('previewFotoProduto').style.display = 'none';
         fecharModal('modalProduto');
@@ -774,11 +764,8 @@ function editarProduto(index) {
     document.getElementById('precoProduto').value = p.preco;
     document.getElementById('tipoProduto').value = p.tipo || 'outro';
     document.getElementById('codigoBarrasProduto').value = p.codigo_barras || '';
-<<<<<<< Updated upstream
-=======
     document.getElementById('quantidadeProduto').value = (p.quantidade ?? '');
     document.getElementById('estoqueMinimoProduto').value = (p.estoque_minimo ?? '');
->>>>>>> Stashed changes
     document.getElementById('fotoProduto').value = '';
     const preview = document.getElementById('previewFotoProduto');
     if (p.foto_url) { preview.src = p.foto_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
@@ -796,7 +783,6 @@ function editarProduto(index) {
         const preco = parseFloat(document.getElementById('precoProduto').value);
         const tipo = document.getElementById('tipoProduto').value;
         const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
-<<<<<<< Updated upstream
         const quantidadeVal = document.getElementById('quantidadeProduto').value;
         const estoqueMinimoVal = document.getElementById('estoqueMinimoProduto').value;
         const arquivoFoto = document.getElementById('fotoProduto').files[0];
@@ -806,7 +792,6 @@ function editarProduto(index) {
             quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
             estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
         };
->>>>>>> Stashed changes
         try {
             if (arquivoFoto) {
                 atualizarStatus('📸 Enviando foto...');
@@ -819,11 +804,8 @@ function editarProduto(index) {
             document.getElementById('nomeProduto').value = '';
             document.getElementById('precoProduto').value = '';
             document.getElementById('codigoBarrasProduto').value = '';
-<<<<<<< Updated upstream
-=======
             document.getElementById('quantidadeProduto').value = '';
             document.getElementById('estoqueMinimoProduto').value = '';
->>>>>>> Stashed changes
             document.getElementById('fotoProduto').value = '';
             document.getElementById('previewFotoProduto').style.display = 'none';
             document.querySelector('#modalProduto h3').textContent = '📦 Novo Produto';
@@ -920,20 +902,14 @@ async function salvarOrcamento() {
     if (itens.length === 0) { alert('⚠️ Adicione pelo menos um item!'); return; }
     const total = itens.reduce((sum, item) => sum + item.subtotal, 0);
     const clienteData = clientes.find(c => c.nome === cliente);
-<<<<<<< Updated upstream
-=======
     const formaPagamento = document.getElementById('formaPagamentoOrcamento').value;
     const parcelas = formaPagamento === 'Cartão de Crédito' ? parseInt(document.getElementById('parcelasOrcamento').value) : 1;
->>>>>>> Stashed changes
 
     // Editando um orçamento já existente: atualiza em vez de criar um novo
     if (editandoOSId) {
         const osExistente = ordensServico.find(o => o.id === editandoOSId);
         if (!osExistente) { alert('⚠️ Não encontrei esse orçamento — talvez tenha sido removido.'); editandoOSId = null; return; }
-<<<<<<< Updated upstream
-=======
         const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total, forma_pagamento: formaPagamento, parcelas };
->>>>>>> Stashed changes
         try {
             const { error } = await sb.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
             if (error) throw error;
@@ -1189,10 +1165,7 @@ function abrirRecibo(id) {
             <p style="margin:2px 0;"><strong>Cliente:</strong> ${reciboAtual.cliente_nome}</p>
             <p style="margin:2px 0;"><strong>Referente à OS:</strong> ${reciboAtual.os_numero}</p>
             <p style="margin:2px 0;"><strong>Data de emissão:</strong> ${data}</p>
-<<<<<<< Updated upstream
-=======
             ${reciboAtual.forma_pagamento ? `<p style="margin:2px 0;"><strong>Forma de pagamento:</strong> ${reciboAtual.forma_pagamento}${reciboAtual.forma_pagamento === 'Cartão de Crédito' && reciboAtual.parcelas > 1 ? ` (${reciboAtual.parcelas}x)` : ''}</p>` : ''}
->>>>>>> Stashed changes
             <p style="margin:2px 0;"><strong>Status:</strong> <span style="color:${statusPago ? '#27ae60' : '#e67e22'};font-weight:bold;">${statusPago ? '✅ PAGO' : '⏳ PENDENTE'}</span></p>
         </div>
         <div style="overflow-x:auto;">
