@@ -94,10 +94,35 @@ e ajusta as permissões), teste: Dashboard → Despesas → Agenda → históric
 um cliente → editar/excluir como usuário comum (deve estar bloqueado) e como
 admin (deve funcionar).
 
+### Modo offline (novo!)
+
+O app agora funciona sem internet, em duas frentes:
+
+1. **Abrir e consultar**: o app abre normalmente mesmo sem conexão (usando um
+   "Service Worker" que guarda os arquivos do sistema), e mostra os últimos
+   dados sincronizados (clientes, produtos, orçamentos, recibos...), com um
+   aviso amarelo dizendo de quando são esses dados.
+2. **Cadastrar/editar offline**: clientes, produtos e orçamentos podem ser
+   criados/editados sem internet — ficam guardados só no aparelho, com um
+   aviso laranja mostrando quantas alterações estão "na fila". Assim que a
+   conexão voltar (sozinho, sem precisar fazer nada), tudo é enviado pro
+   Supabase automaticamente.
+
+**Limitações importantes, por segurança dos dados:**
+- Mudar status de OS (aprovar/concluir/cancelar), marcar recibo como pago,
+  despesas e visitas **ainda exigem internet** — são ações mais sensíveis a
+  conflito entre dispositivos, e ficam de fora do modo offline por enquanto.
+- Foto de produto só é enviada com internet — cadastrando offline, o produto
+  salva normalmente, só a foto fica pendente pra adicionar depois.
+- Se dois dispositivos editarem o **mesmo** registro enquanto ambos offline,
+  quem sincronizar primeiro "vence" — o sistema não mescla as duas edições.
+
+Novos arquivos deste pacote: `manifest.json` e `sw.js` (o Service Worker) —
+sobem no GitHub junto dos outros, na mesma pasta.
+
 ### O que ainda ficou de fora
-Funcionamento **offline** (o app exige internet o tempo todo hoje — um "PWA"
-completo com essa capacidade é um projeto à parte, me avise se quiser que eu
-faça isso numa próxima rodada).
+- Mudança de status de OS/recibo, despesas e visitas offline (ver acima)
+- Ícones do PWA em tamanhos variados (hoje usa a mesma `logo.png` para todos)
 
 
 - `index.html` — tela do sistema (login novo + campo de potência no projeto elétrico)

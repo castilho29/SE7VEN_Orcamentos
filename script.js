@@ -35,6 +35,9 @@ try {
 // ============================================
 // DADOS DA EMPRESA
 // ============================================
+// Versão do app — atualizar a cada rodada de ajustes importante
+const APP_VERSAO = '2.5.0';
+
 const EMPRESA = {
     nome: 'SE7VEN SOLUÇÕES ENERGÉTICAS',
     nomeAbreviado: 'SE7VEN',
@@ -78,9 +81,35 @@ const ITENS_POR_PAGINA = 20;
 let sincronizando = false;
 let ultimaSync = null;
 
-// Tabela de ampacidade de cabos de cobre (A) por bitola (mm²) - referência prática
-const TABELA_AMPACIDADE = {1.5:15.5,2.5:21,4:28,6:36,10:50,16:68,25:89,35:111,50:134,70:171,95:207,120:239,150:275,185:314,240:370};
-const RESISTIVIDADE_COBRE = 0.0178; // Ω·mm²/m (aprox., referência prática)
+// Tabela de ampacidade de cabos de cobre (A) por bitola (mm²)
+// Fonte: ABNT NBR 5410:2004, Tabela 36 — condutores de cobre, isolação PVC,
+// método de referência B1 (eletroduto aparente ou embutido em alvenaria),
+// temperatura ambiente de 30°C. "mono" = 2 condutores carregados
+// (circuitos monofásicos/bifásicos), "tri" = 3 condutores carregados
+// (circuitos trifásicos). É a referência mais usada no dia a dia; outros
+// métodos de instalação (enterrado, bandeja, etc.) têm capacidades diferentes
+// e não estão contemplados aqui.
+const TABELA_AMPACIDADE = {
+    1.5:  { mono: 17.5, tri: 15.5 },
+    2.5:  { mono: 24,   tri: 21 },
+    4:    { mono: 32,   tri: 28 },
+    6:    { mono: 41,   tri: 36 },
+    10:   { mono: 57,   tri: 50 },
+    16:   { mono: 76,   tri: 68 },
+    25:   { mono: 101,  tri: 89 },
+    35:   { mono: 125,  tri: 110 },
+    50:   { mono: 151,  tri: 134 },
+    70:   { mono: 192,  tri: 171 },
+    95:   { mono: 232,  tri: 207 },
+    120:  { mono: 269,  tri: 239 },
+    150:  { mono: 309,  tri: 275 },
+    185:  { mono: 353,  tri: 314 },
+    240:  { mono: 415,  tri: 370 },
+    300:  { mono: 477,  tri: 426 },
+    400:  { mono: 571,  tri: 510 },
+    500:  { mono: 656,  tri: 587 }
+};
+const RESISTIVIDADE_COBRE = 0.0178; // Ω·mm²/m a 20°C (referência usual para queda de tensão)
 
 // ============================================
 // AUTENTICAÇÃO (SUPABASE AUTH)
@@ -136,16 +165,6 @@ async function fazerLogin() {
     // Sucesso: onAuthStateChange cuida de entrar no sistema
 }
 
-async function loginGoogle() {
-    if (!sb) { alert('⚠️ Supabase não está configurado.'); return; }
-    const { error } = await sb.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.href }
-    });
-    if (error) alert('❌ Erro ao entrar com Google: ' + error.message +
-        '\n\n(Verifique se o provedor Google está habilitado em Supabase → Authentication → Providers)');
-}
-
 async function fazerLogout() {
     if (syncTimeout) { clearInterval(syncTimeout); syncTimeout = null; }
     if (window.__lembretesVisitasInterval) { clearInterval(window.__lembretesVisitasInterval); window.__lembretesVisitasInterval = null; }
@@ -198,6 +217,125 @@ async function entrarNoSistema(user) {
     registrarLog('LOGIN', `${usuarioAtual.nome} entrou no sistema`);
     init();
 }
+
+// ============================================
+// MODO OFFLINE
+// ============================================
+// Duas partes: 1) guarda uma cópia dos dados no localStorage pra dar pra
+// CONSULTAR mesmo sem internet; 2) enfileira alterações feitas sem internet
+// (clientes, produtos e orçamentos) e manda pro Supabase assim que a conexão
+// voltar.
+
+const CHAVE_CACHE_OFFLINE = 'se7ven_cache_dados';
+const CHAVE_FILA_OFFLINE = 'se7ven_fila_offline';
+
+function salvarCacheOffline() {
+    try {
+        const pacote = { clientes, produtos, ordensServico, recibos, despesas, visitas, perfis, salvoEm: new Date().toISOString() };
+        localStorage.setItem(CHAVE_CACHE_OFFLINE, JSON.stringify(pacote));
+    } catch (e) { console.warn('Não foi possível salvar o cache offline:', e.message); }
+}
+
+function carregarCacheOffline() {
+    try {
+        const bruto = localStorage.getItem(CHAVE_CACHE_OFFLINE);
+        if (!bruto) return null;
+        const pacote = JSON.parse(bruto);
+        clientes = pacote.clientes || [];
+        produtos = pacote.produtos || [];
+        ordensServico = pacote.ordensServico || [];
+        recibos = pacote.recibos || [];
+        despesas = pacote.despesas || [];
+        visitas = pacote.visitas || [];
+        perfis = pacote.perfis || [];
+        return pacote.salvoEm || null;
+    } catch (e) { return null; }
+}
+
+function mostrarBannerOffline(salvoEm) {
+    const el = document.getElementById('bannerOffline');
+    if (!el) return;
+    if (!salvoEm) { el.style.display = 'none'; return; }
+    const dataFmt = new Date(salvoEm).toLocaleString('pt-BR');
+    el.style.display = 'block';
+    el.textContent = `📴 Sem internet — mostrando dados salvos em ${dataFmt}. O que você alterar agora entra na fila e sincroniza sozinho quando a conexão voltar.`;
+}
+function esconderBannerOffline() {
+    const el = document.getElementById('bannerOffline');
+    if (el) el.style.display = 'none';
+}
+
+function pegarFilaOffline() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_FILA_OFFLINE) || '[]'); } catch (e) { return []; }
+}
+function definirFilaOffline(fila) {
+    try { localStorage.setItem(CHAVE_FILA_OFFLINE, JSON.stringify(fila)); } catch (e) {}
+    atualizarIndicadorFilaOffline();
+}
+function adicionarNaFilaOffline(tabela, registro) {
+    const fila = pegarFilaOffline();
+    fila.push({ tabela, registro, criadoEm: new Date().toISOString() });
+    definirFilaOffline(fila);
+}
+function atualizarIndicadorFilaOffline() {
+    const el = document.getElementById('indicadorFilaOffline');
+    if (!el) return;
+    const fila = pegarFilaOffline();
+    if (fila.length === 0) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.textContent = `⏳ ${fila.length} alteração(ões) salva(s) neste aparelho, aguardando internet para sincronizar.`;
+}
+
+// Salva ou atualiza um registro com suporte offline: tenta enviar pro Supabase
+// e, se não conseguir por falta de conexão, guarda na fila local pra tentar
+// depois — sem travar o uso do sistema.
+async function upsertComOffline(tabela, registro) {
+    if (!navigator.onLine || !sb) {
+        adicionarNaFilaOffline(tabela, registro);
+        return { offline: true };
+    }
+    try {
+        const { error } = await sb.from(tabela).upsert(registro, { onConflict: 'id' });
+        if (error) throw error;
+        return { offline: false };
+    } catch (e) {
+        // Erro de rede (sem conexão de verdade) cai aqui também — trata como offline.
+        adicionarNaFilaOffline(tabela, registro);
+        return { offline: true };
+    }
+}
+
+async function sincronizarFilaOffline() {
+    const fila = pegarFilaOffline();
+    if (!fila.length || !sb || !navigator.onLine) return;
+    const restantes = [];
+    let sucesso = 0;
+    for (const item of fila) {
+        try {
+            const { error } = await sb.from(item.tabela).upsert(item.registro, { onConflict: 'id' });
+            if (error) throw error;
+            sucesso++;
+        } catch (e) {
+            restantes.push(item);
+        }
+    }
+    definirFilaOffline(restantes);
+    if (sucesso > 0) {
+        atualizarStatus(`☁️ ${sucesso} alteração(ões) feita(s) offline foram sincronizadas!`);
+        registrarLog('SYNC_OFFLINE', `${sucesso} alteração(ões) pendente(s) sincronizada(s)`);
+        sincronizarDados();
+    }
+}
+
+window.addEventListener('online', () => {
+    esconderBannerOffline();
+    atualizarStatus('🌐 Conexão de volta! Sincronizando...');
+    sincronizarFilaOffline();
+    sincronizarDados();
+});
+window.addEventListener('offline', () => {
+    atualizarStatus('📴 Sem internet — você ainda pode consultar e lançar dados; sincroniza sozinho quando a conexão voltar.');
+});
 
 // ============================================
 // SINCRONIZAÇÃO
@@ -280,13 +418,28 @@ async function sincronizarDados() {
         statusElement.className = 'status online';
         progressElement.style.display = 'none';
         atualizarEstatisticas();
+        esconderBannerOffline();
+        salvarCacheOffline();
+        sincronizarFilaOffline();
         console.log('✅ Sincronização completa!');
     } catch (error) {
         console.error('❌ Erro na sincronização:', error);
-        statusElement.textContent = '❌ Erro: ' + error.message;
-        statusElement.className = 'status offline';
-        progressElement.textContent = '❌ ' + error.message;
-        progressElement.style.display = 'block';
+        const salvoEm = carregarCacheOffline();
+        if (salvoEm) {
+            renderClientes(); renderSelectClientes();
+            renderProdutos(); renderSelectProdutos();
+            listarOS(); listarRecibos(); listarDespesas(); listarVisitas();
+            listarUsuarios(); atualizarDashboard(); atualizarEstatisticas();
+            statusElement.textContent = '📴 Offline (usando dados salvos)';
+            statusElement.className = 'status offline';
+            progressElement.style.display = 'none';
+            mostrarBannerOffline(salvoEm);
+        } else {
+            statusElement.textContent = '❌ Erro: ' + error.message;
+            statusElement.className = 'status offline';
+            progressElement.textContent = '❌ ' + error.message;
+            progressElement.style.display = 'block';
+        }
     } finally {
         sincronizando = false;
     }
@@ -525,8 +678,7 @@ async function adicionarCliente() {
         observacoes: document.getElementById('observacoesCliente').value.trim() || ''
     };
     try {
-        const { error } = await sb.from('clientes').upsert(novoCliente, { onConflict: 'id' });
-        if (error) throw error;
+        const resultado = await upsertComOffline('clientes', novoCliente);
         clientes.push(novoCliente);
         document.getElementById('nomeCliente').value = '';
         document.getElementById('telefoneCliente').value = '';
@@ -537,7 +689,7 @@ async function adicionarCliente() {
         fecharModal('modalCliente');
         renderClientes();
         renderSelectClientes();
-        atualizarStatus(`✅ Cliente "${nome}" cadastrado!`);
+        atualizarStatus(resultado.offline ? `📴 Cliente "${nome}" salvo neste aparelho — sincroniza quando a internet voltar` : `✅ Cliente "${nome}" cadastrado!`);
         registrarLog('CLIENTE_ADICIONADO', `Cliente "${nome}" adicionado`);
     } catch (e) {
         alert('❌ Erro ao salvar cliente: ' + e.message);
@@ -589,8 +741,7 @@ function editarCliente(index) {
         if (!nome) { alert('⚠️ Nome é obrigatório'); return; }
         const clienteAtualizado = { ...clienteOriginal, nome, telefone, cpf, endereco, email, observacoes };
         try {
-            const { error } = await sb.from('clientes').upsert(clienteAtualizado, { onConflict: 'id' });
-            if (error) throw error;
+            const resultado = await upsertComOffline('clientes', clienteAtualizado);
             const idx = clientes.findIndex(x => x.id === idCliente);
             if (idx >= 0) clientes[idx] = clienteAtualizado;
             document.getElementById('nomeCliente').value = '';
@@ -605,7 +756,7 @@ function editarCliente(index) {
             fecharModal('modalCliente');
             renderClientes();
             renderSelectClientes();
-            atualizarStatus(`✅ Cliente "${nome}" atualizado!`);
+            atualizarStatus(resultado.offline ? `📴 Cliente "${nome}" salvo neste aparelho — sincroniza quando a internet voltar` : `✅ Cliente "${nome}" atualizado!`);
             registrarLog('CLIENTE_EDITADO', `Cliente "${nome}" editado`);
         } catch (e) {
             alert('❌ Erro ao atualizar cliente: ' + e.message);
@@ -718,12 +869,16 @@ async function adicionarProduto() {
         estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
     };
     try {
+        let fotoAdiada = false;
         if (arquivoFoto) {
-            atualizarStatus('📸 Enviando foto...');
-            novoProduto.foto_url = await enviarFotoProduto(novoProduto.id, arquivoFoto);
+            if (navigator.onLine) {
+                atualizarStatus('📸 Enviando foto...');
+                novoProduto.foto_url = await enviarFotoProduto(novoProduto.id, arquivoFoto);
+            } else {
+                fotoAdiada = true; // sem internet não dá pra subir a foto agora — o produto é salvo sem ela
+            }
         }
-        const { error } = await sb.from('produtos').upsert(novoProduto, { onConflict: 'id' });
-        if (error) throw error;
+        const resultado = await upsertComOffline('produtos', novoProduto);
         produtos.push(novoProduto);
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
@@ -736,7 +891,11 @@ async function adicionarProduto() {
         fecharModal('modalProduto');
         renderProdutos();
         renderSelectProdutos();
-        atualizarStatus(`✅ Produto "${nome}" cadastrado!`);
+        if (resultado.offline) {
+            atualizarStatus(`📴 Produto "${nome}" salvo neste aparelho — sincroniza quando a internet voltar${fotoAdiada ? ' (a foto precisa ser adicionada depois, com internet)' : ''}`);
+        } else {
+            atualizarStatus(`✅ Produto "${nome}" cadastrado!`);
+        }
         registrarLog('PRODUTO_ADICIONADO', `Produto "${nome}" adicionado`);
     } catch (e) {
         alert('❌ Erro ao salvar produto: ' + e.message);
@@ -799,12 +958,16 @@ function editarProduto(index) {
             estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
         };
         try {
+            let fotoAdiada = false;
             if (arquivoFoto) {
-                atualizarStatus('📸 Enviando foto...');
-                produtoAtualizado.foto_url = await enviarFotoProduto(produtoAtualizado.id, arquivoFoto);
+                if (navigator.onLine) {
+                    atualizarStatus('📸 Enviando foto...');
+                    produtoAtualizado.foto_url = await enviarFotoProduto(produtoAtualizado.id, arquivoFoto);
+                } else {
+                    fotoAdiada = true;
+                }
             }
-            const { error } = await sb.from('produtos').upsert(produtoAtualizado, { onConflict: 'id' });
-            if (error) throw error;
+            const resultado = await upsertComOffline('produtos', produtoAtualizado);
             const idx = produtos.findIndex(x => x.id === idProduto);
             if (idx >= 0) produtos[idx] = produtoAtualizado;
             document.getElementById('nomeProduto').value = '';
@@ -821,7 +984,11 @@ function editarProduto(index) {
             fecharModal('modalProduto');
             renderProdutos();
             renderSelectProdutos();
-            atualizarStatus(`✅ Produto "${nome}" atualizado!`);
+            if (resultado.offline) {
+                atualizarStatus(`📴 Produto "${nome}" salvo neste aparelho — sincroniza quando a internet voltar${fotoAdiada ? ' (a foto precisa ser adicionada depois, com internet)' : ''}`);
+            } else {
+                atualizarStatus(`✅ Produto "${nome}" atualizado!`);
+            }
             registrarLog('PRODUTO_EDITADO', `Produto "${nome}" editado`);
         } catch (e) {
             alert('❌ Erro ao atualizar produto: ' + e.message);
@@ -918,14 +1085,13 @@ async function salvarOrcamento() {
         if (!osExistente) { alert('⚠️ Não encontrei esse orçamento — talvez tenha sido removido.'); editandoOSId = null; return; }
         const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total, forma_pagamento: formaPagamento, parcelas };
         try {
-            const { error } = await sb.from('ordens_servico').upsert(osAtualizada, { onConflict: 'id' });
-            if (error) throw error;
+            const resultado = await upsertComOffline('ordens_servico', osAtualizada);
             const idx = ordensServico.findIndex(o => o.id === editandoOSId);
             if (idx >= 0) ordensServico[idx] = osAtualizada;
             listarOS();
-            atualizarStatus(`✅ Orçamento ${osAtualizada.numero} atualizado!`);
+            atualizarStatus(resultado.offline ? `📴 Orçamento ${osAtualizada.numero} salvo neste aparelho — sincroniza quando a internet voltar` : `✅ Orçamento ${osAtualizada.numero} atualizado!`);
             registrarLog('OS_EDITADA', `OS ${osAtualizada.numero} editada`);
-            alert(`✅ Orçamento ${osAtualizada.numero} atualizado!\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
+            alert(`${resultado.offline ? '📴' : '✅'} Orçamento ${osAtualizada.numero} ${resultado.offline ? 'salvo neste aparelho' : 'atualizado'}!\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
             editandoOSId = null;
             limparOrcamento();
             abrirTab('tabOS');
@@ -948,13 +1114,12 @@ async function salvarOrcamento() {
         data_criacao: new Date().toISOString()
     };
     try {
-        const { error } = await sb.from('ordens_servico').upsert(novaOS, { onConflict: 'id' });
-        if (error) throw error;
+        const resultado = await upsertComOffline('ordens_servico', novaOS);
         ordensServico.push(novaOS);
         listarOS();
-        atualizarStatus(`✅ Orçamento salvo! Nº ${novaOS.numero}`);
+        atualizarStatus(resultado.offline ? `📴 Orçamento salvo neste aparelho! Nº ${novaOS.numero} — sincroniza quando a internet voltar` : `✅ Orçamento salvo! Nº ${novaOS.numero}`);
         registrarLog('OS_CRIADA', `OS ${novaOS.numero} criada para ${cliente}`);
-        alert(`✅ Orçamento salvo!\nNº: ${novaOS.numero}\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
+        alert(`${resultado.offline ? '📴' : '✅'} Orçamento ${resultado.offline ? 'salvo neste aparelho' : 'salvo'}!\nNº: ${novaOS.numero}\nCliente: ${cliente}\nTotal: R$ ${total.toFixed(2)}`);
         abrirTab('tabOS');
     } catch (e) {
         alert('❌ Erro ao salvar orçamento: ' + e.message);
@@ -1101,15 +1266,16 @@ async function emitirRecibo() {
         cliente_id: osAtual.cliente_id, cliente_nome: osAtual.cliente_nome,
         itens: osAtual.itens, total: osAtual.total,
         forma_pagamento: osAtual.forma_pagamento || null, parcelas: osAtual.parcelas || 1,
+        pagamentos: [], valor_recebido: 0,
         status: 'pendente', data_emissao: new Date().toISOString(), data_pagamento: null
     };
     try {
-        const { error } = await sb.from('recibos').upsert(recibo, { onConflict: 'id' });
-        if (error) throw error;
+        const resultado = await upsertComOffline('recibos', recibo);
         recibos.push(recibo);
         listarRecibos();
         fecharModal('modalOS');
-        atualizarStatus(`💰 Recibo ${recibo.numero} emitido!`);
+        atualizarDashboard();
+        atualizarStatus(resultado.offline ? `📴 Recibo ${recibo.numero} salvo neste aparelho` : `💰 Recibo ${recibo.numero} emitido!`);
         registrarLog('RECIBO_EMITIDO', `Recibo ${recibo.numero} emitido para ${osAtual.cliente_nome}`);
         abrirRecibo(recibo.id);
     } catch (e) {
@@ -1121,6 +1287,10 @@ async function emitirRecibo() {
 // RECIBOS
 // ============================================
 
+function valorRecebidoRecibo(recibo) {
+    return (recibo.pagamentos || []).reduce((s, p) => s + Number(p.valor || 0), 0);
+}
+
 function listarRecibos(filtro = 'todos') {
     const container = document.getElementById('listaRecibos');
     if (!container) return;
@@ -1131,12 +1301,16 @@ function listarRecibos(filtro = 'todos') {
     }
     container.innerHTML = lista.map(r => {
         const data = new Date(r.data_emissao).toLocaleDateString('pt-BR');
-        const status = r.status === 'pago' ? '✅ Pago' : '⏳ Pendente';
+        const recebido = valorRecebidoRecibo(r);
+        const saldo = Number(r.total || 0) - recebido;
+        const badges = { pago: '✅ Pago', parcial: '🔶 Parcial', pendente: '⏳ Pendente' };
+        const classes = { pago: 'status-recebido', parcial: 'status-os', pendente: 'status-orcamento' };
         return `
             <div class="os-card" onclick="abrirRecibo('${r.id}')">
-                <div><strong>${r.numero}</strong> <span class="status-badge ${r.status === 'pago' ? 'status-recebido' : 'status-orcamento'}">${status}</span></div>
+                <div><strong>${r.numero}</strong> <span class="status-badge ${classes[r.status] || 'status-orcamento'}">${badges[r.status] || r.status}</span></div>
                 <div><strong>Cliente:</strong> ${r.cliente_nome}</div>
                 <div style="font-size:12px;color:#666;">OS: ${r.os_numero} | Total: R$ ${Number(r.total || 0).toFixed(2)} | ${data}</div>
+                ${r.status !== 'pago' ? `<div style="font-size:12px;color:#e67e22;">Recebido: R$ ${recebido.toFixed(2)} · Saldo: R$ ${saldo.toFixed(2)}</div>` : ''}
             </div>
         `;
     }).join('');
@@ -1152,7 +1326,11 @@ function abrirRecibo(id) {
     let itensHTML = reciboAtual.itens?.map((item, i) => `
         <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
     `).join('') || '';
-    const statusPago = reciboAtual.status === 'pago';
+    const recebido = valorRecebidoRecibo(reciboAtual);
+    const saldo = Number(reciboAtual.total || 0) - recebido;
+    const rotulos = { pago: '✅ PAGO', parcial: '🔶 PARCIAL', pendente: '⏳ PENDENTE' };
+    const cores = { pago: '#27ae60', parcial: '#e67e22', pendente: '#e67e22' };
+    const pagamentos = reciboAtual.pagamentos || [];
     document.getElementById('conteudoRecibo').innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:3px solid #1a237e;padding-bottom:12px;margin-bottom:15px;">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -1173,7 +1351,7 @@ function abrirRecibo(id) {
             <p style="margin:2px 0;"><strong>Referente à OS:</strong> ${reciboAtual.os_numero}</p>
             <p style="margin:2px 0;"><strong>Data de emissão:</strong> ${data}</p>
             ${reciboAtual.forma_pagamento ? `<p style="margin:2px 0;"><strong>Forma de pagamento:</strong> ${reciboAtual.forma_pagamento}${reciboAtual.forma_pagamento === 'Cartão de Crédito' && reciboAtual.parcelas > 1 ? ` (${reciboAtual.parcelas}x)` : ''}</p>` : ''}
-            <p style="margin:2px 0;"><strong>Status:</strong> <span style="color:${statusPago ? '#27ae60' : '#e67e22'};font-weight:bold;">${statusPago ? '✅ PAGO' : '⏳ PENDENTE'}</span></p>
+            <p style="margin:2px 0;"><strong>Status:</strong> <span style="color:${cores[reciboAtual.status] || '#e67e22'};font-weight:bold;">${rotulos[reciboAtual.status] || reciboAtual.status}</span></p>
         </div>
         <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -1188,6 +1366,14 @@ function abrirRecibo(id) {
         <div style="text-align:right;padding:12px 4px;font-size:19px;font-weight:bold;border-top:2px solid #1a237e;margin-top:8px;color:#1a237e;">
             TOTAL: R$ ${Number(reciboAtual.total || 0).toFixed(2)}
         </div>
+        ${pagamentos.length > 0 ? `
+        <div style="background:#e8f5e9;border-radius:6px;padding:10px 12px;margin-top:10px;font-size:12px;">
+            <strong style="color:#2e7d32;">Pagamentos recebidos:</strong>
+            ${pagamentos.map(p => `<div>• R$ ${Number(p.valor).toFixed(2)} em ${new Date(p.data).toLocaleDateString('pt-BR')}</div>`).join('')}
+            <div style="margin-top:5px;border-top:1px solid #c8e6c9;padding-top:5px;">
+                <strong>Recebido: R$ ${recebido.toFixed(2)}</strong>${saldo > 0 ? ` &nbsp;|&nbsp; <strong style="color:#e74c3c;">Saldo: R$ ${saldo.toFixed(2)}</strong>` : ''}
+            </div>
+        </div>` : ''}
         <div class="assinatura" style="margin-top:30px;">
             <div style="border-top:1px solid #333;width:80%;margin:0 auto;padding-top:6px;text-align:center;font-size:11px;color:#555;">
                 Assinatura do Cliente
@@ -1197,27 +1383,63 @@ function abrirRecibo(id) {
             ${EMPRESA.nome} — CNPJ ${EMPRESA.cnpj} · 📷 ${EMPRESA.instagram}
         </div>
     `;
-    document.getElementById('btnMarcarPago').style.display = reciboAtual.status === 'pendente' ? 'inline-block' : 'none';
+    document.getElementById('btnRegistrarPagamento').style.display = reciboAtual.status !== 'pago' ? 'inline-block' : 'none';
     abrirModal('modalRecibo');
 }
 
-async function marcarPago() {
-    if (!reciboAtual || !confirm(`Marcar recibo ${reciboAtual.numero} como PAGO?`)) return;
+function abrirPagamentoRecibo() {
+    if (!reciboAtual) return;
+    const recebido = valorRecebidoRecibo(reciboAtual);
+    const saldo = Number(reciboAtual.total || 0) - recebido;
+    document.getElementById('pagamentoReciboInfo').textContent = `${reciboAtual.numero} — ${reciboAtual.cliente_nome}`;
+    document.getElementById('pagamentoSaldoAtual').textContent = `R$ ${saldo.toFixed(2)}`;
+    document.getElementById('valorPagamento').value = '';
+    const pagamentos = reciboAtual.pagamentos || [];
+    const historico = document.getElementById('historicoPagamentosRecibo');
+    historico.innerHTML = pagamentos.length
+        ? '<strong>Já recebido:</strong><br>' + pagamentos.map(p => `R$ ${Number(p.valor).toFixed(2)} em ${new Date(p.data).toLocaleDateString('pt-BR')}`).join('<br>')
+        : '';
+    abrirModal('modalPagamentoRecibo');
+}
+
+function preencherValorPagamento(valor) { document.getElementById('valorPagamento').value = valor; }
+
+function preencherValorRestante() {
+    if (!reciboAtual) return;
+    const saldo = Number(reciboAtual.total || 0) - valorRecebidoRecibo(reciboAtual);
+    document.getElementById('valorPagamento').value = saldo > 0 ? saldo.toFixed(2) : '';
+}
+
+async function confirmarPagamentoRecibo() {
+    if (!reciboAtual) return;
+    const valor = parseFloat(document.getElementById('valorPagamento').value);
+    if (!valor || valor <= 0) { alert('⚠️ Informe um valor válido'); return; }
+    const pagamentosAtuais = reciboAtual.pagamentos || [];
+    const novoPagamento = { id: gerarId(), data: new Date().toISOString(), valor };
+    const pagamentos = [...pagamentosAtuais, novoPagamento];
+    const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0);
+    const total = Number(reciboAtual.total || 0);
+    const novoStatus = totalRecebido >= total ? 'pago' : 'parcial';
+    const atualizado = {
+        ...reciboAtual, pagamentos, valor_recebido: totalRecebido, status: novoStatus,
+        data_pagamento: novoStatus === 'pago' ? new Date().toISOString() : reciboAtual.data_pagamento
+    };
     try {
-        const dataPagamento = new Date().toISOString();
-        const { error } = await sb.from('recibos')
-            .update({ status: 'pago', data_pagamento: dataPagamento }).eq('id', reciboAtual.id);
-        if (error) throw error;
-        reciboAtual.status = 'pago';
-        reciboAtual.data_pagamento = dataPagamento;
+        const resultado = await upsertComOffline('recibos', atualizado);
         const idx = recibos.findIndex(r => r.id === reciboAtual.id);
-        if (idx >= 0) recibos[idx] = reciboAtual;
+        if (idx >= 0) recibos[idx] = atualizado;
+        reciboAtual = atualizado;
         listarRecibos();
         abrirRecibo(reciboAtual.id);
-        atualizarStatus(`✅ Recibo ${reciboAtual.numero} pago!`);
-        registrarLog('RECIBO_PAGO', `Recibo ${reciboAtual.numero} marcado como pago`);
+        fecharModal('modalPagamentoRecibo');
+        atualizarDashboard();
+        atualizarCaixa();
+        atualizarStatus(resultado.offline
+            ? `📴 Pagamento de R$ ${valor.toFixed(2)} salvo neste aparelho — sincroniza quando a internet voltar`
+            : `✅ Pagamento de R$ ${valor.toFixed(2)} registrado!${novoStatus === 'pago' ? ' Recibo quitado.' : ''}`);
+        registrarLog('RECIBO_PAGAMENTO', `Pagamento de R$ ${valor.toFixed(2)} no recibo ${reciboAtual.numero} (status: ${novoStatus})`);
     } catch (e) {
-        alert('❌ Erro ao marcar como pago: ' + e.message);
+        alert('❌ Erro ao registrar pagamento: ' + e.message);
     }
 }
 
@@ -1545,25 +1767,56 @@ async function enviarPDFWhatsApp() {
 // CÁLCULOS ELÉTRICOS
 // ============================================
 
-function bitolaMinimaPorAmpacidade(corrente) {
-    for (const [b, cap] of Object.entries(TABELA_AMPACIDADE)) {
-        if (cap >= corrente) return parseFloat(b);
+// Disjuntores termomagnéticos de fabricação padrão (NBR NM 60898 / IEC 60898) em Ampères
+const DISJUNTORES_PADRAO = [10, 13, 16, 20, 25, 32, 40, 50, 63, 70, 80, 100, 125, 150, 175, 200, 225, 250, 300, 350, 400];
+
+function disjuntorRecomendado(corrente, ampacidadeCabo) {
+    // Regra de coordenação da NBR 5410 (Ib ≤ In ≤ Iz): o disjuntor deve suportar
+    // pelo menos a corrente do circuito, sem superar a ampacidade do cabo escolhido.
+    for (const d of DISJUNTORES_PADRAO) {
+        if (d >= corrente && d <= ampacidadeCabo) return d;
+    }
+    return null;
+}
+
+function popularSelectBitolas(idSelect) {
+    const sel = document.getElementById(idSelect);
+    if (!sel) return;
+    sel.innerHTML = Object.keys(TABELA_AMPACIDADE)
+        .map(Number).sort((a, b) => a - b)
+        .map(b => `<option value="${b}">${b} mm²</option>`).join('');
+}
+
+function bitolaMinimaPorAmpacidade(corrente, fases = 'tri') {
+    const bitolasOrdenadas = Object.keys(TABELA_AMPACIDADE).map(Number).sort((a, b) => a - b);
+    for (const b of bitolasOrdenadas) {
+        if (TABELA_AMPACIDADE[b][fases] >= corrente) return b;
     }
     return null;
 }
 
 function calcularQuedaPercentual(corrente, distancia, bitola, tensao, fases) {
-    const fator = fases === 3 ? Math.sqrt(3) : 2;
+    // fases: 'mono' (2 condutores, fator 2) ou 'tri' (3 condutores, fator √3)
+    const fator = fases === 'tri' ? Math.sqrt(3) : 2;
     const quedaVolts = (fator * distancia * corrente * RESISTIVIDADE_COBRE) / bitola;
     return (quedaVolts / tensao) * 100;
 }
 
 function dimensionarCabos() {
     const corrente = parseFloat(document.getElementById('correnteCabos').value);
+    const fases = document.getElementById('fasesCabos').value;
     if (!corrente || corrente <= 0) { alert('⚠️ Informe a corrente!'); return; }
-    const bitola = bitolaMinimaPorAmpacidade(corrente);
-    document.getElementById('resultadoCabos').innerHTML = bitola ?
-        `✅ Bitola recomendada: ${bitola} mm²` : '⚠️ Corrente muito alta! Consulte um projeto específico.';
+    const bitola = bitolaMinimaPorAmpacidade(corrente, fases);
+    if (!bitola) {
+        document.getElementById('resultadoCabos').innerHTML = '⚠️ Corrente muito alta para a tabela padrão (acima de 500 mm²) — consulte um projeto específico.';
+        return;
+    }
+    const ampacidade = TABELA_AMPACIDADE[bitola][fases];
+    const disjuntor = disjuntorRecomendado(corrente, ampacidade);
+    document.getElementById('resultadoCabos').innerHTML = `
+        ✅ Bitola recomendada: <strong>${bitola} mm²</strong> (suporta ${ampacidade} A)<br>
+        🔌 Disjuntor sugerido: <strong>${disjuntor ? disjuntor + ' A' : 'nenhum padrão se encaixa — avalie manualmente'}</strong>
+    `;
 }
 
 function calcularQuedaTensao() {
@@ -1571,8 +1824,8 @@ function calcularQuedaTensao() {
     const distancia = parseFloat(document.getElementById('distanciaQueda').value);
     const bitola = parseFloat(document.getElementById('bitolaQueda').value);
     const tensao = parseFloat(document.getElementById('tensaoQueda').value);
+    const fases = document.getElementById('fasesQueda').value;
     if (!corrente || !distancia || !bitola || !tensao) { alert('⚠️ Preencha todos os campos!'); return; }
-    const fases = tensao === 380 ? 3 : 1;
     const quedaPercentual = calcularQuedaPercentual(corrente, distancia, bitola, tensao, fases);
     const status = quedaPercentual <= 3 ? '✅ Dentro do recomendado (≤3%)'
         : quedaPercentual <= 5 ? '⚠️ Aceitável, mas no limite (até 5%)'
@@ -1584,13 +1837,19 @@ function calcularQuedaTensao() {
 function calcularDemanda() {
     const potencia = parseFloat(document.getElementById('potenciaDemanda').value);
     const tensao = parseFloat(document.getElementById('tensaoDemanda').value);
+    const fases = document.getElementById('fasesDemanda').value;
     const fp = parseFloat(document.getElementById('fpDemanda').value) || 0.92;
     if (!potencia || !tensao) { alert('⚠️ Preencha potência e tensão!'); return; }
-    const fases = tensao === 380 ? 3 : 1;
-    const corrente = fases === 3 ? potencia / (Math.sqrt(3) * tensao * fp) : potencia / (tensao * fp);
+    const corrente = fases === 'tri' ? potencia / (Math.sqrt(3) * tensao * fp) : potencia / (tensao * fp);
     const demandaKVA = potencia / (1000 * fp);
-    document.getElementById('resultadoDemanda').innerHTML =
-        `💡 Corrente estimada: <strong>${corrente.toFixed(2)} A</strong><br>Demanda: <strong>${demandaKVA.toFixed(2)} kVA</strong>`;
+    const bitola = bitolaMinimaPorAmpacidade(corrente, fases);
+    const disjuntor = bitola ? disjuntorRecomendado(corrente, TABELA_AMPACIDADE[bitola][fases]) : null;
+    document.getElementById('resultadoDemanda').innerHTML = `
+        💡 Corrente estimada: <strong>${corrente.toFixed(2)} A</strong><br>
+        📊 Demanda: <strong>${demandaKVA.toFixed(2)} kVA</strong><br>
+        📏 Cabo sugerido: <strong>${bitola ? bitola + ' mm²' : 'acima da tabela padrão'}</strong>
+        ${disjuntor ? `<br>🔌 Disjuntor sugerido: <strong>${disjuntor} A</strong>` : ''}
+    `;
 }
 
 function calcularProjeto() {
@@ -1601,12 +1860,12 @@ function calcularProjeto() {
     const quedaMax = parseFloat(document.getElementById('quedaMax').value) || 3;
     if (!potencia || !distancia || !tensao) { alert('⚠️ Preencha ao menos a potência, distância e tensão!'); return; }
 
-    const fases = tensao === 380 ? 3 : 1;
-    const corrente = fases === 3 ? potencia / (Math.sqrt(3) * tensao * fp) : potencia / (tensao * fp);
+    const fases = tensao === 380 ? 'tri' : 'mono';
+    const corrente = fases === 'tri' ? potencia / (Math.sqrt(3) * tensao * fp) : potencia / (tensao * fp);
 
-    let bitolaEscolhida = bitolaMinimaPorAmpacidade(corrente);
+    let bitolaEscolhida = bitolaMinimaPorAmpacidade(corrente, fases);
     if (!bitolaEscolhida) {
-        document.getElementById('resultadoProjeto').innerHTML = '❌ Corrente muito alta para a tabela padrão — consulte um projeto específico.';
+        document.getElementById('resultadoProjeto').innerHTML = '❌ Corrente muito alta para a tabela padrão (acima de 500 mm²) — consulte um projeto específico.';
         return;
     }
     // Sobe de bitola até a queda de tensão ficar dentro do limite escolhido
@@ -1619,10 +1878,12 @@ function calcularProjeto() {
         quedaFinal = calcularQuedaPercentual(corrente, distancia, bitolaEscolhida, tensao, fases);
     }
 
+    const disjuntor = disjuntorRecomendado(corrente, TABELA_AMPACIDADE[bitolaEscolhida][fases]);
     const statusQueda = quedaFinal <= quedaMax ? '✅ dentro do limite definido' : '⚠️ acima do limite — considere reduzir a distância';
     document.getElementById('resultadoProjeto').innerHTML = `
         ⚡ Corrente estimada: <strong>${corrente.toFixed(2)} A</strong><br>
         📏 Bitola recomendada: <strong>${bitolaEscolhida} mm²</strong><br>
+        🔌 Disjuntor sugerido: <strong>${disjuntor ? disjuntor + ' A' : 'avalie manualmente'}</strong><br>
         📉 Queda de tensão resultante: <strong>${quedaFinal.toFixed(2)}%</strong> (${statusQueda})
     `;
 }
@@ -1846,7 +2107,6 @@ async function excluirDespesa(id) {
     }
 }
 
-
 // ============================================
 // AGENDA DE VISITAS TÉCNICAS
 // ============================================
@@ -1867,29 +2127,30 @@ function desbloquearAudio() {
 }
 document.addEventListener('click', desbloquearAudio, { once: false });
 
-function tocarBeep(frequencia, atraso, duracao = 0.3) {
+function tocarBeep(frequencia, quandoSegundos, duracao = 0.3) {
     if (!audioCtx) return;
-    setTimeout(() => {
-        try {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = frequencia;
-            gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duracao);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duracao);
-        } catch (e) { /* ignora se o áudio ainda não estiver liberado */ }
-    }, atraso);
+    try {
+        const inicio = audioCtx.currentTime + quandoSegundos;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = frequencia;
+        gain.gain.setValueAtTime(0.35, inicio);
+        gain.gain.exponentialRampToValueAtTime(0.001, inicio + duracao);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(inicio);
+        osc.stop(inicio + duracao);
+    } catch (e) { /* ignora se o áudio ainda não estiver liberado */ }
 }
 
 function tocarLembreteVisita() {
     desbloquearAudio();
+    // Agendados de uma vez no relógio do áudio (não em setTimeout), pra tocarem
+    // mesmo que um alert() logo em seguida trave a página.
     tocarBeep(880, 0);
-    tocarBeep(1046, 300);
-    tocarBeep(880, 600);
+    tocarBeep(1046, 0.35);
+    tocarBeep(880, 0.7);
 }
 
 function chaveVisitasNotificadas() {
@@ -1954,6 +2215,7 @@ function listarVisitas() {
             ${v.descricao ? `<div style="font-size:12px;color:#666;">${v.descricao}</div>` : ''}
             <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
                 ${v.status === 'agendada' ? `
+                    <button onclick="adicionarAoGoogleAgenda('${v.id}')" class="btn-info" style="padding:4px 8px;font-size:11px;background:#4285f4;color:white;">📅 Google Agenda</button>
                     <button onclick="concluirVisita('${v.id}')" class="btn-success" style="padding:4px 8px;font-size:11px;">✅ Concluir</button>
                     <button onclick="cancelarVisita('${v.id}')" class="btn-danger" style="padding:4px 8px;font-size:11px;">❌ Cancelar</button>
                 ` : ''}
@@ -1961,6 +2223,22 @@ function listarVisitas() {
             </div>
         </div>`;
     }).join('');
+}
+
+function adicionarAoGoogleAgenda(id) {
+    const v = visitas.find(x => x.id === id);
+    if (!v) return;
+    const inicio = new Date(v.data_hora);
+    const fim = new Date(inicio.getTime() + 60 * 60 * 1000); // 1h de duração padrão
+    const formatarData = (d) => d.toISOString().replace(/[-:]|\.\d{3}/g, '');
+    const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: `Visita técnica - ${v.cliente_nome}`,
+        dates: `${formatarData(inicio)}/${formatarData(fim)}`,
+        details: v.descricao || `Visita técnica agendada pelo sistema ${EMPRESA.nomeAbreviado}`
+    });
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+    registrarLog('VISITA_GOOGLE_AGENDA', `Visita de ${v.cliente_nome} enviada ao Google Agenda`);
 }
 
 function renderSelectClienteVisita() {
@@ -1994,6 +2272,9 @@ async function adicionarVisita() {
         atualizarDashboard();
         atualizarStatus(`✅ Visita agendada para ${clienteNome}!`);
         registrarLog('VISITA_AGENDADA', `Visita agendada para ${clienteNome}`);
+        if (confirm(`✅ Visita agendada!\n\nQuer adicionar também ao Google Agenda do celular? Assim o lembrete toca com som mesmo de app fechado.`)) {
+            adicionarAoGoogleAgenda(nova.id);
+        }
     } catch (e) {
         alert('❌ Erro ao agendar visita: ' + e.message);
     }
@@ -2039,12 +2320,17 @@ async function excluirVisita(id) {
 // ============================================
 
 function atualizarDashboard() {
-    const aReceber = recibos.filter(r => r.status === 'pendente').reduce((s, r) => s + Number(r.total || 0), 0);
+    const aReceber = recibos.filter(r => r.status !== 'pago')
+        .reduce((s, r) => s + (Number(r.total || 0) - valorRecebidoRecibo(r)), 0);
     const agora = new Date();
     const mesAtual = agora.getMonth(), anoAtual = agora.getFullYear();
-    const recebidoMes = recibos.filter(r => r.status === 'pago' && r.data_pagamento &&
-        new Date(r.data_pagamento).getMonth() === mesAtual && new Date(r.data_pagamento).getFullYear() === anoAtual)
-        .reduce((s, r) => s + Number(r.total || 0), 0);
+    const recebidoMes = recibos.reduce((s, r) => {
+        const pagamentosDoMes = (r.pagamentos || []).filter(p => {
+            const d = new Date(p.data);
+            return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+        });
+        return s + pagamentosDoMes.reduce((s2, p) => s2 + Number(p.valor || 0), 0);
+    }, 0);
     const despesasMes = despesas.filter(d => d.data &&
         new Date(d.data + 'T00:00:00').getMonth() === mesAtual && new Date(d.data + 'T00:00:00').getFullYear() === anoAtual)
         .reduce((s, d) => s + Number(d.valor || 0), 0);
@@ -2076,6 +2362,59 @@ function atualizarDashboard() {
                 </div>
             `).join('');
         }
+    }
+    atualizarCaixa();
+}
+
+// ============================================
+// CAIXA (controle de a receber / a pagar)
+// ============================================
+
+function atualizarCaixa() {
+    const recibosAbertos = recibos.filter(r => r.status !== 'pago')
+        .map(r => ({ ...r, saldo: Number(r.total || 0) - valorRecebidoRecibo(r) }))
+        .filter(r => r.saldo > 0)
+        .sort((a, b) => new Date(a.data_emissao) - new Date(b.data_emissao));
+    const despesasAbertas = despesas.filter(d => d.status !== 'pago')
+        .sort((a, b) => new Date(a.data) - new Date(b.data));
+
+    const totalReceber = recibosAbertos.reduce((s, r) => s + r.saldo, 0);
+    const totalPagar = despesasAbertas.reduce((s, d) => s + Number(d.valor || 0), 0);
+    const saldo = totalReceber - totalPagar;
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('caixaAReceber', `R$ ${totalReceber.toFixed(2)}`);
+    set('caixaAPagar', `R$ ${totalPagar.toFixed(2)}`);
+    const saldoEl = document.getElementById('caixaSaldo');
+    if (saldoEl) {
+        saldoEl.textContent = `R$ ${saldo.toFixed(2)}`;
+        saldoEl.style.color = saldo >= 0 ? '#1a237e' : '#c0392b';
+    }
+
+    const listaReceber = document.getElementById('caixaListaReceber');
+    if (listaReceber) {
+        listaReceber.innerHTML = recibosAbertos.length === 0
+            ? '<p style="color:#999;text-align:center;padding:10px;font-size:12px;">Nada a receber 🎉</p>'
+            : recibosAbertos.map(r => `
+                <div class="os-card" onclick="abrirRecibo('${r.id}')">
+                    <div><strong>${r.cliente_nome}</strong> <span class="status-badge ${r.status === 'parcial' ? 'status-os' : 'status-orcamento'}">${r.status === 'parcial' ? '🔶 Parcial' : '⏳ Pendente'}</span></div>
+                    <div style="font-size:12px;color:#666;">${r.numero} · Total: R$ ${Number(r.total || 0).toFixed(2)}</div>
+                    <div style="font-size:12px;color:#e67e22;font-weight:bold;">Saldo: R$ ${r.saldo.toFixed(2)}</div>
+                </div>
+            `).join('');
+    }
+
+    const listaPagar = document.getElementById('caixaListaPagar');
+    if (listaPagar) {
+        listaPagar.innerHTML = despesasAbertas.length === 0
+            ? '<p style="color:#999;text-align:center;padding:10px;font-size:12px;">Nada a pagar 🎉</p>'
+            : despesasAbertas.map(d => `
+                <div class="os-card">
+                    <div><strong>${d.descricao}</strong></div>
+                    <div style="font-size:12px;color:#666;">${CATEGORIAS_DESPESA[d.categoria] || d.categoria || ''} · ${d.data ? new Date(d.data + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</div>
+                    <div style="font-size:12px;color:#c0392b;font-weight:bold;">R$ ${Number(d.valor || 0).toFixed(2)}</div>
+                </div>
+            `).join('');
     }
 }
 
@@ -2340,6 +2679,8 @@ function init() {
     renderizarLogs();
     listarUsuarios();
     carregarLogo();
+    popularSelectBitolas('bitolaQueda');
+    atualizarIndicadorFilaOffline();
     iniciarSincronizacaoAutomatica();
     atualizarStatus(`✅ Sistema pronto!`);
     console.log('✅ Sistema inicializado!');
@@ -2351,6 +2692,10 @@ function init() {
 
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('📄 DOM carregado!');
+    const versaoEl = document.getElementById('versaoApp');
+    if (versaoEl) versaoEl.textContent = APP_VERSAO;
+    const versaoConfigEl = document.getElementById('versaoAppConfig');
+    if (versaoConfigEl) versaoConfigEl.textContent = APP_VERSAO;
 
     if (sb) {
         const { data: { session } } = await sb.auth.getSession();
@@ -2459,7 +2804,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('btnEmitirRecibo')?.addEventListener('click', emitirRecibo);
 
     // Eventos do Recibo
-    document.getElementById('btnMarcarPago')?.addEventListener('click', marcarPago);
+    document.getElementById('btnRegistrarPagamento')?.addEventListener('click', abrirPagamentoRecibo);
+    document.getElementById('salvarPagamentoRecibo')?.addEventListener('click', confirmarPagamentoRecibo);
+    document.getElementById('fecharModalPagamento')?.addEventListener('click', function () { fecharModal('modalPagamentoRecibo'); });
     document.getElementById('btnImprimirRecibo')?.addEventListener('click', imprimirRecibo);
 
     // Fechar modal clicando fora

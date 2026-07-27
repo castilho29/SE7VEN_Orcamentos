@@ -1,24 +1,25 @@
 {
-    "name": "SE7VEN ENERGIA",
-    "short_name": "SE7VEN",
-    "description": "Sistema de orçamentos SE7VEN ENERGIA",
-    "start_url": "index.html",
-    "display": "standalone",
-    "background_color": "#1a237e",
-    "theme_color": "#1a237e",
-    "orientation": "portrait",
-    "icons": [
-        {
-            "src": "https://ui-avatars.com/api/?name=⚡&background=1a237e&color=ffffff&size=192&font-size=0.5",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "any maskable"
-        },
-        {
-            "src": "https://ui-avatars.com/api/?name=⚡&background=1a237e&color=ffffff&size=512&font-size=0.5",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any maskable"
-        }
-    ]
+  "name": "SE7VEN ENERGIA - Sistema de Orçamentos",
+  "short_name": "SE7VEN",
+  "description": "Sistema de orçamentos, OS e recibos da SE7VEN Soluções Energéticas",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#1a237e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
