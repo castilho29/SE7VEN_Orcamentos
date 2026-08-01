@@ -36,7 +36,7 @@ try {
 // DADOS DA EMPRESA
 // ============================================
 // Versão do app — atualizar a cada rodada de ajustes importante
-const APP_VERSAO = '2.5.0';
+const APP_VERSAO = '2.5.1';
 
 // Logo da empresa: começa com o arquivo padrão do repositório, mas pode ser
 // trocada pelo admin (fica então guardada no Supabase Storage).
