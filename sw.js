@@ -6,7 +6,7 @@
 // produtos, orçamentos...) são cuidados à parte, pelo script.js, usando o
 // localStorage — este arquivo só cuida da CASCA do app (HTML/CSS/JS/ícones).
 
-const CACHE_VERSAO = 'se7ven-cache-v1';
+const CACHE_VERSAO = 'se7ven-cache-v2';
 
 const ARQUIVOS_ESSENCIAIS = [
     './',
@@ -15,7 +15,9 @@ const ARQUIVOS_ESSENCIAIS = [
     './script.js',
     './style.css',
     './manifest.json',
-    './logo.png'
+    './logo.png',
+    './icone-192.png',
+    './icone-512.png'
 ];
 
 const BIBLIOTECAS_EXTERNAS = [

@@ -38,6 +38,16 @@ try {
 // Versão do app — atualizar a cada rodada de ajustes importante
 const APP_VERSAO = '2.5.0';
 
+// Logo da empresa: começa com o arquivo padrão do repositório, mas pode ser
+// trocada pelo admin (fica então guardada no Supabase Storage).
+let LOGO_URL = 'logo.png';
+
+// Juros de mora e multa por atraso (crediário próprio) — configuráveis na aba Config.
+let CONFIG_FINANCEIRO = {
+    jurosMoraMensal: 2,  // % ao mês
+    multaAtraso: 2       // % fixo, uma vez
+};
+
 const EMPRESA = {
     nome: 'SE7VEN SOLUÇÕES ENERGÉTICAS',
     nomeAbreviado: 'SE7VEN',
@@ -157,9 +167,19 @@ async function fazerLogin() {
         return;
     }
 
+    if (!navigator.onLine) {
+        errorEl.textContent = '📴 Sem internet — não é possível entrar agora. Conecte-se e tente de novo. (Se você não chegou a sair do app antes, não precisa fazer login de novo — é só reabrir.)';
+        errorEl.style.display = 'block';
+        return;
+    }
+
     const { error } = await sb.auth.signInWithPassword({ email, password: senha });
     if (error) {
-        errorEl.textContent = '❌ E-mail ou senha incorretos!';
+        if (error.message?.toLowerCase().includes('fetch') || error.message?.toLowerCase().includes('network')) {
+            errorEl.textContent = '📴 Não foi possível conectar ao servidor — verifique sua internet e tente de novo.';
+        } else {
+            errorEl.textContent = '❌ E-mail ou senha incorretos!';
+        }
         errorEl.style.display = 'block';
     }
     // Sucesso: onAuthStateChange cuida de entrar no sistema
@@ -1078,12 +1098,19 @@ async function salvarOrcamento() {
     const clienteData = clientes.find(c => c.nome === cliente);
     const formaPagamento = document.getElementById('formaPagamentoOrcamento').value;
     const parcelas = formaPagamento === 'Cartão de Crédito' ? parseInt(document.getElementById('parcelasOrcamento').value) : 1;
+    const ehCrediario = formaPagamento === 'Crediário Próprio';
+    const crediario = ehCrediario ? {
+        crediario_num_parcelas: parseInt(document.getElementById('crediarioNumParcelas').value),
+        crediario_primeiro_vencimento: document.getElementById('crediarioPrimeiroVencimento').value,
+        crediario_intervalo_dias: parseInt(document.getElementById('crediarioIntervaloDias').value) || 30
+    } : { crediario_num_parcelas: null, crediario_primeiro_vencimento: null, crediario_intervalo_dias: null };
+    if (ehCrediario && !crediario.crediario_primeiro_vencimento) { alert('⚠️ Informe o vencimento da 1ª parcela do crediário!'); return; }
 
     // Editando um orçamento já existente: atualiza em vez de criar um novo
     if (editandoOSId) {
         const osExistente = ordensServico.find(o => o.id === editandoOSId);
         if (!osExistente) { alert('⚠️ Não encontrei esse orçamento — talvez tenha sido removido.'); editandoOSId = null; return; }
-        const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total, forma_pagamento: formaPagamento, parcelas };
+        const osAtualizada = { ...osExistente, cliente_id: clienteData?.id || '', cliente_nome: cliente, itens, total, forma_pagamento: formaPagamento, parcelas, ...crediario };
         try {
             const resultado = await upsertComOffline('ordens_servico', osAtualizada);
             const idx = ordensServico.findIndex(o => o.id === editandoOSId);
@@ -1111,6 +1138,7 @@ async function salvarOrcamento() {
         status: 'orcamento',
         forma_pagamento: formaPagamento,
         parcelas: parcelas,
+        ...crediario,
         data_criacao: new Date().toISOString()
     };
     try {
@@ -1257,8 +1285,28 @@ async function cancelarOS() {
     await atualizarStatusOS('cancelado', `❌ OS ${osAtual.numero} cancelada!`, 'OS_CANCELADA');
 }
 
+function gerarParcelasCrediario(total, numParcelas, primeiroVencimento, intervaloDias) {
+    const valorParcela = Math.floor((total / numParcelas) * 100) / 100;
+    const parcelas = [];
+    let somaParcial = 0;
+    for (let i = 0; i < numParcelas; i++) {
+        const vencimento = new Date(primeiroVencimento + 'T00:00:00');
+        vencimento.setDate(vencimento.getDate() + intervaloDias * i);
+        // A última parcela absorve a diferença de arredondamento centavo a centavo
+        const valor = i === numParcelas - 1 ? Math.round((total - somaParcial) * 100) / 100 : valorParcela;
+        somaParcial += valor;
+        parcelas.push({
+            id: gerarId(), numero: i + 1, valor,
+            vencimento: vencimento.toISOString().split('T')[0],
+            status: 'pendente', pago_em: null
+        });
+    }
+    return parcelas;
+}
+
 async function emitirRecibo() {
     if (!osAtual || osAtual.status !== 'concluido') { alert('⚠️ A OS precisa estar concluída!'); return; }
+    const ehCrediario = osAtual.forma_pagamento === 'Crediário Próprio' && osAtual.crediario_num_parcelas;
     const recibo = {
         id: gerarId(),
         numero: 'REC-' + (recibos.length + 1).toString().padStart(4, '0'),
@@ -1267,6 +1315,9 @@ async function emitirRecibo() {
         itens: osAtual.itens, total: osAtual.total,
         forma_pagamento: osAtual.forma_pagamento || null, parcelas: osAtual.parcelas || 1,
         pagamentos: [], valor_recebido: 0,
+        parcelas_detalhe: ehCrediario
+            ? gerarParcelasCrediario(osAtual.total, osAtual.crediario_num_parcelas, osAtual.crediario_primeiro_vencimento, osAtual.crediario_intervalo_dias || 30)
+            : [],
         status: 'pendente', data_emissao: new Date().toISOString(), data_pagamento: null
     };
     try {
@@ -1289,6 +1340,58 @@ async function emitirRecibo() {
 
 function valorRecebidoRecibo(recibo) {
     return (recibo.pagamentos || []).reduce((s, p) => s + Number(p.valor || 0), 0);
+}
+
+// Calcula o valor atualizado de uma parcela vencida e não paga, aplicando
+// multa fixa + juros de mora proporcionais aos dias de atraso.
+function calcularJurosAtraso(parcela) {
+    if (parcela.status === 'pago') return { valorAtualizado: parcela.valor, diasAtraso: 0, jurosValor: 0 };
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const vencimento = new Date(parcela.vencimento + 'T00:00:00');
+    const diasAtraso = Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24));
+    if (diasAtraso <= 0) return { valorAtualizado: parcela.valor, diasAtraso: 0, jurosValor: 0 };
+    const multa = parcela.valor * (CONFIG_FINANCEIRO.multaAtraso / 100);
+    const juros = parcela.valor * (CONFIG_FINANCEIRO.jurosMoraMensal / 100) * (diasAtraso / 30);
+    const jurosValor = multa + juros;
+    return { valorAtualizado: parcela.valor + jurosValor, diasAtraso, jurosValor };
+}
+
+async function pagarParcelaCrediario(reciboId, parcelaId) {
+    const recibo = recibos.find(r => r.id === reciboId);
+    if (!recibo) return;
+    const parcela = (recibo.parcelas_detalhe || []).find(p => p.id === parcelaId);
+    if (!parcela) return;
+    const { valorAtualizado, diasAtraso } = calcularJurosAtraso(parcela);
+    const confirmMsg = diasAtraso > 0
+        ? `Parcela ${parcela.numero} vencida há ${diasAtraso} dia(s).\nValor original: R$ ${parcela.valor.toFixed(2)}\nCom juros/multa: R$ ${valorAtualizado.toFixed(2)}\n\nConfirmar recebimento de R$ ${valorAtualizado.toFixed(2)}?`
+        : `Confirmar recebimento da parcela ${parcela.numero}: R$ ${parcela.valor.toFixed(2)}?`;
+    if (!confirm(confirmMsg)) return;
+
+    const novasParcelas = recibo.parcelas_detalhe.map(p => p.id === parcelaId
+        ? { ...p, status: 'pago', pago_em: new Date().toISOString(), valor_pago: valorAtualizado }
+        : p);
+    const novoPagamento = { id: gerarId(), data: new Date().toISOString(), valor: valorAtualizado };
+    const pagamentos = [...(recibo.pagamentos || []), novoPagamento];
+    const todasPagas = novasParcelas.every(p => p.status === 'pago');
+    const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0);
+    const atualizado = {
+        ...recibo, parcelas_detalhe: novasParcelas, pagamentos, valor_recebido: totalRecebido,
+        status: todasPagas ? 'pago' : 'parcial',
+        data_pagamento: todasPagas ? new Date().toISOString() : recibo.data_pagamento
+    };
+    try {
+        const resultado = await upsertComOffline('recibos', atualizado);
+        const idx = recibos.findIndex(r => r.id === reciboId);
+        if (idx >= 0) recibos[idx] = atualizado;
+        reciboAtual = atualizado;
+        listarRecibos();
+        abrirRecibo(reciboId);
+        atualizarDashboard();
+        atualizarStatus(resultado.offline ? '📴 Pagamento salvo neste aparelho' : `✅ Parcela ${parcela.numero} recebida!`);
+        registrarLog('PARCELA_PAGA', `Parcela ${parcela.numero} do recibo ${recibo.numero} recebida (R$ ${valorAtualizado.toFixed(2)})`);
+    } catch (e) {
+        alert('❌ Erro ao registrar pagamento da parcela: ' + e.message);
+    }
 }
 
 function listarRecibos(filtro = 'todos') {
@@ -1334,7 +1437,7 @@ function abrirRecibo(id) {
     document.getElementById('conteudoRecibo').innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:3px solid #1a237e;padding-bottom:12px;margin-bottom:15px;">
             <div style="display:flex;align-items:center;gap:10px;">
-                <img src="${baseUrl}logo.png" alt="${EMPRESA.nomeAbreviado}" style="height:44px;width:auto;border-radius:6px;object-fit:contain;" onerror="this.style.display='none'">
+                <img src="${logoParaDocumento(baseUrl)}" alt="${EMPRESA.nomeAbreviado}" style="height:44px;width:auto;border-radius:6px;object-fit:contain;" onerror="this.style.display='none'">
                 <div>
                     <div style="color:#1a237e;font-size:16px;font-weight:900;">${EMPRESA.nome}</div>
                     <div style="color:#666;font-size:10px;">CNPJ: ${EMPRESA.cnpj}</div>
@@ -1374,6 +1477,24 @@ function abrirRecibo(id) {
                 <strong>Recebido: R$ ${recebido.toFixed(2)}</strong>${saldo > 0 ? ` &nbsp;|&nbsp; <strong style="color:#e74c3c;">Saldo: R$ ${saldo.toFixed(2)}</strong>` : ''}
             </div>
         </div>` : ''}
+        ${(reciboAtual.parcelas_detalhe && reciboAtual.parcelas_detalhe.length > 0) ? `
+        <div style="margin-top:12px;">
+            <strong style="color:#e67e22;font-size:12px;">💳 Parcelas do Crediário:</strong>
+            ${reciboAtual.parcelas_detalhe.map(p => {
+                const { valorAtualizado, diasAtraso, jurosValor } = calcularJurosAtraso(p);
+                const vencido = diasAtraso > 0 && p.status !== 'pago';
+                const venc = new Date(p.vencimento + 'T00:00:00').toLocaleDateString('pt-BR');
+                return `
+                <div style="display:flex;justify-content:space-between;align-items:center;background:${p.status === 'pago' ? '#e8f5e9' : vencido ? '#fdecea' : '#f8f9fa'};padding:8px 10px;border-radius:6px;margin-top:6px;font-size:12px;">
+                    <div>
+                        <strong>Parcela ${p.numero}</strong> — venc. ${venc}<br>
+                        R$ ${p.valor.toFixed(2)}${vencido ? ` <span style="color:#c0392b;">+ juros/multa = R$ ${valorAtualizado.toFixed(2)} (${diasAtraso}d atraso)</span>` : ''}
+                        ${p.status === 'pago' ? `<br><span style="color:#27ae60;">✅ Pago em ${new Date(p.pago_em).toLocaleDateString('pt-BR')}</span>` : ''}
+                    </div>
+                    ${p.status !== 'pago' ? `<button onclick="pagarParcelaCrediario('${reciboAtual.id}','${p.id}')" class="btn-success" style="padding:5px 10px;font-size:11px;white-space:nowrap;">💰 Receber</button>` : ''}
+                </div>`;
+            }).join('')}
+        </div>` : ''}
         <div class="assinatura" style="margin-top:30px;">
             <div style="border-top:1px solid #333;width:80%;margin:0 auto;padding-top:6px;text-align:center;font-size:11px;color:#555;">
                 Assinatura do Cliente
@@ -1383,7 +1504,7 @@ function abrirRecibo(id) {
             ${EMPRESA.nome} — CNPJ ${EMPRESA.cnpj} · 📷 ${EMPRESA.instagram}
         </div>
     `;
-    document.getElementById('btnRegistrarPagamento').style.display = reciboAtual.status !== 'pago' ? 'inline-block' : 'none';
+    definirDisplay('btnRegistrarPagamento', reciboAtual.status !== 'pago' ? 'inline-block' : 'none');
     abrirModal('modalRecibo');
 }
 
@@ -1515,7 +1636,7 @@ function montarConteudoOrcamentoPDF(cliente, itens, total, clienteData, incluirF
     <body>
         <div class="header">
             <div class="marca">
-                <img src="${baseUrl}logo.png" alt="${EMPRESA.nomeAbreviado}" onerror="this.style.display='none'">
+                <img src="${logoParaDocumento(baseUrl)}" alt="${EMPRESA.nomeAbreviado}" onerror="this.style.display='none'">
                 <div>
                     <h1>${EMPRESA.nome}</h1>
                     <p class="subtitle">ORÇAMENTO DE SERVIÇOS ELÉTRICOS</p>
@@ -1903,6 +2024,10 @@ function atualizarStatus(msg, tipo = 'success') {
 
 function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
 function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
+function definirDisplay(id, valor) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = valor;
+}
 
 function abrirTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -1914,9 +2039,99 @@ function carregarLogo() {
     const header = document.getElementById('headerLogo');
     if (!header) return;
     header.innerHTML = `
-        <img src="logo.png" alt="SE7VEN" style="height:54px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px; box-shadow:0 2px 6px rgba(26,35,126,0.25);" onerror="this.style.display='none'">
+        <img src="${LOGO_URL}" alt="SE7VEN" class="logo-dinamica" style="height:54px; width:auto; border-radius:8px; object-fit:contain; margin-right:10px; box-shadow:0 2px 6px rgba(26,35,126,0.25);" onerror="this.style.display='none'">
         <h1 class="logo-title">SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
     `;
+}
+
+// Retorna a URL da logo pronta pra usar em PDF/recibo (que abrem em outra janela
+// e precisam de uma URL absoluta — logo local vs. logo enviada pelo admin).
+function logoParaDocumento(baseUrl) {
+    if (LOGO_URL.startsWith('http')) return LOGO_URL; // já é uma URL do Supabase Storage
+    return baseUrl + LOGO_URL;
+}
+
+function atualizarVisibilidadeConfigAdmin() {
+    const blocoLogo = document.getElementById('blocoLogoConfig');
+    const blocoFinanceiro = document.getElementById('blocoFinanceiroConfig');
+    if (blocoLogo) blocoLogo.style.display = souAdmin() ? 'block' : 'none';
+    if (blocoFinanceiro) blocoFinanceiro.style.display = souAdmin() ? 'block' : 'none';
+}
+
+function atualizarCamposConfigFinanceiro() {
+    const jurosEl = document.getElementById('configJurosMora');
+    const multaEl = document.getElementById('configMultaAtraso');
+    if (jurosEl) jurosEl.value = CONFIG_FINANCEIRO.jurosMoraMensal;
+    if (multaEl) multaEl.value = CONFIG_FINANCEIRO.multaAtraso;
+}
+
+async function carregarConfigEmpresa() {
+    if (!sb) return;
+    try {
+        const { data, error } = await sb.from('config_empresa').select('*');
+        if (error) throw error;
+        (data || []).forEach(linha => {
+            if (linha.chave === 'logo_url' && linha.valor) {
+                LOGO_URL = linha.valor;
+                document.querySelectorAll('.logo-dinamica').forEach(img => img.src = LOGO_URL);
+            }
+            if (linha.chave === 'juros_mora_mensal') CONFIG_FINANCEIRO.jurosMoraMensal = parseFloat(linha.valor) || 0;
+            if (linha.chave === 'multa_atraso') CONFIG_FINANCEIRO.multaAtraso = parseFloat(linha.valor) || 0;
+        });
+        carregarLogo();
+        atualizarCamposConfigFinanceiro();
+        const preview = document.getElementById('previewLogoConfig');
+        if (preview) { preview.src = LOGO_URL; preview.style.display = 'block'; }
+        atualizarVisibilidadeConfigAdmin();
+    } catch (e) {
+        console.warn('Não foi possível carregar configurações da empresa:', e.message);
+    }
+}
+
+async function salvarNovaLogo() {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem trocar a logo.'); return; }
+    const arquivo = document.getElementById('uploadLogoInput')?.files[0];
+    if (!arquivo) { alert('⚠️ Escolha uma imagem primeiro.'); return; }
+    try {
+        atualizarStatus('📸 Enviando nova logo...');
+        const extensao = arquivo.name.split('.').pop();
+        const caminho = `logo-atual.${extensao}`;
+        const { error: erroUpload } = await sb.storage.from('logos').upload(caminho, arquivo, { upsert: true });
+        if (erroUpload) throw erroUpload;
+        const { data } = sb.storage.from('logos').getPublicUrl(caminho);
+        const novaUrl = data.publicUrl + '?t=' + Date.now();
+        const { error: erroConfig } = await sb.from('config_empresa')
+            .upsert({ chave: 'logo_url', valor: novaUrl, atualizado_em: new Date().toISOString() }, { onConflict: 'chave' });
+        if (erroConfig) throw erroConfig;
+        LOGO_URL = novaUrl;
+        document.querySelectorAll('.logo-dinamica').forEach(img => img.src = LOGO_URL);
+        carregarLogo();
+        document.getElementById('uploadLogoInput').value = '';
+        atualizarStatus('✅ Logo atualizada!');
+        registrarLog('LOGO_ATUALIZADA', 'Logo da empresa foi trocada');
+        alert('✅ Logo atualizada para todo mundo que usa o sistema!');
+    } catch (e) {
+        alert('❌ Erro ao trocar a logo: ' + e.message);
+    }
+}
+
+async function salvarConfigFinanceiro() {
+    if (!souAdmin()) { alert('⚠️ Só administradores podem alterar isso.'); return; }
+    const juros = parseFloat(document.getElementById('configJurosMora').value);
+    const multa = parseFloat(document.getElementById('configMultaAtraso').value);
+    if (isNaN(juros) || juros < 0 || isNaN(multa) || multa < 0) { alert('⚠️ Informe valores válidos (0 ou mais).'); return; }
+    try {
+        await sb.from('config_empresa').upsert([
+            { chave: 'juros_mora_mensal', valor: String(juros), atualizado_em: new Date().toISOString() },
+            { chave: 'multa_atraso', valor: String(multa), atualizado_em: new Date().toISOString() }
+        ], { onConflict: 'chave' });
+        CONFIG_FINANCEIRO.jurosMoraMensal = juros;
+        CONFIG_FINANCEIRO.multaAtraso = multa;
+        atualizarStatus('✅ Configuração financeira salva!');
+        registrarLog('CONFIG_FINANCEIRA_ALTERADA', `Juros de mora: ${juros}% a.m. · Multa: ${multa}%`);
+    } catch (e) {
+        alert('❌ Erro ao salvar: ' + e.message);
+    }
 }
 
 // ============================================
@@ -2665,6 +2880,7 @@ function recarregarDados() {
 
 function init() {
     console.log('🚀 Inicializando sistema...');
+    atualizarVisibilidadeConfigAdmin();
     renderClientes();
     renderProdutos();
     renderSelectClientes();
@@ -2698,6 +2914,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (versaoConfigEl) versaoConfigEl.textContent = APP_VERSAO;
 
     if (sb) {
+        await carregarConfigEmpresa();
         const { data: { session } } = await sb.auth.getSession();
         if (session) {
             await entrarNoSistema(session.user);
@@ -2767,6 +2984,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('btnPagProximaProdutos')?.addEventListener('click', paginaProximaProdutos);
 
     // Despesas
+    document.getElementById('btnSalvarLogo')?.addEventListener('click', salvarNovaLogo);
+    document.getElementById('uploadLogoInput')?.addEventListener('change', function (e) {
+        const arquivo = e.target.files[0];
+        const preview = document.getElementById('previewLogoConfig');
+        if (!arquivo || !preview) return;
+        preview.src = URL.createObjectURL(arquivo);
+        preview.style.display = 'block';
+    });
+    document.getElementById('btnSalvarConfigFinanceiro')?.addEventListener('click', salvarConfigFinanceiro);
+
     document.getElementById('btnAddDespesa')?.addEventListener('click', function () {
         document.getElementById('descricaoDespesa').value = '';
         document.getElementById('valorDespesa').value = '';
@@ -2792,6 +3019,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Forma de pagamento do orçamento: mostra parcelas só quando é cartão
     document.getElementById('formaPagamentoOrcamento')?.addEventListener('change', function () {
         document.getElementById('parcelasOrcamento').style.display = this.value === 'Cartão de Crédito' ? 'block' : 'none';
+        definirDisplay('blocoCrediario', this.value === 'Crediário Próprio' ? 'block' : 'none');
     });
 
     // Eventos da OS
