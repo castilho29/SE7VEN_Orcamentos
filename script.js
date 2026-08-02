@@ -36,7 +36,7 @@ try {
 // DADOS DA EMPRESA
 // ============================================
 // Versão do app — atualizar a cada rodada de ajustes importante
-const APP_VERSAO = '2.5.1';
+const APP_VERSAO = '2.5.0';
 
 // Logo da empresa: começa com o arquivo padrão do repositório, mas pode ser
 // trocada pelo admin (fica então guardada no Supabase Storage).
@@ -822,10 +822,10 @@ function renderProdutos() {
                 ${p.foto_url ? `<img src="${p.foto_url}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0;">` : ''}
                 <span>
                     <strong>${p.nome}</strong>
-                    <br><small>R$ ${Number(p.preco).toFixed(2)}</small>
-                    <br><small>📂 ${p.tipo || 'outro'}</small>
+                    <br><small>R$ ${Number(p.preco).toFixed(2)} / ${p.unidade || 'un'}</small>
+                    <br><small>📂 ${p.tipo || 'outro'} ${p.nota_fiscal === false ? '· 🚫 sem nota' : '· 🧾 com nota'}</small>
                     ${p.codigo_barras ? `<br><small>🔢 ${p.codigo_barras}</small>` : ''}
-                    ${temEstoque ? `<br><small class="${estoqueBaixo ? 'estoque-baixo' : ''}">📦 Estoque: ${p.quantidade}${estoqueBaixo ? ' ⚠️ baixo!' : ''}</small>` : ''}
+                    ${temEstoque ? `<br><small class="${estoqueBaixo ? 'estoque-baixo' : ''}">📦 Estoque: ${p.quantidade} ${p.unidade || 'un'}${estoqueBaixo ? ' ⚠️ baixo!' : ''}</small>` : ''}
                 </span>
             </span>
             <div style="display:flex;gap:5px;">
@@ -877,6 +877,8 @@ async function adicionarProduto() {
     const nome = document.getElementById('nomeProduto').value.trim();
     const preco = parseFloat(document.getElementById('precoProduto').value);
     const tipo = document.getElementById('tipoProduto').value;
+    const unidade = document.getElementById('unidadeProduto').value;
+    const notaFiscal = document.getElementById('notaFiscalProduto').checked;
     const descricao = document.getElementById('descricaoProduto').value.trim();
     const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
     const quantidadeVal = document.getElementById('quantidadeProduto').value;
@@ -884,7 +886,8 @@ async function adicionarProduto() {
     const arquivoFoto = document.getElementById('fotoProduto').files[0];
     if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
     const novoProduto = {
-        id: gerarId(), nome, preco, tipo, descricao: descricao || null, codigo_barras: codigoBarras || null, foto_url: null,
+        id: gerarId(), nome, preco, tipo, unidade, nota_fiscal: notaFiscal,
+        descricao: descricao || null, codigo_barras: codigoBarras || null, foto_url: null,
         quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
         estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
     };
@@ -902,6 +905,8 @@ async function adicionarProduto() {
         produtos.push(novoProduto);
         document.getElementById('nomeProduto').value = '';
         document.getElementById('precoProduto').value = '';
+        document.getElementById('unidadeProduto').value = 'un';
+        document.getElementById('notaFiscalProduto').checked = true;
         document.getElementById('descricaoProduto').value = '';
         document.getElementById('codigoBarrasProduto').value = '';
         document.getElementById('quantidadeProduto').value = '';
@@ -948,6 +953,8 @@ function editarProduto(index) {
     document.getElementById('tipoProduto').value = p.tipo || 'outro';
     document.getElementById('descricaoProduto').value = p.descricao || '';
     document.getElementById('codigoBarrasProduto').value = p.codigo_barras || '';
+    document.getElementById('unidadeProduto').value = p.unidade || 'un';
+    document.getElementById('notaFiscalProduto').checked = p.nota_fiscal !== false;
     document.getElementById('quantidadeProduto').value = (p.quantidade ?? '');
     document.getElementById('estoqueMinimoProduto').value = (p.estoque_minimo ?? '');
     document.getElementById('fotoProduto').value = '';
@@ -966,6 +973,8 @@ function editarProduto(index) {
         const nome = document.getElementById('nomeProduto').value.trim();
         const preco = parseFloat(document.getElementById('precoProduto').value);
         const tipo = document.getElementById('tipoProduto').value;
+        const unidade = document.getElementById('unidadeProduto').value;
+        const notaFiscal = document.getElementById('notaFiscalProduto').checked;
         const descricao = document.getElementById('descricaoProduto').value.trim();
         const codigoBarras = document.getElementById('codigoBarrasProduto').value.trim();
         const quantidadeVal = document.getElementById('quantidadeProduto').value;
@@ -973,7 +982,8 @@ function editarProduto(index) {
         const arquivoFoto = document.getElementById('fotoProduto').files[0];
         if (!nome || isNaN(preco) || preco <= 0) { alert('⚠️ Nome e preço válido são obrigatórios'); return; }
         const produtoAtualizado = {
-            ...produtoOriginal, nome, preco, tipo, descricao: descricao || null, codigo_barras: codigoBarras || null,
+            ...produtoOriginal, nome, preco, tipo, unidade, nota_fiscal: notaFiscal,
+            descricao: descricao || null, codigo_barras: codigoBarras || null,
             quantidade: quantidadeVal !== '' ? parseFloat(quantidadeVal) : null,
             estoque_minimo: estoqueMinimoVal !== '' ? parseFloat(estoqueMinimoVal) : null
         };
@@ -992,6 +1002,8 @@ function editarProduto(index) {
             if (idx >= 0) produtos[idx] = produtoAtualizado;
             document.getElementById('nomeProduto').value = '';
             document.getElementById('precoProduto').value = '';
+            document.getElementById('unidadeProduto').value = 'un';
+            document.getElementById('notaFiscalProduto').checked = true;
             document.getElementById('descricaoProduto').value = '';
             document.getElementById('codigoBarrasProduto').value = '';
             document.getElementById('quantidadeProduto').value = '';
@@ -1021,7 +1033,7 @@ function renderSelectProdutos() {
     document.querySelectorAll('.selProduto').forEach(select => {
         const current = select.value;
         select.innerHTML = '<option value="">Selecione um produto</option>' +
-            produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('');
+            produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}" data-unidade="${p.unidade || 'un'}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}/${p.unidade || 'un'}</option>`).join('');
         select.value = current;
     });
 }
@@ -1036,9 +1048,9 @@ function criarLinhaItem(nomeSelecionado = '', qtd = 1) {
     div.innerHTML = `
         <select class="selProduto">
             <option value="">Selecione um produto</option>
-            ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}</option>`).join('')}
+            ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}" data-unidade="${p.unidade || 'un'}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}/${p.unidade || 'un'}</option>`).join('')}
         </select>
-        <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="${qtd}">
+        <input type="number" class="qtdProduto" placeholder="Qtd" min="0.01" step="0.01" value="${qtd}">
         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
     `;
     if (nomeSelecionado) div.querySelector('.selProduto').value = nomeSelecionado;
@@ -1059,7 +1071,7 @@ function updateTotal() {
     let total = 0;
     document.querySelectorAll('.item-orcamento').forEach(item => {
         const select = item.querySelector('.selProduto');
-        const qtd = parseInt(item.querySelector('.qtdProduto').value) || 0;
+        const qtd = parseFloat(item.querySelector('.qtdProduto').value) || 0;
         const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
         total += preco * qtd;
     });
@@ -1070,10 +1082,11 @@ function pegarItensOrcamentoAtual() {
     const itens = [];
     document.querySelectorAll('.item-orcamento').forEach(item => {
         const select = item.querySelector('.selProduto');
-        const qtd = parseInt(item.querySelector('.qtdProduto').value) || 0;
+        const qtd = parseFloat(item.querySelector('.qtdProduto').value) || 0;
         const nome = select.value;
         const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
-        if (nome && qtd > 0) itens.push({ nome, qtd, preco, subtotal: preco * qtd });
+        const unidade = select.options[select.selectedIndex]?.dataset?.unidade || 'un';
+        if (nome && qtd > 0) itens.push({ nome, qtd, preco, unidade, subtotal: preco * qtd });
     });
     return itens;
 }
@@ -1186,7 +1199,7 @@ function abrirOS(id) {
     if (!os) return;
     const data = new Date(os.data_criacao).toLocaleDateString('pt-BR');
     let itensHTML = os.itens?.map((item, i) => `
-        <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
+        <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}${item.unidade ? ' ' + item.unidade : ''}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
     `).join('') || '';
     const pagamentoTexto = os.forma_pagamento
         ? os.forma_pagamento + (os.forma_pagamento === 'Cartão de Crédito' && os.parcelas > 1 ? ` (${os.parcelas}x)` : '')
@@ -1427,7 +1440,7 @@ function abrirRecibo(id) {
     const data = new Date(reciboAtual.data_emissao).toLocaleDateString('pt-BR');
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
     let itensHTML = reciboAtual.itens?.map((item, i) => `
-        <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
+        <tr><td>${i + 1}</td><td>${item.nome}</td><td>${item.qtd}${item.unidade ? ' ' + item.unidade : ''}</td><td>R$ ${Number(item.preco).toFixed(2)}</td><td>R$ ${Number(item.subtotal).toFixed(2)}</td></tr>
     `).join('') || '';
     const recebido = valorRecebidoRecibo(reciboAtual);
     const saldo = Number(reciboAtual.total || 0) - recebido;
@@ -1669,7 +1682,7 @@ function montarConteudoOrcamentoPDF(cliente, itens, total, clienteData, incluirF
                     const fotoTd = incluirFotos
                         ? `<td>${produtoRef?.foto_url ? `<img src="${produtoRef.foto_url}" class="foto-item">` : ''}</td>`
                         : '';
-                    return `<tr>${fotoTd}<td class="text-center">${index + 1}</td><td>${item.nome}</td><td class="text-right">R$ ${item.preco.toFixed(2)}</td><td class="text-center">${item.qtd}</td><td class="text-right"><strong>R$ ${item.subtotal.toFixed(2)}</strong></td></tr>`;
+                    return `<tr>${fotoTd}<td class="text-center">${index + 1}</td><td>${item.nome}</td><td class="text-right">R$ ${item.preco.toFixed(2)}</td><td class="text-center">${item.qtd}${item.unidade ? ' ' + item.unidade : ''}</td><td class="text-right"><strong>R$ ${item.subtotal.toFixed(2)}</strong></td></tr>`;
                 }).join('')}
             </tbody>
         </table>
@@ -1759,7 +1772,7 @@ function montarMensagemOrcamento(cliente, itens, total) {
     msg += `👤 Cliente: ${cliente}\n\n`;
     msg += `*ITENS:*\n`;
     itens.forEach((item, i) => {
-        msg += `${i + 1}. ${item.nome} - ${item.qtd}x R$ ${item.preco.toFixed(2)} = R$ ${item.subtotal.toFixed(2)}\n`;
+        msg += `${i + 1}. ${item.nome} - ${item.qtd}${item.unidade || 'un'} x R$ ${item.preco.toFixed(2)} = R$ ${item.subtotal.toFixed(2)}\n`;
     });
     msg += `\n*TOTAL: R$ ${total.toFixed(2)}*\n\n`;
     msg += `💳 *Formas de Pagamento:*\n`;
