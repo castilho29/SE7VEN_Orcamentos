@@ -36,7 +36,7 @@ try {
 // DADOS DA EMPRESA
 // ============================================
 // Versão do app — atualizar a cada rodada de ajustes importante
-const APP_VERSAO = '2.5.2';
+const APP_VERSAO = '2.5.0';
 
 // Logo da empresa: começa com o arquivo padrão do repositório, mas pode ser
 // trocada pelo admin (fica então guardada no Supabase Storage).
@@ -1309,7 +1309,7 @@ function gerarParcelasCrediario(total, numParcelas, primeiroVencimento, interval
         const valor = i === numParcelas - 1 ? Math.round((total - somaParcial) * 100) / 100 : valorParcela;
         somaParcial += valor;
         parcelas.push({
-            id: gerarId(), numero: i + 1, valor,
+            id: gerarId(), numero: i + 1, valor, valor_pago: 0,
             vencimento: vencimento.toISOString().split('T')[0],
             status: 'pendente', pago_em: null
         });
@@ -1358,52 +1358,81 @@ function valorRecebidoRecibo(recibo) {
 // Calcula o valor atualizado de uma parcela vencida e não paga, aplicando
 // multa fixa + juros de mora proporcionais aos dias de atraso.
 function calcularJurosAtraso(parcela) {
-    if (parcela.status === 'pago') return { valorAtualizado: parcela.valor, diasAtraso: 0, jurosValor: 0 };
+    const jaPago = Number(parcela.valor_pago || 0);
+    if (parcela.status === 'pago') return { valorAtualizado: parcela.valor, diasAtraso: 0, jurosValor: 0, devido: 0 };
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     const vencimento = new Date(parcela.vencimento + 'T00:00:00');
     const diasAtraso = Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24));
-    if (diasAtraso <= 0) return { valorAtualizado: parcela.valor, diasAtraso: 0, jurosValor: 0 };
+    if (diasAtraso <= 0) {
+        const valorAtualizado = parcela.valor;
+        return { valorAtualizado, diasAtraso: 0, jurosValor: 0, devido: Math.max(0, valorAtualizado - jaPago) };
+    }
     const multa = parcela.valor * (CONFIG_FINANCEIRO.multaAtraso / 100);
     const juros = parcela.valor * (CONFIG_FINANCEIRO.jurosMoraMensal / 100) * (diasAtraso / 30);
     const jurosValor = multa + juros;
-    return { valorAtualizado: parcela.valor + jurosValor, diasAtraso, jurosValor };
+    const valorAtualizado = parcela.valor + jurosValor;
+    return { valorAtualizado, diasAtraso, jurosValor, devido: Math.max(0, valorAtualizado - jaPago) };
 }
 
-async function pagarParcelaCrediario(reciboId, parcelaId) {
+function preencherValorAbatimento(reciboId, parcelaId) {
     const recibo = recibos.find(r => r.id === reciboId);
-    if (!recibo) return;
-    const parcela = (recibo.parcelas_detalhe || []).find(p => p.id === parcelaId);
+    const parcela = recibo?.parcelas_detalhe?.find(p => p.id === parcelaId);
     if (!parcela) return;
-    const { valorAtualizado, diasAtraso } = calcularJurosAtraso(parcela);
-    const confirmMsg = diasAtraso > 0
-        ? `Parcela ${parcela.numero} vencida há ${diasAtraso} dia(s).\nValor original: R$ ${parcela.valor.toFixed(2)}\nCom juros/multa: R$ ${valorAtualizado.toFixed(2)}\n\nConfirmar recebimento de R$ ${valorAtualizado.toFixed(2)}?`
-        : `Confirmar recebimento da parcela ${parcela.numero}: R$ ${parcela.valor.toFixed(2)}?`;
-    if (!confirm(confirmMsg)) return;
+    const { devido } = calcularJurosAtraso(parcela);
+    const input = document.getElementById('valorAbaterCrediario');
+    if (input) input.value = devido.toFixed(2);
+}
 
-    const novasParcelas = recibo.parcelas_detalhe.map(p => p.id === parcelaId
-        ? { ...p, status: 'pago', pago_em: new Date().toISOString(), valor_pago: valorAtualizado }
-        : p);
-    const novoPagamento = { id: gerarId(), data: new Date().toISOString(), valor: valorAtualizado };
-    const pagamentos = [...(recibo.pagamentos || []), novoPagamento];
+// Abate um valor QUALQUER do crediário: aplica primeiro na parcela mais antiga em
+// aberto, e o que sobrar (se pagar mais do que ela deve) já cai automaticamente
+// na próxima — recalculando juros/multa de cada parcela na hora.
+async function confirmarAbatimentoCrediario() {
+    if (!reciboAtual) return;
+    const valorAbatido = parseFloat(document.getElementById('valorAbaterCrediario').value);
+    if (!valorAbatido || valorAbatido <= 0) { alert('⚠️ Informe um valor válido para abater'); return; }
+
+    let restante = valorAbatido;
+    const novasParcelas = reciboAtual.parcelas_detalhe.map(p => ({ ...p }));
+    const ordemPagamento = [...novasParcelas].sort((a, b) => new Date(a.vencimento) - new Date(b.vencimento));
+
+    for (const parcela of ordemPagamento) {
+        if (restante <= 0.004) break;
+        const alvo = novasParcelas.find(p => p.id === parcela.id);
+        if (alvo.status === 'pago') continue;
+        const { devido } = calcularJurosAtraso(alvo);
+        if (devido <= 0.004) { alvo.status = 'pago'; alvo.pago_em = alvo.pago_em || new Date().toISOString(); continue; }
+        const aplicado = Math.min(restante, devido);
+        alvo.valor_pago = Number((Number(alvo.valor_pago || 0) + aplicado).toFixed(2));
+        restante = Number((restante - aplicado).toFixed(2));
+        const aindaDevido = calcularJurosAtraso(alvo).devido;
+        if (aindaDevido <= 0.004) { alvo.status = 'pago'; alvo.pago_em = new Date().toISOString(); }
+        else { alvo.status = 'parcial'; }
+    }
+
+    const valorAplicado = Number((valorAbatido - restante).toFixed(2));
+    const novoPagamento = { id: gerarId(), data: new Date().toISOString(), valor: valorAplicado };
+    const pagamentos = [...(reciboAtual.pagamentos || []), novoPagamento];
     const todasPagas = novasParcelas.every(p => p.status === 'pago');
     const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0);
     const atualizado = {
-        ...recibo, parcelas_detalhe: novasParcelas, pagamentos, valor_recebido: totalRecebido,
+        ...reciboAtual, parcelas_detalhe: novasParcelas, pagamentos, valor_recebido: totalRecebido,
         status: todasPagas ? 'pago' : 'parcial',
-        data_pagamento: todasPagas ? new Date().toISOString() : recibo.data_pagamento
+        data_pagamento: todasPagas ? new Date().toISOString() : reciboAtual.data_pagamento
     };
     try {
         const resultado = await upsertComOffline('recibos', atualizado);
-        const idx = recibos.findIndex(r => r.id === reciboId);
+        const idx = recibos.findIndex(r => r.id === reciboAtual.id);
         if (idx >= 0) recibos[idx] = atualizado;
         reciboAtual = atualizado;
         listarRecibos();
-        abrirRecibo(reciboId);
+        abrirRecibo(reciboAtual.id);
         atualizarDashboard();
-        atualizarStatus(resultado.offline ? '📴 Pagamento salvo neste aparelho' : `✅ Parcela ${parcela.numero} recebida!`);
-        registrarLog('PARCELA_PAGA', `Parcela ${parcela.numero} do recibo ${recibo.numero} recebida (R$ ${valorAtualizado.toFixed(2)})`);
+        document.getElementById('valorAbaterCrediario').value = '';
+        atualizarStatus(resultado.offline ? '📴 Abatimento salvo neste aparelho' : `✅ R$ ${valorAplicado.toFixed(2)} abatido do crediário!`);
+        registrarLog('CREDIARIO_ABATIMENTO', `R$ ${valorAplicado.toFixed(2)} abatido no crediário do recibo ${reciboAtual.numero}`);
+        if (restante > 0.004) alert(`ℹ️ Todas as parcelas já foram quitadas. Sobrou R$ ${restante.toFixed(2)} sem aplicar.`);
     } catch (e) {
-        alert('❌ Erro ao registrar pagamento da parcela: ' + e.message);
+        alert('❌ Erro ao registrar abatimento: ' + e.message);
     }
 }
 
@@ -1494,19 +1523,26 @@ function abrirRecibo(id) {
         <div style="margin-top:12px;">
             <strong style="color:#e67e22;font-size:12px;">💳 Parcelas do Crediário:</strong>
             ${reciboAtual.parcelas_detalhe.map(p => {
-                const { valorAtualizado, diasAtraso, jurosValor } = calcularJurosAtraso(p);
+                const { valorAtualizado, diasAtraso, devido } = calcularJurosAtraso(p);
                 const vencido = diasAtraso > 0 && p.status !== 'pago';
                 const venc = new Date(p.vencimento + 'T00:00:00').toLocaleDateString('pt-BR');
+                const rotulos = { pago: '✅', parcial: '🔶 Parcial', pendente: '' };
                 return `
                 <div style="display:flex;justify-content:space-between;align-items:center;background:${p.status === 'pago' ? '#e8f5e9' : vencido ? '#fdecea' : '#f8f9fa'};padding:8px 10px;border-radius:6px;margin-top:6px;font-size:12px;">
                     <div>
-                        <strong>Parcela ${p.numero}</strong> — venc. ${venc}<br>
-                        R$ ${p.valor.toFixed(2)}${vencido ? ` <span style="color:#c0392b;">+ juros/multa = R$ ${valorAtualizado.toFixed(2)} (${diasAtraso}d atraso)</span>` : ''}
-                        ${p.status === 'pago' ? `<br><span style="color:#27ae60;">✅ Pago em ${new Date(p.pago_em).toLocaleDateString('pt-BR')}</span>` : ''}
+                        <strong>Parcela ${p.numero}</strong> ${rotulos[p.status] || ''} — venc. ${venc}<br>
+                        Valor: R$ ${p.valor.toFixed(2)}${vencido ? ` <span style="color:#c0392b;">(+ juros/multa: R$ ${valorAtualizado.toFixed(2)})</span>` : ''}
+                        ${Number(p.valor_pago || 0) > 0 ? `<br>Já pago: R$ ${Number(p.valor_pago).toFixed(2)}` : ''}
+                        ${p.status !== 'pago' ? `<br><strong style="color:#e67e22;">Falta: R$ ${devido.toFixed(2)}</strong>` : `<br><span style="color:#27ae60;">Quitada em ${new Date(p.pago_em).toLocaleDateString('pt-BR')}</span>`}
                     </div>
-                    ${p.status !== 'pago' ? `<button onclick="pagarParcelaCrediario('${reciboAtual.id}','${p.id}')" class="btn-success" style="padding:5px 10px;font-size:11px;white-space:nowrap;">💰 Receber</button>` : ''}
+                    ${p.status !== 'pago' ? `<button onclick="preencherValorAbatimento('${reciboAtual.id}','${p.id}')" class="btn-secondary" style="padding:5px 10px;font-size:11px;white-space:nowrap;">Usar valor</button>` : ''}
                 </div>`;
             }).join('')}
+            <div style="display:flex;gap:6px;margin-top:10px;">
+                <input type="number" id="valorAbaterCrediario" placeholder="Valor a abater (R$)" step="0.01" min="0.01" style="flex:1;margin:0;">
+                <button onclick="confirmarAbatimentoCrediario()" class="btn-success" style="white-space:nowrap;">💰 Abater</button>
+            </div>
+            <p style="font-size:11px;color:#888;margin-top:5px;">Aceita qualquer valor — abate primeiro na parcela mais antiga em aberto e o restante já cai na próxima automaticamente.</p>
         </div>` : ''}
         <div class="assinatura" style="margin-top:30px;">
             <div style="border-top:1px solid #333;width:80%;margin:0 auto;padding-top:6px;text-align:center;font-size:11px;color:#555;">
