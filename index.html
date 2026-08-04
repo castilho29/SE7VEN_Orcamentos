@@ -147,6 +147,43 @@
             .login-screen img{max-height:75px;}
             .login-screen h1{font-size:18px;}
         }
+
+        /* ===== TELAS GRANDES (PC / TABLET): mais espaço, textos e botões maiores ===== */
+        @media (min-width:900px){
+            body{max-width:1100px;padding:24px;}
+            header{padding:20px 26px;}
+            .header-logo img{height:64px !important;}
+            .header-logo .logo-title{font-size:22px;}
+            .btn-logout{font-size:14px;padding:9px 18px;}
+            .status-bar{font-size:16px;padding:14px 20px;}
+            .sync-info,.backup-info{padding:16px 20px;}
+            .tab-container{gap:8px;}
+            .tab-btn{font-size:14px;padding:12px 22px;}
+            section{padding:26px;}
+            h2{font-size:20px;}
+            input,select,textarea{font-size:16px;padding:12px;}
+            .footer-actions button{font-size:14px;padding:12px 18px;min-width:110px;}
+            .btn-primary,.btn-success,.btn-danger,.btn-info,.btn-whatsapp,.btn-secondary{font-size:14px;padding:11px 20px;}
+            .backup-grid{grid-template-columns:repeat(3,1fr);gap:12px;}
+            .backup-grid button{padding:16px 10px;font-size:13px;}
+            .item-orcamento{gap:14px;padding:14px;}
+            .os-card{padding:20px;}
+            .os-card:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,0.1);}
+            .modal-content{max-width:600px !important;padding:30px;}
+            .login-screen img{max-height:130px;}
+            .login-screen h1{font-size:30px;}
+            .login-screen input,.login-screen button{max-width:380px;font-size:16px;padding:14px;}
+            .user-list .user-item{padding:14px 18px;}
+            .calc-card{padding:20px;}
+            .calc-card input,.calc-card select{font-size:15px;padding:10px;}
+            /* Cards do Dashboard (6 no total) ficam bem em 3 colunas quando cabe */
+            #dashboardGrid{grid-template-columns:repeat(3,1fr) !important;gap:14px !important;}
+            li{padding:14px;}
+        }
+
+        @media (min-width:1300px){
+            body{max-width:1300px;}
+        }
     </style>
 </head>
 <body>
@@ -646,8 +683,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <!-- ========== CONFIGURAÇÃO E SCRIPT PRINCIPAL ========== -->
-    <script src="config.js?v=3"></script>
-    <script src="script.js?v=3"></script>
+    <script src="config.js?v=4"></script>
+    <script src="script.js?v=4"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
