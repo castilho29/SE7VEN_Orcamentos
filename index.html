@@ -648,7 +648,20 @@
         <button id="btnFecharScanner" class="btn-secondary" style="margin-top:10px;width:100%;">Cancelar</button>
     </div></div>
     
-    <div id="modalOS" class="modal"><div class="modal-content" style="max-width:500px;"><h3>🔧 Detalhes da OS</h3><div id="detalhesOS"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnEditarOS" class="btn-info">✏️ Editar</button><button id="btnReimprimirOS" class="btn-primary">🖨️ Reimprimir PDF</button><button id="btnAprovarOS" class="btn-success" style="display:none;">✅ Aprovar</button><button id="btnIniciarOS" class="btn-warning" style="display:none;">🔧 Iniciar</button><button id="btnConcluirOS" class="btn-success" style="display:none;">✅ Concluir</button><button id="btnCancelarOS" class="btn-danger" style="display:none;">❌ Cancelar</button><button id="btnEmitirRecibo" class="btn-primary" style="display:none;">💰 Recibo</button><button id="btnFecharOS" class="btn-secondary">Fechar</button></div></div></div>
+    <div id="modalOS" class="modal"><div class="modal-content" style="max-width:500px;"><h3>🔧 Detalhes da OS</h3><div id="detalhesOS"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnEditarOS" class="btn-info">✏️ Editar</button><button id="btnAssinaturaOS" class="btn-info" style="background:#6a1b9a;">✍️ Assinatura</button><button id="btnReimprimirOS" class="btn-primary">🖨️ Reimprimir PDF</button><button id="btnAprovarOS" class="btn-success" style="display:none;">✅ Aprovar</button><button id="btnIniciarOS" class="btn-warning" style="display:none;">🔧 Iniciar</button><button id="btnConcluirOS" class="btn-success" style="display:none;">✅ Concluir</button><button id="btnCancelarOS" class="btn-danger" style="display:none;">❌ Cancelar</button><button id="btnEmitirRecibo" class="btn-primary" style="display:none;">💰 Recibo</button><button id="btnFecharOS" class="btn-secondary">Fechar</button></div></div></div>
+
+    <div id="modalAssinatura" class="modal"><div class="modal-content" style="max-width:420px;text-align:center;">
+        <h3>✍️ Assinatura do Cliente</h3>
+        <p style="font-size:12px;color:#666;margin-bottom:8px;" id="textoAutorizacaoAssinatura">
+            Ao assinar abaixo, o cliente autoriza a execução do serviço/compra descrito neste orçamento, nas condições apresentadas.
+        </p>
+        <canvas id="canvasAssinatura" width="350" height="160" style="border:2px solid #bdc3c7;border-radius:8px;background:white;touch-action:none;max-width:100%;"></canvas>
+        <div style="display:flex;gap:10px;margin-top:10px;">
+            <button id="btnLimparAssinatura" class="btn-secondary" style="flex:1;">🗑️ Limpar</button>
+            <button id="btnConfirmarAssinatura" class="btn-success" style="flex:1;">✅ Confirmar</button>
+        </div>
+        <button id="btnFecharAssinatura" class="btn-secondary" style="width:100%;margin-top:8px;">Cancelar</button>
+    </div></div>
     
     <div id="modalRecibo" class="modal"><div class="modal-content" style="max-width:500px;"><h3>💰 Recibo</h3><div id="conteudoRecibo" class="recibo-area"></div><div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;"><button id="btnRegistrarPagamento" class="btn-success">💰 Registrar Pagamento</button><button id="btnImprimirRecibo" class="btn-primary">🖨️ Imprimir</button><button id="btnFecharRecibo" class="btn-secondary">Fechar</button></div></div></div>
 
@@ -683,8 +696,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <!-- ========== CONFIGURAÇÃO E SCRIPT PRINCIPAL ========== -->
-    <script src="config.js?v=4"></script>
-    <script src="script.js?v=4"></script>
+    <script src="config.js?v=5"></script>
+    <script src="script.js?v=5"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

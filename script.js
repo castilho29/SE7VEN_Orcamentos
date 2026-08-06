@@ -1212,6 +1212,9 @@ function abrirOS(id) {
             <p><strong>Data:</strong> ${data}</p>
             <p><strong>Forma de pagamento:</strong> ${pagamentoTexto}</p>
             <p><strong>Total:</strong> R$ ${Number(os.total || 0).toFixed(2)}</p>
+            <p><strong>Assinatura:</strong> ${os.assinatura_cliente
+                ? `✅ Assinado em ${new Date(os.assinatura_data).toLocaleDateString('pt-BR')}`
+                : '⚠️ Ainda não assinado'}</p>
         </div>
         <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -1254,10 +1257,92 @@ function reimprimirOS(id) {
     const os = ordensServico.find(o => o.id === id) || osAtual;
     if (!os) return;
     const clienteData = clientes.find(c => c.nome === os.cliente_nome);
-    const { conteudo } = montarConteudoOrcamentoPDF(os.cliente_nome, os.itens || [], os.total || 0, clienteData);
+    const { conteudo } = montarConteudoOrcamentoPDF(os.cliente_nome, os.itens || [], os.total || 0, clienteData, false, os.assinatura_cliente, os.assinatura_data);
     const nomeArquivo = `Orcamento_${EMPRESA.nomeAbreviado}_${os.numero}_${os.cliente_nome.replace(/\s/g, '_')}.pdf`;
     fecharModal('modalOS');
     baixarPDFDoConteudo(conteudo, nomeArquivo);
+}
+
+// ============================================
+// ASSINATURA DIGITAL DO CLIENTE
+// ============================================
+
+let assinaturaCtx = null;
+let assinaturaDesenhando = false;
+let assinaturaOSId = null;
+
+function configurarCanvasAssinatura() {
+    const canvas = document.getElementById('canvasAssinatura');
+    if (!canvas) return;
+    assinaturaCtx = canvas.getContext('2d');
+    assinaturaCtx.lineWidth = 2.5;
+    assinaturaCtx.lineCap = 'round';
+    assinaturaCtx.strokeStyle = '#1a237e';
+
+    const pegarPosicao = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const escalaX = canvas.width / rect.width;
+        const escalaY = canvas.height / rect.height;
+        return { x: (e.clientX - rect.left) * escalaX, y: (e.clientY - rect.top) * escalaY };
+    };
+
+    canvas.addEventListener('pointerdown', (e) => {
+        assinaturaDesenhando = true;
+        const { x, y } = pegarPosicao(e);
+        assinaturaCtx.beginPath();
+        assinaturaCtx.moveTo(x, y);
+    });
+    canvas.addEventListener('pointermove', (e) => {
+        if (!assinaturaDesenhando) return;
+        const { x, y } = pegarPosicao(e);
+        assinaturaCtx.lineTo(x, y);
+        assinaturaCtx.stroke();
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(evt => {
+        canvas.addEventListener(evt, () => { assinaturaDesenhando = false; });
+    });
+}
+
+function limparAssinaturaCanvas() {
+    const canvas = document.getElementById('canvasAssinatura');
+    if (!canvas || !assinaturaCtx) return;
+    assinaturaCtx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function abrirAssinaturaOS() {
+    if (!osAtual) return;
+    assinaturaOSId = osAtual.id;
+    fecharModal('modalOS');
+    abrirModal('modalAssinatura');
+    if (!assinaturaCtx) configurarCanvasAssinatura();
+    limparAssinaturaCanvas();
+    const texto = document.getElementById('textoAutorizacaoAssinatura');
+    if (texto) texto.textContent = `Ao assinar abaixo, o cliente ${osAtual.cliente_nome} autoriza a execução do serviço/compra descrito no orçamento ${osAtual.numero}, nas condições apresentadas.`;
+}
+
+async function confirmarAssinatura() {
+    const canvas = document.getElementById('canvasAssinatura');
+    if (!canvas || !assinaturaOSId) return;
+    // Verifica se algo foi desenhado (canvas não está totalmente em branco)
+    const dados = assinaturaCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const temTraço = dados.some((valor, i) => i % 4 === 3 && valor > 0);
+    if (!temTraço) { alert('⚠️ Peça para o cliente assinar no quadro antes de confirmar.'); return; }
+
+    const assinaturaBase64 = canvas.toDataURL('image/png');
+    const os = ordensServico.find(o => o.id === assinaturaOSId);
+    if (!os) { alert('⚠️ Não encontrei essa OS.'); return; }
+    const atualizada = { ...os, assinatura_cliente: assinaturaBase64, assinatura_data: new Date().toISOString() };
+    try {
+        const resultado = await upsertComOffline('ordens_servico', atualizada);
+        const idx = ordensServico.findIndex(o => o.id === assinaturaOSId);
+        if (idx >= 0) ordensServico[idx] = atualizada;
+        if (osAtual?.id === assinaturaOSId) osAtual = atualizada;
+        fecharModal('modalAssinatura');
+        atualizarStatus(resultado.offline ? '📴 Assinatura salva neste aparelho' : `✅ Assinatura de ${os.cliente_nome} registrada!`);
+        registrarLog('OS_ASSINADA', `Cliente ${os.cliente_nome} assinou o orçamento ${os.numero}`);
+    } catch (e) {
+        alert('❌ Erro ao salvar assinatura: ' + e.message);
+    }
 }
 
 async function atualizarStatusOS(novoStatus, mensagem, acao) {
@@ -1637,7 +1722,7 @@ function imprimirRecibo() {
 // GERAR PDF - MODELO SE7VEN ENERGIA
 // ============================================
 
-function montarConteudoOrcamentoPDF(cliente, itens, total, clienteData, incluirFotos = false) {
+function montarConteudoOrcamentoPDF(cliente, itens, total, clienteData, incluirFotos = false, assinaturaBase64 = null, assinaturaData = null) {
     const data = new Date();
     const dataFormatada = data.toLocaleDateString('pt-BR');
     const dataInvertida = data.getDate().toString().padStart(2, '0') + '/' +
@@ -1727,6 +1812,18 @@ function montarConteudoOrcamentoPDF(cliente, itens, total, clienteData, incluirF
         <ul class="observacoes">
             ${EMPRESA.observacoes.map(obs => `<li>${obs}</li>`).join('')}
         </ul>
+        <div style="margin-top:25px;padding-top:15px;border-top:1px solid #ddd;text-align:center;">
+            ${assinaturaBase64
+                ? `<img src="${assinaturaBase64}" style="max-height:70px;max-width:280px;">
+                   <div style="border-top:1px solid #333;width:70%;margin:4px auto 0;padding-top:5px;font-size:11px;color:#555;">
+                       Assinado por ${cliente}${assinaturaData ? ' em ' + new Date(assinaturaData).toLocaleDateString('pt-BR') : ''} — autoriza a execução deste serviço/compra
+                   </div>`
+                : `<div style="height:50px;"></div>
+                   <div style="border-top:1px solid #333;width:70%;margin:0 auto;padding-top:5px;font-size:11px;color:#555;">
+                       Assinatura do Cliente (autorização de execução do serviço)
+                   </div>`
+            }
+        </div>
         <div class="rodape"><p><span class="destaque">${EMPRESA.nome}</span> — CNPJ ${EMPRESA.cnpj}</p><p>📧 ${EMPRESA.email} | 📱 ${EMPRESA.telefone} | 📷 ${EMPRESA.instagram}</p></div>
     </body></html>
     `;
@@ -3074,6 +3171,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Eventos da OS
     document.getElementById('btnEditarOS')?.addEventListener('click', () => editarOS(osAtual?.id));
     document.getElementById('btnReimprimirOS')?.addEventListener('click', () => reimprimirOS(osAtual?.id));
+    document.getElementById('btnAssinaturaOS')?.addEventListener('click', abrirAssinaturaOS);
+    document.getElementById('btnLimparAssinatura')?.addEventListener('click', limparAssinaturaCanvas);
+    document.getElementById('btnConfirmarAssinatura')?.addEventListener('click', confirmarAssinatura);
+    document.getElementById('btnFecharAssinatura')?.addEventListener('click', function () { fecharModal('modalAssinatura'); });
     document.getElementById('btnAprovarOS')?.addEventListener('click', aprovarOS);
     document.getElementById('btnIniciarOS')?.addEventListener('click', iniciarOS);
     document.getElementById('btnConcluirOS')?.addEventListener('click', concluirOS);

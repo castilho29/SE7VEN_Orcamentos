@@ -68,6 +68,9 @@ create table if not exists produtos (
     foto_url text,
     quantidade numeric,
     estoque_minimo numeric,
+    descricao text,
+    unidade text default 'un',
+    nota_fiscal boolean default true,
     created_at timestamptz default now()
 );
 
@@ -77,6 +80,8 @@ alter table produtos add column if not exists foto_url text;
 alter table produtos add column if not exists quantidade numeric;
 alter table produtos add column if not exists estoque_minimo numeric;
 alter table produtos add column if not exists descricao text;
+alter table produtos add column if not exists unidade text default 'un';
+alter table produtos add column if not exists nota_fiscal boolean default true;
 
 -- Espaço de armazenamento para as fotos dos produtos (bucket público de leitura,
 -- só quem está logado pode enviar/trocar/apagar fotos).
@@ -159,6 +164,8 @@ alter table ordens_servico add column if not exists parcelas integer;
 alter table ordens_servico add column if not exists crediario_num_parcelas integer;
 alter table ordens_servico add column if not exists crediario_primeiro_vencimento date;
 alter table ordens_servico add column if not exists crediario_intervalo_dias integer;
+alter table ordens_servico add column if not exists assinatura_cliente text;
+alter table ordens_servico add column if not exists assinatura_data timestamptz;
 
 create table if not exists recibos (
     id text primary key,
