@@ -786,11 +786,9 @@ function editarCliente(index) {
 }
 
 function renderSelectClientes() {
-    const sel = document.getElementById('selCliente');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione um cliente</option>' +
-        clientes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
-    renderSelectClienteVisita();
+    const datalist = document.getElementById('datalistClientes');
+    if (!datalist) return;
+    datalist.innerHTML = clientes.map(c => `<option value="${c.nome}">`).join('');
 }
 
 // ============================================
@@ -1030,12 +1028,9 @@ function editarProduto(index) {
 }
 
 function renderSelectProdutos() {
-    document.querySelectorAll('.selProduto').forEach(select => {
-        const current = select.value;
-        select.innerHTML = '<option value="">Selecione um produto</option>' +
-            produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}" data-unidade="${p.unidade || 'un'}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}/${p.unidade || 'un'}</option>`).join('');
-        select.value = current;
-    });
+    const datalist = document.getElementById('datalistProdutos');
+    if (!datalist) return;
+    datalist.innerHTML = produtos.map(p => `<option value="${p.nome}">R$ ${Number(p.preco).toFixed(2)}/${p.unidade || 'un'}</option>`).join('');
 }
 
 // ============================================
@@ -1046,14 +1041,11 @@ function criarLinhaItem(nomeSelecionado = '', qtd = 1) {
     const div = document.createElement('div');
     div.className = 'item-orcamento';
     div.innerHTML = `
-        <select class="selProduto">
-            <option value="">Selecione um produto</option>
-            ${produtos.map(p => `<option value="${p.nome}" data-preco="${p.preco}" data-unidade="${p.unidade || 'un'}">${p.nome} - R$ ${Number(p.preco).toFixed(2)}/${p.unidade || 'un'}</option>`).join('')}
-        </select>
+        <input type="text" class="selProduto" list="datalistProdutos" placeholder="🔍 Buscar produto..." value="${nomeSelecionado}">
         <input type="number" class="qtdProduto" placeholder="Qtd" min="0.01" step="0.01" value="${qtd}">
         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
     `;
-    if (nomeSelecionado) div.querySelector('.selProduto').value = nomeSelecionado;
+    div.querySelector('.selProduto').addEventListener('input', updateTotal);
     div.querySelector('.selProduto').addEventListener('change', updateTotal);
     div.querySelector('.qtdProduto').addEventListener('input', updateTotal);
     return div;
@@ -1070,9 +1062,10 @@ function removerItem(btn) { btn.parentElement.remove(); updateTotal(); }
 function updateTotal() {
     let total = 0;
     document.querySelectorAll('.item-orcamento').forEach(item => {
-        const select = item.querySelector('.selProduto');
+        const nomeDigitado = item.querySelector('.selProduto').value;
         const qtd = parseFloat(item.querySelector('.qtdProduto').value) || 0;
-        const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
+        const produto = produtos.find(p => p.nome === nomeDigitado);
+        const preco = produto ? Number(produto.preco) : 0;
         total += preco * qtd;
     });
     document.getElementById('totalValor').textContent = total.toFixed(2);
@@ -1081,12 +1074,12 @@ function updateTotal() {
 function pegarItensOrcamentoAtual() {
     const itens = [];
     document.querySelectorAll('.item-orcamento').forEach(item => {
-        const select = item.querySelector('.selProduto');
+        const nome = item.querySelector('.selProduto').value;
         const qtd = parseFloat(item.querySelector('.qtdProduto').value) || 0;
-        const nome = select.value;
-        const preco = parseFloat(select.options[select.selectedIndex]?.dataset?.preco) || 0;
-        const unidade = select.options[select.selectedIndex]?.dataset?.unidade || 'un';
-        if (nome && qtd > 0) itens.push({ nome, qtd, preco, unidade, subtotal: preco * qtd });
+        const produto = produtos.find(p => p.nome === nome);
+        const preco = produto ? Number(produto.preco) : 0;
+        const unidade = produto ? (produto.unidade || 'un') : 'un';
+        if (nome && produto && qtd > 0) itens.push({ nome, qtd, preco, unidade, subtotal: preco * qtd });
     });
     return itens;
 }
@@ -2600,14 +2593,6 @@ function adicionarAoGoogleAgenda(id) {
     });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
     registrarLog('VISITA_GOOGLE_AGENDA', `Visita de ${v.cliente_nome} enviada ao Google Agenda`);
-}
-
-function renderSelectClienteVisita() {
-    const sel = document.getElementById('clienteVisita');
-    if (!sel) return;
-    const atual = sel.value;
-    sel.innerHTML = '<option value="">Selecione um cliente</option>' + clientes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
-    sel.value = atual;
 }
 
 async function adicionarVisita() {

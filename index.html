@@ -84,6 +84,7 @@
         .item-orcamento{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;background:#f8f9fa;padding:10px;border-radius:8px;border-left:3px solid #1a237e;}
         .item-orcamento select{flex:2;min-width:120px;padding:8px;border:1px solid #bdc3c7;border-radius:4px;}
         .item-orcamento input{flex:1;min-width:60px;padding:8px;border:1px solid #bdc3c7;border-radius:4px;}
+        .item-orcamento input.selProduto{flex:2;min-width:120px;}
         .btn-remove-item{background:#e74c3c;color:white;border:none;border-radius:50%;width:30px;height:30px;font-size:18px;cursor:pointer;}
         
         #totalOrcamento{margin:15px 0;padding:12px;background:#e8eaf6;border-radius:8px;text-align:center;font-size:18px;color:#1a237e;}
@@ -353,10 +354,12 @@
         <div id="tabOrcamento" class="tab-content">
             <section>
                 <h2>📄 Novo Orçamento</h2>
-                <select id="selCliente"><option value="">Selecione um cliente</option></select>
+                <input type="text" id="selCliente" list="datalistClientes" placeholder="🔍 Buscar cliente...">
+                <datalist id="datalistClientes"></datalist>
                 <div id="itensOrcamento">
                     <div class="item-orcamento">
-                        <select class="selProduto"><option value="">Selecione um produto</option></select>
+                        <input type="text" class="selProduto" list="datalistProdutos" placeholder="🔍 Buscar produto...">
+                        <datalist id="datalistProdutos"></datalist>
                         <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
                         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
                     </div>
@@ -686,7 +689,7 @@
 
     <div id="modalDespesa" class="modal"><div class="modal-content"><h3>💸 Nova Despesa</h3><input type="text" id="descricaoDespesa" placeholder="Descrição *"><input type="number" id="valorDespesa" placeholder="Valor *" step="0.01"><select id="categoriaDespesa"><option value="material">Material/Compra</option><option value="combustivel">Combustível</option><option value="ferramenta">Ferramenta</option><option value="aluguel">Aluguel</option><option value="salario">Salário</option><option value="outro">Outro</option></select><input type="date" id="dataDespesa"><select id="statusDespesa"><option value="pendente">⏳ Pendente</option><option value="pago">✅ Pago</option></select><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarDespesa" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalDespesa" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
 
-    <div id="modalVisita" class="modal"><div class="modal-content"><h3>📅 Agendar Visita</h3><select id="clienteVisita"><option value="">Selecione um cliente</option></select><input type="datetime-local" id="dataHoraVisita"><textarea id="descricaoVisita" placeholder="Descrição / motivo da visita" style="width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;min-height:60px;resize:vertical;"></textarea><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarVisita" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalVisita" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+    <div id="modalVisita" class="modal"><div class="modal-content"><h3>📅 Agendar Visita</h3><input type="text" id="clienteVisita" list="datalistClientes" placeholder="🔍 Buscar cliente..."><input type="datetime-local" id="dataHoraVisita"><textarea id="descricaoVisita" placeholder="Descrição / motivo da visita" style="width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;min-height:60px;resize:vertical;"></textarea><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarVisita" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalVisita" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
 
     <div id="modalHistoricoCliente" class="modal"><div class="modal-content" style="max-width:500px;"><h3 id="tituloHistoricoCliente">📋 Histórico</h3><div id="conteudoHistoricoCliente"></div><button id="btnFecharHistorico" class="btn-secondary" style="width:100%;margin-top:10px;">Fechar</button></div></div>
 
@@ -696,8 +699,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <!-- ========== CONFIGURAÇÃO E SCRIPT PRINCIPAL ========== -->
-    <script src="config.js?v=5"></script>
-    <script src="script.js?v=5"></script>
+    <script src="config.js?v=6"></script>
+    <script src="script.js?v=6"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
