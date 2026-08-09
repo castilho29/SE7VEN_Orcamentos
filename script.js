@@ -785,10 +785,61 @@ function editarCliente(index) {
     abrirModal('modalCliente');
 }
 
+// ============================================
+// AUTOCOMPLETE CUSTOMIZADO (mais confiável no celular que <datalist>)
+// ============================================
+
+function ativarAutocomplete(input, obterOpcoes) {
+    if (!input || input.dataset.autocompleteAtivo) return;
+    input.dataset.autocompleteAtivo = '1';
+    const wrapper = input.closest('.campo-autocomplete') || input.parentElement;
+    const dropdown = document.createElement('div');
+    dropdown.className = 'autocomplete-dropdown';
+    wrapper.appendChild(dropdown);
+
+    function normalizar(txt) {
+        return (txt || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function mostrar() {
+        const termo = normalizar(input.value.trim());
+        const opcoes = obterOpcoes();
+        const filtradas = termo
+            ? opcoes.filter(o => normalizar(o.label).includes(termo)).slice(0, 8)
+            : opcoes.slice(0, 8);
+        if (filtradas.length === 0) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = filtradas.map(o =>
+            `<div class="autocomplete-item" data-valor="${o.value.replace(/"/g, '&quot;')}">${o.label}${o.sub ? `<small>${o.sub}</small>` : ''}</div>`
+        ).join('');
+        dropdown.style.display = 'block';
+    }
+
+    input.addEventListener('input', mostrar);
+    input.addEventListener('focus', mostrar);
+    input.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 200));
+    dropdown.addEventListener('mousedown', (e) => {
+        const item = e.target.closest('.autocomplete-item');
+        if (!item) return;
+        input.value = item.dataset.valor;
+        dropdown.style.display = 'none';
+        input.dispatchEvent(new Event('input'));
+        input.dispatchEvent(new Event('change'));
+    });
+}
+
+function ativarAutocompleteProdutos(input) {
+    ativarAutocomplete(input, () => produtos.map(p => ({
+        label: p.nome, value: p.nome, sub: `R$ ${Number(p.preco).toFixed(2)}/${p.unidade || 'un'}`
+    })));
+}
+
+function ativarAutocompleteClientes(input) {
+    ativarAutocomplete(input, () => clientes.map(c => ({ label: c.nome, value: c.nome, sub: c.telefone || '' })));
+}
+
 function renderSelectClientes() {
-    const datalist = document.getElementById('datalistClientes');
-    if (!datalist) return;
-    datalist.innerHTML = clientes.map(c => `<option value="${c.nome}">`).join('');
+    ativarAutocompleteClientes(document.getElementById('selCliente'));
+    ativarAutocompleteClientes(document.getElementById('clienteVisita'));
 }
 
 // ============================================
@@ -1028,9 +1079,7 @@ function editarProduto(index) {
 }
 
 function renderSelectProdutos() {
-    const datalist = document.getElementById('datalistProdutos');
-    if (!datalist) return;
-    datalist.innerHTML = produtos.map(p => `<option value="${p.nome}">R$ ${Number(p.preco).toFixed(2)}/${p.unidade || 'un'}</option>`).join('');
+    document.querySelectorAll('.selProduto').forEach(ativarAutocompleteProdutos);
 }
 
 // ============================================
@@ -1041,12 +1090,16 @@ function criarLinhaItem(nomeSelecionado = '', qtd = 1) {
     const div = document.createElement('div');
     div.className = 'item-orcamento';
     div.innerHTML = `
-        <input type="text" class="selProduto" list="datalistProdutos" placeholder="🔍 Buscar produto..." value="${nomeSelecionado}">
+        <div class="campo-autocomplete" style="flex:2;min-width:120px;">
+            <input type="text" class="selProduto" placeholder="🔍 Buscar produto..." autocomplete="off" value="${nomeSelecionado}">
+        </div>
         <input type="number" class="qtdProduto" placeholder="Qtd" min="0.01" step="0.01" value="${qtd}">
         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
     `;
-    div.querySelector('.selProduto').addEventListener('input', updateTotal);
-    div.querySelector('.selProduto').addEventListener('change', updateTotal);
+    const inputProduto = div.querySelector('.selProduto');
+    ativarAutocompleteProdutos(inputProduto);
+    inputProduto.addEventListener('input', updateTotal);
+    inputProduto.addEventListener('change', updateTotal);
     div.querySelector('.qtdProduto').addEventListener('input', updateTotal);
     return div;
 }

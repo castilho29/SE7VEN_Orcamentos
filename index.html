@@ -85,6 +85,13 @@
         .item-orcamento select{flex:2;min-width:120px;padding:8px;border:1px solid #bdc3c7;border-radius:4px;}
         .item-orcamento input{flex:1;min-width:60px;padding:8px;border:1px solid #bdc3c7;border-radius:4px;}
         .item-orcamento input.selProduto{flex:2;min-width:120px;}
+        .campo-autocomplete{position:relative;}
+        .campo-autocomplete input{width:100%;}
+        .autocomplete-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #bdc3c7;border-top:none;border-radius:0 0 8px 8px;max-height:180px;overflow-y:auto;z-index:200;box-shadow:0 4px 10px rgba(0,0,0,0.12);}
+        .autocomplete-item{padding:8px 10px;font-size:14px;cursor:pointer;border-bottom:1px solid #f0f0f0;text-align:left;}
+        .autocomplete-item:last-child{border-bottom:none;}
+        .autocomplete-item:hover,.autocomplete-item.ativo{background:#e8eaf6;}
+        .autocomplete-item small{display:block;color:#888;font-size:11px;}
         .btn-remove-item{background:#e74c3c;color:white;border:none;border-radius:50%;width:30px;height:30px;font-size:18px;cursor:pointer;}
         
         #totalOrcamento{margin:15px 0;padding:12px;background:#e8eaf6;border-radius:8px;text-align:center;font-size:18px;color:#1a237e;}
@@ -354,12 +361,14 @@
         <div id="tabOrcamento" class="tab-content">
             <section>
                 <h2>📄 Novo Orçamento</h2>
-                <input type="text" id="selCliente" list="datalistClientes" placeholder="🔍 Buscar cliente...">
-                <datalist id="datalistClientes"></datalist>
+                <div class="campo-autocomplete">
+                    <input type="text" id="selCliente" placeholder="🔍 Buscar cliente..." autocomplete="off">
+                </div>
                 <div id="itensOrcamento">
                     <div class="item-orcamento">
-                        <input type="text" class="selProduto" list="datalistProdutos" placeholder="🔍 Buscar produto...">
-                        <datalist id="datalistProdutos"></datalist>
+                        <div class="campo-autocomplete" style="flex:2;min-width:120px;">
+                            <input type="text" class="selProduto" placeholder="🔍 Buscar produto..." autocomplete="off">
+                        </div>
                         <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
                         <button class="btn-remove-item" onclick="removerItem(this)">✕</button>
                     </div>
@@ -689,7 +698,7 @@
 
     <div id="modalDespesa" class="modal"><div class="modal-content"><h3>💸 Nova Despesa</h3><input type="text" id="descricaoDespesa" placeholder="Descrição *"><input type="number" id="valorDespesa" placeholder="Valor *" step="0.01"><select id="categoriaDespesa"><option value="material">Material/Compra</option><option value="combustivel">Combustível</option><option value="ferramenta">Ferramenta</option><option value="aluguel">Aluguel</option><option value="salario">Salário</option><option value="outro">Outro</option></select><input type="date" id="dataDespesa"><select id="statusDespesa"><option value="pendente">⏳ Pendente</option><option value="pago">✅ Pago</option></select><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarDespesa" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalDespesa" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
 
-    <div id="modalVisita" class="modal"><div class="modal-content"><h3>📅 Agendar Visita</h3><input type="text" id="clienteVisita" list="datalistClientes" placeholder="🔍 Buscar cliente..."><input type="datetime-local" id="dataHoraVisita"><textarea id="descricaoVisita" placeholder="Descrição / motivo da visita" style="width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;min-height:60px;resize:vertical;"></textarea><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarVisita" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalVisita" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
+    <div id="modalVisita" class="modal"><div class="modal-content"><h3>📅 Agendar Visita</h3><div class="campo-autocomplete"><input type="text" id="clienteVisita" placeholder="🔍 Buscar cliente..." autocomplete="off"></div><input type="datetime-local" id="dataHoraVisita"><textarea id="descricaoVisita" placeholder="Descrição / motivo da visita" style="width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;min-height:60px;resize:vertical;"></textarea><div style="display:flex;gap:10px;margin-top:10px;"><button id="salvarVisita" class="btn-primary" style="flex:1;">Salvar</button><button id="fecharModalVisita" class="btn-secondary" style="flex:1;">Cancelar</button></div></div></div>
 
     <div id="modalHistoricoCliente" class="modal"><div class="modal-content" style="max-width:500px;"><h3 id="tituloHistoricoCliente">📋 Histórico</h3><div id="conteudoHistoricoCliente"></div><button id="btnFecharHistorico" class="btn-secondary" style="width:100%;margin-top:10px;">Fechar</button></div></div>
 
@@ -699,8 +708,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <!-- ========== CONFIGURAÇÃO E SCRIPT PRINCIPAL ========== -->
-    <script src="config.js?v=6"></script>
-    <script src="script.js?v=6"></script>
+    <script src="config.js?v=7"></script>
+    <script src="script.js?v=7"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
