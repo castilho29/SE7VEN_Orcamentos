@@ -1250,6 +1250,7 @@ function abrirOS(id) {
     const pagamentoTexto = os.forma_pagamento
         ? os.forma_pagamento + (os.forma_pagamento === 'Cartão de Crédito' && os.parcelas > 1 ? ` (${os.parcelas}x)` : '')
         : '—';
+    const reciboExistente = recibos.find(r => r.os_id === os.id);
     document.getElementById('detalhesOS').innerHTML = `
         <div style="margin-bottom:10px;">
             <p><strong>Nº:</strong> ${os.numero}</p>
@@ -1261,6 +1262,7 @@ function abrirOS(id) {
             <p><strong>Assinatura:</strong> ${os.assinatura_cliente
                 ? `✅ Assinado em ${new Date(os.assinatura_data).toLocaleDateString('pt-BR')}`
                 : '⚠️ Ainda não assinado'}</p>
+            ${reciboExistente ? `<p><strong>Recibo:</strong> ✅ ${reciboExistente.numero} já emitido</p>` : ''}
         </div>
         <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -1277,7 +1279,7 @@ function abrirOS(id) {
     document.getElementById('btnIniciarOS').style.display = (souAdmin() && os.status === 'aprovado') ? 'inline-block' : 'none';
     document.getElementById('btnConcluirOS').style.display = (souAdmin() && os.status === 'em_andamento') ? 'inline-block' : 'none';
     document.getElementById('btnCancelarOS').style.display = (souAdmin() && os.status !== 'cancelado' && os.status !== 'concluido') ? 'inline-block' : 'none';
-    document.getElementById('btnEmitirRecibo').style.display = (souAdmin() && os.status === 'concluido') ? 'inline-block' : 'none';
+    document.getElementById('btnEmitirRecibo').style.display = (souAdmin() && os.status === 'concluido' && !reciboExistente) ? 'inline-block' : 'none';
     document.getElementById('btnEditarOS').style.display = souAdmin() ? 'inline-block' : 'none';
     osAtual = os;
     abrirModal('modalOS');
@@ -1450,6 +1452,13 @@ function gerarParcelasCrediario(total, numParcelas, primeiroVencimento, interval
 
 async function emitirRecibo() {
     if (!osAtual || osAtual.status !== 'concluido') { alert('⚠️ A OS precisa estar concluída!'); return; }
+    const reciboExistente = recibos.find(r => r.os_id === osAtual.id);
+    if (reciboExistente) {
+        alert(`ℹ️ Essa OS já tem o recibo ${reciboExistente.numero} emitido — abrindo ele em vez de criar outro.`);
+        fecharModal('modalOS');
+        abrirRecibo(reciboExistente.id);
+        return;
+    }
     const ehCrediario = osAtual.forma_pagamento === 'Crediário Próprio' && osAtual.crediario_num_parcelas;
     const recibo = {
         id: gerarId(),
@@ -1474,7 +1483,14 @@ async function emitirRecibo() {
         registrarLog('RECIBO_EMITIDO', `Recibo ${recibo.numero} emitido para ${osAtual.cliente_nome}`);
         abrirRecibo(recibo.id);
     } catch (e) {
-        alert('❌ Erro ao emitir recibo: ' + e.message);
+        if (e.message?.includes('duplicate key') || e.message?.includes('recibos_os_id_unico')) {
+            alert('ℹ️ Essa OS já tinha um recibo emitido (por outro dispositivo, no mesmo instante). Sincronizando...');
+            await sincronizarDados();
+            const jaExiste = recibos.find(r => r.os_id === osAtual.id);
+            if (jaExiste) abrirRecibo(jaExiste.id);
+        } else {
+            alert('❌ Erro ao emitir recibo: ' + e.message);
+        }
     }
 }
 
@@ -1517,10 +1533,16 @@ function preencherValorAbatimento(reciboId, parcelaId) {
 // Abate um valor QUALQUER do crediário: aplica primeiro na parcela mais antiga em
 // aberto, e o que sobrar (se pagar mais do que ela deve) já cai automaticamente
 // na próxima — recalculando juros/multa de cada parcela na hora.
+let processandoPagamento = false;
+
 async function confirmarAbatimentoCrediario() {
     if (!reciboAtual) return;
+    if (processandoPagamento) return;
     const valorAbatido = parseFloat(document.getElementById('valorAbaterCrediario').value);
     if (!valorAbatido || valorAbatido <= 0) { alert('⚠️ Informe um valor válido para abater'); return; }
+    processandoPagamento = true;
+    const btn = document.getElementById('btnConfirmarAbatimentoCrediario');
+    if (btn) btn.disabled = true;
 
     let restante = valorAbatido;
     const novasParcelas = reciboAtual.parcelas_detalhe.map(p => ({ ...p }));
@@ -1564,6 +1586,9 @@ async function confirmarAbatimentoCrediario() {
         if (restante > 0.004) alert(`ℹ️ Todas as parcelas já foram quitadas. Sobrou R$ ${restante.toFixed(2)} sem aplicar.`);
     } catch (e) {
         alert('❌ Erro ao registrar abatimento: ' + e.message);
+    } finally {
+        processandoPagamento = false;
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -1671,7 +1696,7 @@ function abrirRecibo(id) {
             }).join('')}
             <div style="display:flex;gap:6px;margin-top:10px;">
                 <input type="number" id="valorAbaterCrediario" placeholder="Valor a abater (R$)" step="0.01" min="0.01" style="flex:1;margin:0;">
-                <button onclick="confirmarAbatimentoCrediario()" class="btn-success" style="white-space:nowrap;">💰 Abater</button>
+                <button id="btnConfirmarAbatimentoCrediario" onclick="confirmarAbatimentoCrediario()" class="btn-success" style="white-space:nowrap;">💰 Abater</button>
             </div>
             <p style="font-size:11px;color:#888;margin-top:5px;">Aceita qualquer valor — abate primeiro na parcela mais antiga em aberto e o restante já cai na próxima automaticamente.</p>
         </div>` : ''}

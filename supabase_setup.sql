@@ -188,6 +188,11 @@ alter table recibos add column if not exists pagamentos jsonb default '[]'::json
 alter table recibos add column if not exists valor_recebido numeric default 0;
 alter table recibos add column if not exists parcelas_detalhe jsonb default '[]'::jsonb;
 
+-- Garante no banco (não só na tela) que uma mesma OS nunca gere dois recibos,
+-- mesmo que dois dispositivos tentem emitir ao mesmo tempo.
+drop index if exists recibos_os_id_unico;
+create unique index recibos_os_id_unico on recibos (os_id) where os_id is not null;
+
 create table if not exists logs (
     id bigserial primary key,
     data timestamptz default now(),
