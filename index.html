@@ -1,68 +1,82 @@
-<button id="btnAddDespesa" class="btn-secondary" style="margin-top:10px;">+ Lançar Nova Despesa</button>
-            </section>
+</section>
         </div>
 
         <!-- TAB CAIXA -->
         <div id="tabCaixa" class="tab-content">
-            <section>
+            <section class="card">
                 <h2>💵 Fluxo de Caixa</h2>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px;">
-                    <div class="dash-card" style="background:#e8f5e9;border-left:4px solid #27ae60;">
-                        <div class="dash-label">Entradas</div>
-                        <div class="dash-valor" id="caixaEntradas">R$ 0,00</div>
+                
+                <div class="dash-grid">
+                    <div class="dash-card entrada">
+                        <span class="dash-label">Entradas</span>
+                        <strong class="dash-valor" id="caixaEntradas">R$ 0,00</strong>
                     </div>
-                    <div class="dash-card" style="background:#fdecea;border-left:4px solid #e74c3c;">
-                        <div class="dash-label">Saídas</div>
-                        <div class="dash-valor" id="caixaSaidas">R$ 0,00</div>
+                    <div class="dash-card salida">
+                        <span class="dash-label">Saídas</span>
+                        <strong class="dash-valor" id="caixaSaidas">R$ 0,00</strong>
                     </div>
-                    <div class="dash-card" style="background:#e3f2fd;border-left:4px solid #1a237e;">
-                        <div class="dash-label">Saldo</div>
-                        <div class="dash-valor" id="caixaSaldo">R$ 0,00</div>
+                    <div class="dash-card saldo">
+                        <span class="dash-label">Saldo em Caixa</span>
+                        <strong class="dash-valor" id="caixaSaldo">R$ 0,00</strong>
                     </div>
                 </div>
-                <div style="display:flex;gap:10px;margin-bottom:10px;">
-                    <input type="date" id="caixaDataInicio" style="flex:1;">
-                    <input type="date" id="caixaDataFim" style="flex:1;">
-                    <button class="btn-info" onclick="filtrarCaixa()">Filtrar</button>
+
+                <div class="filter-bar">
+                    <input type="date" id="caixaDataInicio" class="form-control">
+                    <input type="date" id="caixaDataFim" class="form-control">
+                    <button class="btn btn-info" onclick="filtrarCaixa()">Filtrar Periodo</button>
                 </div>
-                <div id="listaCaixa"><p style="color:#999;text-align:center;padding:20px;">Nenhuma movimentação registrada</p></div>
+
+                <div id="listaCaixa" class="data-list">
+                    <p class="empty-msg">Nenhuma movimentação registrada no período.</p>
+                </div>
             </section>
         </div>
 
         <!-- TAB AGENDA -->
         <div id="tabAgenda" class="tab-content">
-            <section>
-                <h2>📅 Agenda & Visitas Técnicas</h2>
-                <button id="btnAddAgendamento" class="btn-secondary" style="margin-bottom:10px;">+ Novo Agendamento</button>
-                <div id="listaAgenda"><p style="color:#999;text-align:center;padding:20px;">Nenhum evento agendado</p></div>
+            <section class="card">
+                <div class="section-header">
+                    <h2>📅 Agenda & Visitas Técnicas</h2>
+                    <button id="btnAddAgendamento" class="btn btn-secondary" onclick="abrirModal('modalAgendamento')">+ Novo Agendamento</button>
+                </div>
+                <div id="listaAgenda" class="data-list">
+                    <p class="empty-msg">Nenhum evento agendado.</p>
+                </div>
             </section>
         </div>
 
         <!-- TAB CÁLCULOS -->
         <div id="tabCalculos" class="tab-content">
-            <section>
-                <h2>🧮 Dimensionamento Elétrico Rápidos</h2>
-                <div class="calc-card">
-                    <h3>⚡ Seção do Condutor (Queda de Tensão)</h3>
-                    <label>Corrente de Projeto (A):</label>
-                    <input type="number" id="calcCorrente" placeholder="Ex: 25">
-                    <label>Distância (m):</label>
-                    <input type="number" id="calcDistancia" placeholder="Ex: 30">
-                    <label>Tensão (V):</label>
-                    <select id="calcTensao">
-                        <option value="127">127V Monofásico</option>
-                        <option value="220" selected>220V Monofásico/Bifásico</option>
-                        <option value="380">380V Trifásico</option>
-                    </select>
-                    <button class="btn-primary" onclick="calcularCaboRapido()" style="margin-top:10px;">Calcular Seção Recomendada</button>
-                    <div id="resCalcCabo" class="resultado" style="display:none;"></div>
+            <section class="card">
+                <h2>🧮 Dimensionamento Elétrico Rápido</h2>
+                <div class="calc-box">
+                    <h3>⚡ Queda de Tensão & Seção do Condutor</h3>
+                    <div class="form-group">
+                        <label for="calcCorrente">Corrente de Projeto (A):</label>
+                        <input type="number" id="calcCorrente" class="form-control" placeholder="Ex: 25">
+                    </div>
+                    <div class="form-group">
+                        <label for="calcDistancia">Distância do Circuito (m):</label>
+                        <input type="number" id="calcDistancia" class="form-control" placeholder="Ex: 30">
+                    </div>
+                    <div class="form-group">
+                        <label for="calcTensao">Tensão Nominal:</label>
+                        <select id="calcTensao" class="form-control">
+                            <option value="127">127V Monofásico</option>
+                            <option value="220" selected>220V Monofásico / Bifásico</option>
+                            <option value="380">380V Trifásico</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="calcularCaboRapido()">Calcular Bitola Recomendada</button>
+                    <div id="resCalcCabo" class="calc-result" style="display:none;"></div>
                 </div>
             </section>
         </div>
 
         <!-- TAB LOGS -->
         <div id="tabLogs" class="tab-content">
-            <section>
+            <section class="card">
                 <h2>📋 Logs do Sistema</h2>
                 <div class="log-list" id="listaLogs"></div>
             </section>
@@ -70,106 +84,146 @@
 
         <!-- TAB USUÁRIOS -->
         <div id="tabUsuarios" class="tab-content">
-            <section>
-                <h2>👥 Gestão de Usuários e Permissões</h2>
+            <section class="card">
+                <h2>👥 Gestão de Usuários</h2>
                 <div class="user-list" id="listaUsuarios"></div>
             </section>
         </div>
 
-        <!-- TAB CONFIGURACÃO -->
+        <!-- TAB CONFIGURAÇÃO -->
         <div id="tabConfig" class="tab-content">
-            <section>
+            <section class="card">
                 <h2>⚙️ Configurações & Backup</h2>
-                <div class="backup-info">
-                    <h3>📦 Backup Local e Exportação</h3>
-                    <div class="backup-grid">
-                        <button class="btn-backup" onclick="exportarDadosJSON()">📥 Exportar Backup (JSON)</button>
-                        <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📤 Importar Backup (JSON)</button>
-                        <button class="btn-danger" onclick="limparDadosLocais()">🗑️ Limpar Cache Local</button>
+                <div class="backup-section">
+                    <h3>📦 Gerenciamento de Dados</h3>
+                    <div class="button-group">
+                        <button class="btn btn-backup" onclick="exportarDadosJSON()">📥 Exportar Backup (JSON)</button>
+                        <button class="btn btn-restore" onclick="document.getElementById('fileInput').click()">📤 Importar Backup (JSON)</button>
+                        <input type="file" id="fileInput" style="display:none" onchange="importarDadosJSON(event)">
+                        <button class="btn btn-danger" onclick="limparDadosLocais()">🗑️ Limpar Banco Local</button>
                     </div>
                 </div>
             </section>
         </div>
     </div>
 
-    <!-- ========== MODAIS ========== -->
+    <!-- ==================== MODAIS ==================== -->
 
     <!-- MODAL CLIENTE -->
     <div id="modalCliente" class="modal">
-        <div class="modal-content">
+        <div class="modal-content card">
             <h3 id="tituloModalCliente">👤 Adicionar Cliente</h3>
             <input type="hidden" id="idCliente">
-            <input type="text" id="nomeCliente" placeholder="Nome Completo *">
-            <input type="text" id="documentoCliente" placeholder="CPF ou CNPJ">
-            <input type="tel" id="telefoneCliente" placeholder="Telefone / WhatsApp *">
-            <input type="email" id="emailCliente" placeholder="E-mail">
-            <input type="text" id="enderecoCliente" placeholder="Endereço Completo">
-            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:15px;">
-                <button class="btn-secondary" onclick="fecharModal('modalCliente')">Cancelar</button>
-                <button class="btn-success" onclick="salvarCliente()">Salvar</button>
+            <div class="form-group">
+                <input type="text" id="nomeCliente" class="form-control" placeholder="Nome Completo *">
+            </div>
+            <div class="form-group">
+                <input type="text" id="documentoCliente" class="form-control" placeholder="CPF ou CNPJ">
+            </div>
+            <div class="form-group">
+                <input type="tel" id="telefoneCliente" class="form-control" placeholder="Telefone / WhatsApp *">
+            </div>
+            <div class="form-group">
+                <input type="email" id="emailCliente" class="form-control" placeholder="E-mail">
+            </div>
+            <div class="form-group">
+                <input type="text" id="enderecoCliente" class="form-control" placeholder="Endereço Completo">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="fecharModal('modalCliente')">Cancelar</button>
+                <button class="btn btn-success" onclick="salvarCliente()">Salvar</button>
             </div>
         </div>
     </div>
 
     <!-- MODAL PRODUTO -->
     <div id="modalProduto" class="modal">
-        <div class="modal-content">
+        <div class="modal-content card">
             <h3 id="tituloModalProduto">📦 Adicionar Produto</h3>
             <input type="hidden" id="idProduto">
-            <input type="text" id="nomeProduto" placeholder="Nome do Produto *">
-            <input type="text" id="codigoBarrasProduto" placeholder="Código de Barras">
-            <input type="number" id="precoProduto" step="0.01" placeholder="Preço de Venda (R$) *">
-            <input type="number" id="custoProduto" step="0.01" placeholder="Preço de Custo (R$)">
-            <input type="number" id="estoqueProduto" placeholder="Quantidade em Estoque *" value="0">
-            <input type="number" id="estoqueMinimoProduto" placeholder="Estoque Mínimo (Alerta)" value="2">
-            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:15px;">
-                <button class="btn-secondary" onclick="fecharModal('modalProduto')">Cancelar</button>
-                <button class="btn-success" onclick="salvarProduto()">Salvar</button>
+            <div class="form-group">
+                <input type="text" id="nomeProduto" class="form-control" placeholder="Nome do Produto *">
+            </div>
+            <div class="form-group">
+                <input type="text" id="codigoBarrasProduto" class="form-control" placeholder="Código de Barras">
+            </div>
+            <div class="form-group">
+                <input type="number" id="precoProduto" step="0.01" class="form-control" placeholder="Preço de Venda (R$) *">
+            </div>
+            <div class="form-group">
+                <input type="number" id="custoProduto" step="0.01" class="form-control" placeholder="Preço de Custo (R$)">
+            </div>
+            <div class="form-group">
+                <input type="number" id="estoqueProduto" class="form-control" placeholder="Quantidade em Estoque *" value="0">
+            </div>
+            <div class="form-group">
+                <input type="number" id="estoqueMinimoProduto" class="form-control" placeholder="Estoque Mínimo (Alerta)" value="2">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="fecharModal('modalProduto')">Cancelar</button>
+                <button class="btn btn-success" onclick="salvarProduto()">Salvar</button>
             </div>
         </div>
     </div>
 
     <!-- MODAL DESPESA -->
     <div id="modalDespesa" class="modal">
-        <div class="modal-content">
+        <div class="modal-content card">
             <h3>💸 Nova Despesa</h3>
-            <input type="text" id="descDespesa" placeholder="Descrição da Despesa *">
-            <input type="number" id="valorDespesa" step="0.01" placeholder="Valor (R$) *">
-            <input type="date" id="vencimentoDespesa">
-            <select id="categoriaDespesa">
-                <option value="Fornecedores">Fornecedores / Materiais</option>
-                <option value="Ferramentas">Ferramentas e Equipamentos</option>
-                <option value="Combustível">Combustível e Transporte</option>
-                <option value="Pro-labore">Pró-labore / Salários</option>
-                <option value="Outros">Outras Despesas</option>
-            </select>
-            <select id="statusDespesa">
-                <option value="pendente">⏳ Pendente</option>
-                <option value="pago">✅ Pago</option>
-            </select>
-            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:15px;">
-                <button class="btn-secondary" onclick="fecharModal('modalDespesa')">Cancelar</button>
-                <button class="btn-success" onclick="salvarDespesa()">Salvar</button>
+            <div class="form-group">
+                <input type="text" id="descDespesa" class="form-control" placeholder="Descrição da Despesa *">
+            </div>
+            <div class="form-group">
+                <input type="number" id="valorDespesa" step="0.01" class="form-control" placeholder="Valor (R$) *">
+            </div>
+            <div class="form-group">
+                <input type="date" id="vencimentoDespesa" class="form-control">
+            </div>
+            <div class="form-group">
+                <select id="categoriaDespesa" class="form-control">
+                    <option value="Fornecedores">Fornecedores / Materiais</option>
+                    <option value="Ferramentas">Ferramentas e Equipamentos</option>
+                    <option value="Combustível">Combustível e Transporte</option>
+                    <option value="Pro-labore">Pró-labore / Salários</option>
+                    <option value="Outros">Outras Despesas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <select id="statusDespesa" class="form-control">
+                    <option value="pendente">⏳ Pendente</option>
+                    <option value="pago">✅ Pago</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="fecharModal('modalDespesa')">Cancelar</button>
+                <button class="btn btn-success" onclick="salvarDespesa()">Salvar</button>
             </div>
         </div>
     </div>
 
     <!-- MODAL AGENDAMENTO -->
     <div id="modalAgendamento" class="modal">
-        <div class="modal-content">
+        <div class="modal-content card">
             <h3>📅 Novo Agendamento / Visita</h3>
-            <input type="text" id="tituloAgendamento" placeholder="Título / Motivo *">
-            <input type="text" id="clienteAgendamento" placeholder="Cliente">
-            <input type="datetime-local" id="dataHoraAgendamento">
-            <textarea id="obsAgendamento" placeholder="Observações e endereço da visita" style="width:100%;height:80px;padding:8px;margin:5px 0;border:1px solid #bdc3c7;border-radius:4px;"></textarea>
-            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:15px;">
-                <button class="btn-secondary" onclick="fecharModal('modalAgendamento')">Cancelar</button>
-                <button class="btn-success" onclick="salvarAgendamento()">Salvar</button>
+            <div class="form-group">
+                <input type="text" id="tituloAgendamento" class="form-control" placeholder="Título / Motivo *">
+            </div>
+            <div class="form-group">
+                <input type="text" id="clienteAgendamento" class="form-control" placeholder="Cliente">
+            </div>
+            <div class="form-group">
+                <input type="datetime-local" id="dataHoraAgendamento" class="form-control">
+            </div>
+            <div class="form-group">
+                <textarea id="obsAgendamento" class="form-control" placeholder="Observações e endereço da visita"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="fecharModal('modalAgendamento')">Cancelar</button>
+                <button class="btn btn-success" onclick="salvarAgendamento()">Salvar</button>
             </div>
         </div>
     </div>
 
-    <!-- SCRIPTS DO SISTEMA -->
     <script src="script.js"></script>
 </body>
 </html>
