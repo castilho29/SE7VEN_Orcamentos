@@ -1,750 +1,175 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Se7ven Soluções Energéticas</title>
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-main: #f4f6f9;
-            --bg-card: #ffffff;
-            --primary: #0f172a;       /* Azul Escuro / Slate */
-            --primary-accent: #1e293b;
-            --accent: #f97316;        /* Laranja Energia / Solar */
-            --accent-hover: #ea580c;
-            --text-main: #334155;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --success: #10b981;
-            --danger: #ef4444;
-            --radius: 12px;
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.05);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', system-ui, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
-
-        /* Container Principal com Estilo Mobile/App */
-        .app-container {
-            width: 100%;
-            max-width: 480px;
-            background-color: var(--bg-card);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 0 25px rgba(0,0,0,0.08);
-            position: relative;
-        }
-
-        @media (min-width: 768px) {
-            .app-container {
-                max-width: 900px;
-                min-height: 92vh;
-                margin: 20px auto;
-                border-radius: 20px;
-                overflow: hidden;
-                border: 1px solid var(--border);
-            }
-        }
-
-        /* HEADER DO APP */
-        header {
-            background: linear-gradient(135deg, var(--primary), var(--primary-accent));
-            color: #ffffff;
-            padding: 20px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: var(--shadow);
-        }
-
-        header h1 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        header h1 span {
-            color: var(--accent);
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .user-badge {
-            font-size: 0.85rem;
-            background: rgba(255,255,255,0.1);
-            padding: 6px 12px;
-            border-radius: 20px;
-            backdrop-filter: blur(5px);
-        }
-
-        .btn-logout {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ffffff;
-            border: 1px solid rgba(239, 68, 68, 0.4);
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            cursor: pointer;
-        }
-
-        /* STATUS / BARRA SUPERIOR */
-        .status-bar {
-            background: #f8fafc;
-            border-bottom: 1px solid var(--border);
-            padding: 8px 16px;
-            font-size: 0.75rem;
-            display: flex;
-            justify-content: space-between;
-            color: var(--text-muted);
-        }
-
-        .status-indicator {
-            font-weight: 600;
-        }
-
-        .status-indicator.online { color: var(--success); }
-        .status-indicator.sincronizando { color: var(--accent); }
-        .status-indicator.offline { color: var(--danger); }
-
-        /* BARRA DE NAVEGAÇÃO DE ABAS */
-        .nav-tabs {
-            display: flex;
-            background: #ffffff;
-            border-bottom: 1px solid var(--border);
-            overflow-x: auto;
-            scrollbar-width: none;
-        }
-
-        .nav-tabs::-webkit-scrollbar { display: none; }
-
-        .tab-btn {
-            flex: 1;
-            min-width: 75px;
-            padding: 14px 8px;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        .tab-btn.active {
-            color: var(--accent);
-            border-bottom-color: var(--accent);
-            background: rgba(249, 115, 22, 0.04);
-        }
-
-        /* CONTEÚDO DAS ABAS */
-        .tab-content {
-            display: none;
-            padding: 20px;
-            animation: fadeIn 0.25s ease-in-out;
-        }
-
-        .tab-content.active { display: block; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* DASHBOARD / CARDS */
-        .dash-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .dash-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            padding: 16px;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .dash-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 4px; height: 100%;
-        }
-
-        .dash-card.entradas::before { background-color: var(--success); }
-        .dash-card.saidas::before { background-color: var(--danger); }
-        .dash-card.saldo::before { background-color: var(--accent); }
-
-        .dash-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-        }
-
-        .dash-valor {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        /* FORMULÁRIOS E INPUTS */
-        label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-main);
-            margin: 12px 0 6px;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            background-color: var(--bg-main);
-            font-size: 0.95rem;
-            color: var(--text-main);
-            outline: none;
-            transition: border 0.2s;
-        }
-
-        input:focus, select:focus {
-            border-color: var(--accent);
-            background-color: #ffffff;
-        }
-
-        /* BOTÕES */
-        .btn-primary {
-            background-color: var(--accent);
-            color: #ffffff;
-            border: none;
-            padding: 14px;
-            border-radius: var(--radius);
-            font-size: 0.95rem;
-            font-weight: 600;
-            width: 100%;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            margin-top: 10px;
-            box-shadow: 0 4px 10px rgba(249, 115, 22, 0.25);
-        }
-
-        .btn-primary:hover { background-color: var(--accent-hover); }
-
-        .btn-secondary {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 12px;
-            border-radius: var(--radius);
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .btn-success {
-            background-color: var(--success);
-            color: #ffffff;
-            border: none;
-            padding: 12px 16px;
-            border-radius: var(--radius);
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        /* LISTAS & CARDS DE ITEM */
-        .item-list {
-            list-style: none;
-            margin-top: 15px;
-        }
-
-        .item-card {
-            background: #ffffff;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 12px 16px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* MODAIS REFINADOS */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 16px;
-        }
-
-        .modal-content {
-            background: #ffffff;
-            width: 100%;
-            max-width: 440px;
-            border-radius: var(--radius);
-            padding: 24px;
-            box-shadow: var(--shadow-lg);
-            animation: fadeIn 0.2s ease;
-        }
-
-        .modal-content h3 {
-            font-size: 1.1rem;
-            color: var(--primary);
-            margin-bottom: 16px;
-        }
-
-        /* CALCULADORA CARD */
-        .calc-card {
-            background: #ffffff;
-            border: 1px solid var(--border);
-            padding: 20px;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-        }
-
-        .resultado-box {
-            margin-top: 15px;
-            padding: 12px;
-            background: rgba(249, 115, 22, 0.08);
-            border-left: 4px solid var(--accent);
-            border-radius: 6px;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        /* TELA DE LOGIN / AGUARDANDO */
-        .auth-screen {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 30px 20px;
-            min-height: 100vh;
-        }
-
-        .auth-card {
-            width: 100%;
-            max-width: 360px;
-            background: #ffffff;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 24px;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .log-container {
-            background: var(--primary);
-            color: #a7f3d0;
-            font-family: monospace;
-            padding: 12px;
-            border-radius: var(--radius);
-            max-height: 250px;
-            overflow-y: auto;
-            font-size: 0.8rem;
-        }
-
-        .log-entry {
-            margin-bottom: 6px;
-            display: flex;
-            justify-content: space-between;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- CONTAINER PRINCIPAL -->
-    <div class="app-container">
-
-        <!-- TELA DE LOGIN (EXIBIDA SE NÃO AUTENTICADO) -->
-        <div id="loginScreen" class="auth-screen">
-            <div class="auth-card">
-                <h2 style="text-align:center; color: var(--primary); margin-bottom:15px;">⚡ Se7ven <span>Solar</span></h2>
-                <div id="loginError" style="display:none; color:var(--danger); font-size:0.85rem; margin-bottom:10px;"></div>
-                <div id="loginSucesso" style="display:none; color:var(--success); font-size:0.85rem; margin-bottom:10px;">Cadastro realizado! Aguarde aprovação.</div>
-
-                <input type="text" id="loginNome" placeholder="Nome Completo" style="display:none; margin-bottom:10px;">
-                <input type="email" id="loginEmail" placeholder="Seu e-mail" style="margin-bottom:10px;">
-                <input type="password" id="loginSenha" placeholder="Sua senha" style="margin-bottom:15px;">
-
-                <button id="btnEntrar" class="btn-primary" onclick="fazerLogin()">🔑 Entrar</button>
-                <button id="btnAlternarCadastro" class="btn-secondary" style="width:100%; margin-top:10px;" onclick="alternarModoCadastro()">Não tem conta? Criar uma agora</button>
-            </div>
+<button id="btnAddDespesa" class="btn-secondary" style="margin-top:10px;">+ Lançar Nova Despesa</button>
+            </section>
         </div>
 
-        <!-- TELA DE AGUARDANDO APROVAÇÃO -->
-        <div id="pendingScreen" class="auth-screen" style="display:none;">
-            <div class="auth-card" style="text-align:center;">
-                <h3>⏳ Cadastro em Análise</h3>
-                <p style="font-size:0.9rem; color:var(--text-muted); margin: 15px 0;">Seu acesso foi registrado e aguarda liberação pelo administrador.</p>
-                <button class="btn-secondary" onclick="fazerLogout()">Sair</button>
-            </div>
-        </div>
-
-        <!-- TELA DO SISTEMA PRINCIPAL -->
-        <div id="sistemaScreen" style="display:none;">
-            <!-- HEADER -->
-            <header>
-                <h1>⚡ Se7ven <span>Solar</span></h1>
-                <div class="header-actions">
-                    <div class="user-badge" id="nomeUsuario">José Castilho</div>
-                    <button class="btn-logout" onclick="fazerLogout()">Sair</button>
-                </div>
-            </header>
-
-            <!-- BARRA DE STATUS -->
-            <div class="status-bar">
-                <span id="syncStatus" class="status-indicator online">🟢 Online</span>
-                <span id="ultimaSync">v<span id="versaoApp">2.4.0</span></span>
-            </div>
-
-            <!-- NAVEGAÇÃO DE ABAS -->
-            <nav class="nav-tabs">
-                <button class="tab-btn active" onclick="abrirTab('tabCaixa')">Caixa</button>
-                <button class="tab-btn" onclick="abrirTab('tabAgenda')">Agenda</button>
-                <button class="tab-btn" onclick="abrirTab('tabCalculos')">Cálculos</button>
-                <button class="tab-btn" onclick="abrirTab('tabLogs')">Logs</button>
-                <button class="tab-btn" onclick="abrirTab('tabUsuarios')">Usuários</button>
-                <button class="tab-btn" onclick="abrirTab('tabConfig')">Ajustes</button>
-            </nav>
-
-            <!-- TAB CAIXA -->
-            <div id="tabCaixa" class="tab-content active">
-                <div class="dash-grid">
-                    <div class="dash-card entradas">
+        <!-- TAB CAIXA -->
+        <div id="tabCaixa" class="tab-content">
+            <section>
+                <h2>💵 Fluxo de Caixa</h2>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px;">
+                    <div class="dash-card" style="background:#e8f5e9;border-left:4px solid #27ae60;">
                         <div class="dash-label">Entradas</div>
                         <div class="dash-valor" id="caixaEntradas">R$ 0,00</div>
                     </div>
-                    <div class="dash-card saidas">
+                    <div class="dash-card" style="background:#fdecea;border-left:4px solid #e74c3c;">
                         <div class="dash-label">Saídas</div>
                         <div class="dash-valor" id="caixaSaidas">R$ 0,00</div>
                     </div>
+                    <div class="dash-card" style="background:#e3f2fd;border-left:4px solid #1a237e;">
+                        <div class="dash-label">Saldo</div>
+                        <div class="dash-valor" id="caixaSaldo">R$ 0,00</div>
+                    </div>
                 </div>
-                <div class="dash-card saldo" style="margin-bottom:20px;">
-                    <div class="dash-label">Saldo em Caixa</div>
-                    <div class="dash-valor" id="caixaSaldo">R$ 0,00</div>
+                <div style="display:flex;gap:10px;margin-bottom:10px;">
+                    <input type="date" id="caixaDataInicio" style="flex:1;">
+                    <input type="date" id="caixaDataFim" style="flex:1;">
+                    <button class="btn-info" onclick="filtrarCaixa()">Filtrar</button>
                 </div>
+                <div id="listaCaixa"><p style="color:#999;text-align:center;padding:20px;">Nenhuma movimentação registrada</p></div>
+            </section>
+        </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
-                    <button id="btnAddCliente" class="btn-secondary">+ Cliente</button>
-                    <button id="btnAddProduto" class="btn-secondary">+ Produto</button>
-                </div>
-                <button id="btnAddDespesa" class="btn-primary" onclick="abrirModal('modalDespesa')">+ Lançar Despesa / Saída</button>
-                <ul id="listaMovimentacoesCaixa" class="item-list"></ul>
-            </div>
+        <!-- TAB AGENDA -->
+        <div id="tabAgenda" class="tab-content">
+            <section>
+                <h2>📅 Agenda & Visitas Técnicas</h2>
+                <button id="btnAddAgendamento" class="btn-secondary" style="margin-bottom:10px;">+ Novo Agendamento</button>
+                <div id="listaAgenda"><p style="color:#999;text-align:center;padding:20px;">Nenhum evento agendado</p></div>
+            </section>
+        </div>
 
-            <!-- TAB AGENDA -->
-            <div id="tabAgenda" class="tab-content">
-                <label for="filtroDataAgenda">Filtrar por data:</label>
-                <input type="date" id="filtroDataAgenda" onchange="carregarAgenda()">
-                <ul id="listaAgenda" class="item-list"></ul>
-                <button id="btnAddAgendamento" class="btn-primary" style="margin-top:15px;">+ Novo Agendamento</button>
-            </div>
-
-            <!-- TAB CÁLCULOS -->
-            <div id="tabCalculos" class="tab-content">
+        <!-- TAB CÁLCULOS -->
+        <div id="tabCalculos" class="tab-content">
+            <section>
+                <h2>🧮 Dimensionamento Elétrico Rápidos</h2>
                 <div class="calc-card">
-                    <h3 style="font-size:1rem; margin-bottom:10px;">⚡ Dimensionamento Rápido</h3>
-                    <label>Potência da Carga (Watts):</label>
-                    <input type="number" id="calcPotencia" placeholder="Ex: 5500">
-                    
+                    <h3>⚡ Seção do Condutor (Queda de Tensão)</h3>
+                    <label>Corrente de Projeto (A):</label>
+                    <input type="number" id="calcCorrente" placeholder="Ex: 25">
+                    <label>Distância (m):</label>
+                    <input type="number" id="calcDistancia" placeholder="Ex: 30">
                     <label>Tensão (V):</label>
                     <select id="calcTensao">
                         <option value="127">127V Monofásico</option>
                         <option value="220" selected>220V Monofásico/Bifásico</option>
                         <option value="380">380V Trifásico</option>
                     </select>
-
-                    <button class="btn-primary" onclick="calcularCorrenteRapida()">Calcular Corrente</button>
-                    <div class="resultado-box" id="resCorrente">Corrente Estimada: 0.00 A</div>
+                    <button class="btn-primary" onclick="calcularCaboRapido()" style="margin-top:10px;">Calcular Seção Recomendada</button>
+                    <div id="resCalcCabo" class="resultado" style="display:none;"></div>
                 </div>
-            </div>
+            </section>
+        </div>
 
-            <!-- TAB LOGS -->
-            <div id="tabLogs" class="tab-content">
-                <h3>📋 Logs do Sistema</h3>
-                <div class="log-container" id="logContainer" style="margin-top:10px;"></div>
-            </div>
+        <!-- TAB LOGS -->
+        <div id="tabLogs" class="tab-content">
+            <section>
+                <h2>📋 Logs do Sistema</h2>
+                <div class="log-list" id="listaLogs"></div>
+            </section>
+        </div>
 
-            <!-- TAB USUÁRIOS -->
-            <div id="tabUsuarios" class="tab-content">
-                <h3>👥 Gestão de Usuários</h3>
-                <div id="listaUsuarios" class="item-list"></div>
-            </div>
+        <!-- TAB USUÁRIOS -->
+        <div id="tabUsuarios" class="tab-content">
+            <section>
+                <h2>👥 Gestão de Usuários e Permissões</h2>
+                <div class="user-list" id="listaUsuarios"></div>
+            </section>
+        </div>
 
-            <!-- TAB CONFIGURAÇÕES -->
-            <div id="tabConfig" class="tab-content">
-                <label>Taxa de Juros Mensal (%):</label>
-                <input type="number" id="cfgJuros" value="1.0" step="0.1">
-                
-                <label>Multa por Atraso (%):</label>
-                <input type="number" id="cfgMulta" value="2.0" step="0.1">
-                
-                <button class="btn-primary" onclick="salvarConfiguracoes()">Salvar Parâmetros</button>
-
-                <hr style="margin:20px 0; border:0; border-top:1px solid var(--border);">
-                <h3>📦 Backup dos Dados</h3>
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button class="btn-secondary" style="flex:1" onclick="exportarDados()">📥 Exportar JSON</button>
-                    <button class="btn-secondary" style="flex:1" onclick="document.getElementById('fileInput').click()">📤 Importar JSON</button>
-                    <input type="file" id="fileInput" style="display:none" onchange="importarDados(event)">
+        <!-- TAB CONFIGURACÃO -->
+        <div id="tabConfig" class="tab-content">
+            <section>
+                <h2>⚙️ Configurações & Backup</h2>
+                <div class="backup-info">
+                    <h3>📦 Backup Local e Exportação</h3>
+                    <div class="backup-grid">
+                        <button class="btn-backup" onclick="exportarDadosJSON()">📥 Exportar Backup (JSON)</button>
+                        <button class="btn-restore" onclick="document.getElementById('fileInput').click()">📤 Importar Backup (JSON)</button>
+                        <button class="btn-danger" onclick="limparDadosLocais()">🗑️ Limpar Cache Local</button>
+                    </div>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 
-    <!-- MODAIS DE CADASTRO -->
+    <!-- ========== MODAIS ========== -->
+
+    <!-- MODAL CLIENTE -->
     <div id="modalCliente" class="modal">
         <div class="modal-content">
-            <h3>👤 Cadastrar Cliente</h3>
-            <input type="hidden" id="cliId">
-            <input type="text" id="cliNome" placeholder="Nome Completo / Razão Social" style="margin-bottom:8px;">
-            <input type="text" id="cliCpfCnpj" placeholder="CPF ou CNPJ" style="margin-bottom:8px;">
-            <input type="text" id="cliTelefone" placeholder="WhatsApp / Telefone" style="margin-bottom:8px;">
-            <input type="text" id="cliEndereco" placeholder="Endereço Completo">
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button class="btn-secondary" style="flex:1;" onclick="fecharModal('modalCliente')">Cancelar</button>
-                <button class="btn-success" style="flex:1;" onclick="salvarCliente()">Salvar</button>
+            <h3 id="tituloModalCliente">👤 Adicionar Cliente</h3>
+            <input type="hidden" id="idCliente">
+            <input type="text" id="nomeCliente" placeholder="Nome Completo *">
+            <input type="text" id="documentoCliente" placeholder="CPF ou CNPJ">
+            <input type="tel" id="telefoneCliente" placeholder="Telefone / WhatsApp *">
+            <input type="email" id="emailCliente" placeholder="E-mail">
+            <input type="text" id="enderecoCliente" placeholder="Endereço Completo">
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:15px;">
+                <button class="btn-secondary" onclick="fecharModal('modalCliente')">Cancelar</button>
+                <button class="btn-success" onclick="salvarCliente()">Salvar</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL PRODUTO -->
     <div id="modalProduto" class="modal">
         <div class="modal-content">
-            <h3>📦 Cadastrar Produto</h3>
-            <input type="hidden" id="prodId">
-            <input type="text" id="prodNome" placeholder="Nome do Produto" style="margin-bottom:8px;">
-            <input type="text" id="prodCodigo" placeholder="SKU / Código de Barras" style="margin-bottom:8px;">
-            <input type="number" id="prodPreco" placeholder="Preço de Venda (R$)" step="0.01" style="margin-bottom:8px;">
-            <input type="number" id="prodEstoque" placeholder="Quantidade em Estoque">
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button class="btn-secondary" style="flex:1;" onclick="fecharModal('modalProduto')">Cancelar</button>
-                <button class="btn-success" style="flex:1;" onclick="salvarProduto()">Salvar</button>
+            <h3 id="tituloModalProduto">📦 Adicionar Produto</h3>
+            <input type="hidden" id="idProduto">
+            <input type="text" id="nomeProduto" placeholder="Nome do Produto *">
+            <input type="text" id="codigoBarrasProduto" placeholder="Código de Barras">
+            <input type="number" id="precoProduto" step="0.01" placeholder="Preço de Venda (R$) *">
+            <input type="number" id="custoProduto" step="0.01" placeholder="Preço de Custo (R$)">
+            <input type="number" id="estoqueProduto" placeholder="Quantidade em Estoque *" value="0">
+            <input type="number" id="estoqueMinimoProduto" placeholder="Estoque Mínimo (Alerta)" value="2">
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:15px;">
+                <button class="btn-secondary" onclick="fecharModal('modalProduto')">Cancelar</button>
+                <button class="btn-success" onclick="salvarProduto()">Salvar</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL DESPESA -->
     <div id="modalDespesa" class="modal">
         <div class="modal-content">
-            <h3>💸 Lançar Nova Despesa</h3>
-            <input type="text" id="despDescricao" placeholder="Ex: Compra de Cabo Solar 6mm" style="margin-bottom:8px;">
-            <input type="number" id="despValor" placeholder="Valor (R$)" step="0.01" style="margin-bottom:8px;">
-            <input type="date" id="despVencimento" style="margin-bottom:8px;">
-            <select id="despStatus">
+            <h3>💸 Nova Despesa</h3>
+            <input type="text" id="descDespesa" placeholder="Descrição da Despesa *">
+            <input type="number" id="valorDespesa" step="0.01" placeholder="Valor (R$) *">
+            <input type="date" id="vencimentoDespesa">
+            <select id="categoriaDespesa">
+                <option value="Fornecedores">Fornecedores / Materiais</option>
+                <option value="Ferramentas">Ferramentas e Equipamentos</option>
+                <option value="Combustível">Combustível e Transporte</option>
+                <option value="Pro-labore">Pró-labore / Salários</option>
+                <option value="Outros">Outras Despesas</option>
+            </select>
+            <select id="statusDespesa">
                 <option value="pendente">⏳ Pendente</option>
                 <option value="pago">✅ Pago</option>
             </select>
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button class="btn-secondary" style="flex:1;" onclick="fecharModal('modalDespesa')">Cancelar</button>
-                <button class="btn-success" style="flex:1;" onclick="salvarDespesa()">Salvar</button>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:15px;">
+                <button class="btn-secondary" onclick="fecharModal('modalDespesa')">Cancelar</button>
+                <button class="btn-success" onclick="salvarDespesa()">Salvar</button>
             </div>
         </div>
     </div>
 
-    <!-- SUPABASE CLIENT SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- MODAL AGENDAMENTO -->
+    <div id="modalAgendamento" class="modal">
+        <div class="modal-content">
+            <h3>📅 Novo Agendamento / Visita</h3>
+            <input type="text" id="tituloAgendamento" placeholder="Título / Motivo *">
+            <input type="text" id="clienteAgendamento" placeholder="Cliente">
+            <input type="datetime-local" id="dataHoraAgendamento">
+            <textarea id="obsAgendamento" placeholder="Observações e endereço da visita" style="width:100%;height:80px;padding:8px;margin:5px 0;border:1px solid #bdc3c7;border-radius:4px;"></textarea>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:15px;">
+                <button class="btn-secondary" onclick="fecharModal('modalAgendamento')">Cancelar</button>
+                <button class="btn-success" onclick="salvarAgendamento()">Salvar</button>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        /* ===== CONFIGURAÇÕES DO SUPABASE ===== */
-        const SUPABASE_URL = "https://SEU_PROJETO.supabase.co"; 
-        const SUPABASE_KEY = "SUA_CHAVE_ANON_PUBLIC";
-        const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
-        const VERSAO = "2.4.0";
-        document.getElementById('versaoApp').innerText = VERSAO;
-
-        let modoCadastro = false;
-        let usuarioAtual = null;
-
-        /* ===== AUTENTICAÇÃO E NAVEGAÇÃO DE TELA ===== */
-        function alternarModoCadastro() {
-            modoCadastro = !modoCadastro;
-            document.getElementById('loginNome').style.display = modoCadastro ? 'block' : 'none';
-            document.getElementById('btnEntrar').innerText = modoCadastro ? '📝 Cadastrar' : '🔑 Entrar';
-            document.getElementById('btnAlternarCadastro').innerText = modoCadastro ? 'Já tem conta? Fazer login' : 'Não tem conta? Criar uma agora';
-            ocultarMensagensLogin();
-        }
-
-        function ocultarMensagensLogin() {
-            document.getElementById('loginError').style.display = 'none';
-            document.getElementById('loginSucesso').style.display = 'none';
-        }
-
-        async function fazerLogin() {
-            ocultarMensagensLogin();
-            const email = document.getElementById('loginEmail').value;
-            const senha = document.getElementById('loginSenha').value;
-
-            if(!email || !senha) {
-                exibirErroLogin("Preencha e-mail e senha.");
-                return;
-            }
-
-            try {
-                if (modoCadastro) {
-                    const nome = document.getElementById('loginNome').value;
-                    const { data, error } = await supabase.auth.signUp({
-                        email, senha, options: { data: { full_name: nome, status: 'pendente' } }
-                    });
-                    if (error) throw error;
-                    document.getElementById('loginSucesso').style.display = 'block';
-                    alternarModoCadastro();
-                } else {
-                    const { data, error } = await supabase.auth.signInWithPassword({ email, senha });
-                    if (error) throw error;
-                    usuarioAtual = data.user;
-                    verificarAprovacao();
-                }
-            } catch (err) {
-                exibirErroLogin(err.message || "Erro de autenticação.");
-            }
-        }
-
-        function exibirErroLogin(msg) {
-            const el = document.getElementById('loginError');
-            el.innerText = '❌ ' + msg;
-            el.style.display = 'block';
-        }
-
-        async function verificarAprovacao() {
-            if (!usuarioAtual) return;
-            const status = usuarioAtual.user_metadata?.status || 'aprovado'; 
-
-            if (status === 'pendente') {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('pendingScreen').style.display = 'flex';
-            } else {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('pendingScreen').style.display = 'none';
-                document.getElementById('sistemaScreen').style.display = 'block';
-                document.getElementById('nomeUsuario').innerText = usuarioAtual.user_metadata?.full_name || usuarioAtual.email;
-                carregarDadosIniciais();
-            }
-        }
-
-        async function fazerLogout() {
-            if (supabase) await supabase.auth.signOut();
-            usuarioAtual = null;
-            document.getElementById('sistemaScreen').style.display = 'none';
-            document.getElementById('pendingScreen').style.display = 'none';
-            document.getElementById('loginScreen').style.display = 'flex';
-        }
-
-        /* ===== GERENCIAMENTO DE ABAS ===== */
-        function abrirTab(tabId) {
-            const tabs = document.querySelectorAll('.tab-content');
-            const btns = document.querySelectorAll('.tab-btn');
-            
-            tabs.forEach(t => t.classList.remove('active'));
-            btns.forEach(b => b.classList.remove('active'));
-
-            const tabSelecionada = document.getElementById(tabId);
-            if (tabSelecionada) tabSelecionada.classList.add('active');
-
-            const btnAtivo = Array.from(btns).find(b => b.getAttribute('onclick').includes(tabId));
-            if (btnAtivo) btnAtivo.classList.add('active');
-        }
-
-        /* ===== MODAIS ===== */
-        function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
-
-        document.getElementById('btnAddCliente').addEventListener('click', () => abrirModal('modalCliente'));
-        document.getElementById('btnAddProduto').addEventListener('click', () => abrirModal('modalProduto'));
-
-        /* ===== LOGICA DE NEGOCIO ===== */
-        async function carregarDadosIniciais() {
-            logEvent("Sistema inicializado.");
-            sincronizarDados();
-        }
-
-        async function sincronizarDados() {
-            const elStatus = document.getElementById('syncStatus');
-            elStatus.innerText = '🔄 Sincronizando...';
-            elStatus.className = 'status-indicator sincronizando';
-
-            try {
-                await new Promise(r => setTimeout(r, 600));
-                elStatus.innerText = '🟢 Online';
-                elStatus.className = 'status-indicator online';
-            } catch (err) {
-                elStatus.innerText = '🔴 Offline / Erro';
-                elStatus.className = 'status-indicator offline';
-            }
-        }
-
-        function calcularCorrenteRapida() {
-            const p = parseFloat(document.getElementById('calcPotencia').value) || 0;
-            const v = parseFloat(document.getElementById('calcTensao').value) || 220;
-            const i = p / v;
-            document.getElementById('resCorrente').innerText = `Corrente Estimada: ${i.toFixed(2)} A`;
-        }
-
-        function logEvent(mensagem) {
-            const container = document.getElementById('logContainer');
-            if (!container) return;
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = `<span>${mensagem}</span> <span>${new Date().toLocaleTimeString()}</span>`;
-            container.prepend(entry);
-        }
-
-        function exportarDados() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ timestamp: new Date() }));
-            const dlAnchorElem = document.createElement('a');
-            dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", `se7ven_backup_${new Date().toISOString().slice(0,10)}.json`);
-            dlAnchorElem.click();
-        }
-
-        function importarDados(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            alert("Dados importados com sucesso!");
-            sincronizarDados();
-        }
-
-        function salvarCliente() { fecharModal('modalCliente'); logEvent("Cliente salvo."); }
-        function salvarProduto() { fecharModal('modalProduto'); logEvent("Produto salvo."); }
-        function salvarDespesa() { fecharModal('modalDespesa'); logEvent("Despesa salva."); }
-        function salvarConfiguracoes() { alert("Parâmetros salvos!"); }
-        function carregarAgenda() {}
-    </script>
+    <!-- SCRIPTS DO SISTEMA -->
+    <script src="script.js"></script>
 </body>
 </html>
