@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SE7VEN ENERGIA - Sistema Completo</title>
+    <title>SE7VEN ENERGIA - ERP Profissional</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,6 +20,7 @@
             --primary: #1a237e;
             --primary-light: #303f9f;
             --primary-soft: #e8eaf6;
+            --sidebar-width: 250px;
             --bg-app: #f4f6f9;
             --surface: #ffffff;
             --text-main: #1e293b;
@@ -46,40 +47,109 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-app);
             color: var(--text-main);
-            padding: 12px;
-            max-width: 520px;
-            margin: 0 auto;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Header */
-        header {
+        /* Estrutura do ERP */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar (Barra Lateral PC) */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; bottom: 0; left: 0;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sidebar-header {
+            padding: 18px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sidebar-header img { height: 40px; width: auto; border-radius: var(--radius-sm); object-fit: contain; }
+        .sidebar-header .logo-title { font-size: 14px; font-weight: 800; color: var(--primary); letter-spacing: 0.5px; }
+
+        /* Menu de Navegação */
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            width: 100%;
+            text-align: left;
+            justify-content: flex-start;
+            padding: 11px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-sub);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+        .tab-btn:hover { background: var(--primary-soft); color: var(--primary); }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(26, 35, 126, 0.2);
+        }
+
+        /* Área de Conteúdo */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            width: calc(100% - var(--sidebar-width));
+            transition: margin-left 0.3s ease;
+        }
+
+        /* Header Superior */
+        .top-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: var(--surface);
-            padding: 14px 18px;
+            padding: 12px 20px;
             border-radius: var(--radius-md);
-            margin-bottom: 14px;
-            box-shadow: var(--shadow-md);
+            margin-bottom: 16px;
             border: 1px solid var(--border);
-        }
-        .header-logo { display: flex; align-items: center; gap: 12px; }
-        .header-logo img {
-            height: 44px;
-            width: auto;
-            border-radius: var(--radius-sm);
-            object-fit: contain;
-        }
-        .header-logo .logo-title {
-            font-size: 15px;
-            color: var(--primary);
-            font-weight: 800;
-            letter-spacing: 0.5px;
+            box-shadow: var(--shadow-sm);
         }
 
-        /* Botões */
+        .menu-toggle {
+            display: none;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-size: 18px;
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Botões Globais */
         button {
             font-family: inherit;
             font-size: 13px;
@@ -94,7 +164,7 @@
             justify-content: center;
             gap: 6px;
         }
-        button:active { transform: scale(0.97); }
+        button:active { transform: scale(0.98); }
 
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: var(--primary-light); }
@@ -107,14 +177,14 @@
         .btn-whatsapp { background: var(--whatsapp); color: white; }
         .btn-logout { background: #fee2e2; color: var(--danger); font-size: 12px; padding: 6px 12px; }
 
-        /* Status & Sync */
+        /* Componentes de Status & Sync */
         .status-bar {
             background: var(--primary);
             color: white;
             padding: 12px 16px;
             border-radius: var(--radius-sm);
             font-size: 13px;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             text-align: center;
             font-weight: 600;
             box-shadow: var(--shadow-sm);
@@ -125,9 +195,9 @@
 
         .sync-info {
             background: var(--surface);
-            padding: 14px 16px;
+            padding: 16px;
             border-radius: var(--radius-md);
-            margin-bottom: 14px;
+            margin-bottom: 16px;
             border: 1px solid var(--border);
             box-shadow: var(--shadow-sm);
         }
@@ -135,33 +205,41 @@
         .sync-status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .sync-status .status { font-size: 12px; font-weight: 500; color: var(--text-sub); }
 
-        /* Abas Deslizantes */
-        .tab-container {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 14px;
-            overflow-x: auto;
-            padding-bottom: 6px;
-            -webkit-overflow-scrolling: touch;
+        /* Dashboard em Grid */
+        #dashboardGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
         }
-        .tab-container::-webkit-scrollbar { display: none; }
-        .tab-btn {
-            white-space: nowrap;
-            padding: 8px 14px;
+        .dash-card {
+            padding: 16px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--border);
             background: var(--surface);
-            color: var(--text-sub);
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            flex-shrink: 0;
+            transition: transform 0.2s ease;
         }
-        .tab-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-            box-shadow: 0 3px 10px rgba(26, 35, 126, 0.25);
+        .dash-card:hover { transform: translateY(-2px); }
+        .dash-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 6px; }
+        .dash-valor { font-size: 20px; font-weight: 800; }
+
+        /* Seções e Listas */
+        section {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
         }
+        h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary-soft);
+            padding-bottom: 8px;
+        }
+
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.2s ease-out; }
 
@@ -170,25 +248,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Seções e Cards */
-        section {
-            background: var(--surface);
-            border-radius: var(--radius-md);
-            padding: 18px;
-            margin-bottom: 14px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border);
-        }
-        h2 {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 14px;
-            color: var(--primary);
-            border-bottom: 2px solid var(--primary-soft);
-            padding-bottom: 8px;
-        }
-
-        /* Campos de Entrada */
+        /* Campos de Formulário */
         input, select, textarea {
             width: 100%;
             padding: 11px 14px;
@@ -207,24 +267,7 @@
             box-shadow: 0 0 0 3px rgba(48, 63, 159, 0.15);
         }
 
-        /* Dashboard Cards */
-        #dashboardGrid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-        .dash-card {
-            padding: 14px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border);
-            transition: transform 0.2s ease;
-        }
-        .dash-card:hover { transform: translateY(-2px); }
-        .dash-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 6px; }
-        .dash-valor { font-size: 18px; font-weight: 800; }
-
-        /* Listas */
-        ul { list-style: none; margin: 10px 0; max-height: 280px; overflow-y: auto; }
+        ul { list-style: none; margin: 10px 0; max-height: 300px; overflow-y: auto; }
         li {
             padding: 12px;
             border-bottom: 1px solid var(--border);
@@ -232,8 +275,8 @@
             justify-content: space-between;
             align-items: center;
         }
+        li:nth-child(even) { background: #f8fafc; }
 
-        /* Orçamento */
         .item-orcamento {
             display: flex;
             gap: 8px;
@@ -244,7 +287,6 @@
             border: 1px solid var(--border);
         }
 
-        /* Modais */
         .modal {
             display: none;
             position: fixed;
@@ -253,22 +295,21 @@
             backdrop-filter: blur(4px);
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 2000;
             padding: 14px;
         }
         .modal-content {
             background: var(--surface);
-            padding: 22px;
+            padding: 24px;
             border-radius: var(--radius-lg);
             width: 100%;
-            max-width: 480px;
+            max-width: 500px;
             max-height: 88vh;
             overflow-y: auto;
             box-shadow: var(--shadow-lg);
             border: 1px solid var(--border);
         }
 
-        /* Login */
         .login-screen {
             display: flex;
             flex-direction: column;
@@ -280,32 +321,23 @@
         .login-screen h1 { color: var(--primary); font-size: 24px; margin-bottom: 20px; font-weight: 800; }
         .login-screen input { max-width: 320px; }
 
-        .backup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
         .paginacao { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-        .os-card { background: #f8fafc; border-radius: var(--radius-sm); padding: 14px; margin: 10px 0; border-left: 4px solid var(--primary); border: 1px solid var(--border); }
-
-        /* ===== TELAS GRANDES (PC / Tablet) ===== */
-        @media (min-width: 850px) {
-            body { max-width: 1100px; padding: 24px; }
-            header { padding: 18px 24px; }
-            .header-logo img { height: 56px; }
-            .header-logo .logo-title { font-size: 20px; }
-            
-            #dashboardGrid {
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 16px !important;
-            }
-            
-            .tab-container { gap: 8px; flex-wrap: wrap; }
-            .tab-btn { font-size: 13px; padding: 10px 18px; border-radius: var(--radius-sm); }
-            section { padding: 24px; }
-            .modal-content { max-width: 580px; padding: 28px; }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 999;
         }
 
-        @media (min-width: 1200px) {
-            body { max-width: 1280px; }
-            #dashboardGrid { grid-template-columns: repeat(6, 1fr) !important; }
+        /* ===== ADAPTAÇÃO PARA CELULAR ===== */
+        @media (max-width: 850px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main-content { margin-left: 0; width: 100%; padding: 12px; }
+            .menu-toggle { display: inline-flex; }
         }
     </style>
 </head>
@@ -348,195 +380,239 @@
         <button onclick="fazerLogout()" class="btn-secondary">Sair</button>
     </div>
 
-    <!-- SISTEMA PRINCIPAL -->
+    <!-- SISTEMA PRINCIPAL COM SIDEBAR -->
     <div id="sistemaScreen" style="display:none;">
-        <header>
-            <div class="header-logo" id="headerLogo">
-                <img src="logo.png" alt="SE7VEN ENERGIA" class="logo-dinamica" onerror="this.style.display='none'">
-                <h1 class="logo-title">SE7VEN SOLUÇÕES ENERGÉTICAS</h1>
-            </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
-                    <span>👤 <strong id="nomeUsuario" style="color:var(--primary);">Admin</strong></span>
-                    <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+        <div class="app-container">
+            <!-- BARRA LATERAL (SIDEBAR) -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <img src="logo.png" alt="SE7VEN" class="logo-dinamica" onerror="this.style.display='none'">
+                    <span class="logo-title">SE7VEN ENERGIA</span>
                 </div>
-            </div>
-        </header>
 
-        <div id="statusBar" class="status-bar">✅ Sistema pronto para uso</div>
+                <nav class="sidebar-menu">
+                    <button class="tab-btn active" onclick="selecionarTab('tabDashboard')">📊 Resumo</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabClientes')">👤 Clientes</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabProdutos')">📦 Produtos</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabOrcamento')">📄 Orçamento</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabOS')">🔧 Ordens de Serviço</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabRecibos')">💰 Recibos</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabDespesas')">💸 Despesas</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabCaixa')">💵 Caixa</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabAgenda')">📅 Agenda</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabCalculos')">🧮 Cálculos</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabLogs')">📋 Logs</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabUsuarios')">👥 Usuários</button>
+                    <button class="tab-btn" onclick="selecionarTab('tabConfig')">⚙️ Configurações</button>
+                </nav>
 
-        <!-- SINCRONIZAÇÃO -->
-        <div class="sync-info">
-            <strong>🔄 SINCRONIZAÇÃO COM SUPABASE</strong>
-            <div class="sync-status">
-                <span class="status" id="syncStatus">🔄 Aguardando...</span>
-                <button class="btn-primary" onclick="sincronizarDados()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizar</button>
-                <span style="font-size:10px;color:#999;" id="ultimaSync">Última: nunca</span>
-            </div>
-            <div id="syncProgress" style="display:none;margin-top:5px;font-size:12px;color:var(--primary);">⏳ Sincronizando...</div>
-            <div id="bannerOffline" style="display:none;margin-top:8px;padding:8px 10px;background:#fff3cd;color:#856404;border-radius:6px;font-size:12px;"></div>
-            <div id="indicadorFilaOffline" style="display:none;margin-top:8px;padding:8px 10px;background:#fde8d7;color:#8a4b0a;border-radius:6px;font-size:12px;"></div>
-        </div>
+                <div style="padding: 12px; border-top: 1px solid var(--border);">
+                    <button class="btn-logout" onclick="fazerLogout()" style="width:100%; text-align:center; padding:10px;">🚪 Sair do Sistema</button>
+                </div>
+            </aside>
 
-        <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
-
-        <!-- ABAS DE NAVEGAÇÃO -->
-        <div class="tab-container">
-            <button class="tab-btn active" onclick="abrirTab('tabDashboard')">📊 Resumo</button>
-            <button class="tab-btn" onclick="abrirTab('tabClientes')">👤 Clientes</button>
-            <button class="tab-btn" onclick="abrirTab('tabProdutos')">📦 Produtos</button>
-            <button class="tab-btn" onclick="abrirTab('tabOrcamento')">📄 Orçamento</button>
-            <button class="tab-btn" onclick="abrirTab('tabOS')">🔧 OS</button>
-            <button class="tab-btn" onclick="abrirTab('tabRecibos')">💰 Recibos</button>
-            <button class="tab-btn" onclick="abrirTab('tabDespesas')">💸 Despesas</button>
-            <button class="tab-btn" onclick="abrirTab('tabCaixa')">💵 Caixa</button>
-            <button class="tab-btn" onclick="abrirTab('tabAgenda')">📅 Agenda</button>
-            <button class="tab-btn" onclick="abrirTab('tabCalculos')">🧮 Cálculos</button>
-            <button class="tab-btn" onclick="abrirTab('tabLogs')">📋 Logs</button>
-            <button class="tab-btn" onclick="abrirTab('tabUsuarios')">👥 Usuários</button>
-            <button class="tab-btn" onclick="abrirTab('tabConfig')">⚙️ Config</button>
-        </div>
-
-        <!-- TAB DASHBOARD -->
-        <div id="tabDashboard" class="tab-content active">
-            <section>
-                <h2>📊 Resumo do Negócio</h2>
-                <div id="dashboardGrid">
-                    <div class="dash-card" style="background:#ecfdf5;border-color:#a7f3d0;">
-                        <div class="dash-label" style="color:#047857;">💰 A receber</div>
-                        <div class="dash-valor" id="dashAReceber" style="color:#065f46;">R$ 0,00</div>
-                    </div>
-                    <div class="dash-card" style="background:#eff6ff;border-color:#bfdbfe;">
-                        <div class="dash-label" style="color:#1d4ed8;">✅ Recebido no mês</div>
-                        <div class="dash-valor" id="dashRecebidoMes" style="color:#1e40af;">R$ 0,00</div>
-                    </div>
-                    <div class="dash-card" style="background:#fef2f2;border-color:#fecaca;">
-                        <div class="dash-label" style="color:#b91c1c;">💸 Despesas no mês</div>
-                        <div class="dash-valor" id="dashDespesasMes" style="color:#991b1b;">R$ 0,00</div>
-                    </div>
-                    <div class="dash-card" style="background:#fffbeb;border-color:#fde68a;">
-                        <div class="dash-label" style="color:#b45309;">🔧 OS em andamento</div>
-                        <div class="dash-valor" id="dashOSAndamento" style="color:#92400e;">0</div>
-                    </div>
-                    <div class="dash-card" style="background:#fef4f6;border-color:#fbcfe8;">
-                        <div class="dash-label" style="color:#be185d;">👤 Clientes cadastrados</div>
-                        <div class="dash-valor" id="dashClientes" style="color:#9d174d;">0</div>
-                    </div>
-                    <div class="dash-card" style="background:#fff7ed;border-color:#ffedd5;">
-                        <div class="dash-label" style="color:#c2410c;">📦 Estoque baixo</div>
-                        <div class="dash-valor" id="dashEstoqueBaixo" style="color:#9a3412;">0</div>
+            <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+            <main class="main-content">
+                <!-- HEADER SUPERIOR -->
+                <div class="top-header">
+                    <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:13px;">👤 <strong id="nomeUsuario" style="color:var(--primary);">Admin</strong></span>
                     </div>
                 </div>
-                <div id="dashProximasVisitas" style="margin-top:15px;"></div>
-            </section>
-        </div>
 
-        <!-- TAB CLIENTES -->
-        <div id="tabClientes" class="tab-content">
-            <section>
-                <h2>👤 Clientes</h2>
-                <input type="text" id="buscaCliente" placeholder="🔍 Buscar cliente...">
-                <ul id="listaClientes"></ul>
-                <div class="paginacao">
-                    <button id="btnPagAnteriorClientes" class="btn-secondary">‹ Anteriores</button>
-                    <span id="infoPagClientes" style="font-size:12px;color:var(--text-sub);align-self:center;"></span>
-                    <button id="btnPagProximaClientes" class="btn-secondary">Próximos ›</button>
-                </div>
-                <button id="btnAddCliente" class="btn-primary" style="margin-top:12px;width:100%;">+ Adicionar Cliente</button>
-            </section>
-        </div>
+                <div id="statusBar" class="status-bar">✅ Sistema pronto para uso</div>
 
-        <!-- TAB PRODUTOS -->
-        <div id="tabProdutos" class="tab-content">
-            <section>
-                <h2>📦 Produtos</h2>
-                <input type="text" id="buscaProduto" placeholder="🔍 Buscar produto...">
-                <ul id="listaProdutos"></ul>
-                <div class="paginacao">
-                    <button id="btnPagAnteriorProdutos" class="btn-secondary">‹ Anteriores</button>
-                    <span id="infoPagProdutos" style="font-size:12px;color:var(--text-sub);align-self:center;"></span>
-                    <button id="btnPagProximaProdutos" class="btn-secondary">Próximos ›</button>
+                <!-- PAINEL DE SINCRONIZAÇÃO -->
+                <div class="sync-info">
+                    <strong>🔄 SINCRONIZAÇÃO COM SUPABASE</strong>
+                    <div class="sync-status">
+                        <span class="status" id="syncStatus">🔄 Aguardando...</span>
+                        <button class="btn-primary" onclick="sincronizarDados()" style="font-size:12px; padding:6px 12px;">🔄 Sincronizar</button>
+                        <span style="font-size:11px; color:var(--text-sub);" id="ultimaSync">Última: nunca</span>
+                    </div>
+                    <div id="syncProgress" style="display:none;margin-top:5px;font-size:12px;color:var(--primary);">⏳ Sincronizando...</div>
+                    <div id="bannerOffline" style="display:none;margin-top:8px;padding:8px 10px;background:#fff3cd;color:#856404;border-radius:6px;font-size:12px;"></div>
+                    <div id="indicadorFilaOffline" style="display:none;margin-top:8px;padding:8px 10px;background:#fde8d7;color:#8a4b0a;border-radius:6px;font-size:12px;"></div>
                 </div>
-                <div style="display:flex;gap:8px;margin-top:12px;">
-                    <button id="btnAddProduto" class="btn-primary" style="flex:1;">+ Adicionar Produto</button>
-                    <button id="btnEscanearProduto" class="btn-info" style="flex:1;">📷 Escanear Código</button>
-                </div>
-            </section>
-        </div>
 
-        <!-- TAB ORÇAMENTO -->
-        <div id="tabOrcamento" class="tab-content">
-            <section>
-                <h2>📄 Novo Orçamento</h2>
-                <div class="campo-autocomplete">
-                    <input type="text" id="selCliente" placeholder="🔍 Buscar cliente..." autocomplete="off">
-                </div>
-                <div id="itensOrcamento">
-                    <div class="item-orcamento">
-                        <div class="campo-autocomplete" style="flex:2;min-width:120px;">
-                            <input type="text" class="selProduto" placeholder="🔍 Buscar produto..." autocomplete="off">
+                <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
+
+                <!-- TAB DASHBOARD -->
+                <div id="tabDashboard" class="tab-content active">
+                    <section>
+                        <h2>📊 Resumo do Negócio</h2>
+                        <div id="dashboardGrid">
+                            <div class="dash-card" style="background:#ecfdf5;border-color:#a7f3d0;">
+                                <div class="dash-label" style="color:#047857;">💰 A receber</div>
+                                <div class="dash-valor" id="dashAReceber" style="color:#065f46;">R$ 0,00</div>
+                            </div>
+                            <div class="dash-card" style="background:#eff6ff;border-color:#bfdbfe;">
+                                <div class="dash-label" style="color:#1d4ed8;">✅ Recebido no mês</div>
+                                <div class="dash-valor" id="dashRecebidoMes" style="color:#1e40af;">R$ 0,00</div>
+                            </div>
+                            <div class="dash-card" style="background:#fef2f2;border-color:#fecaca;">
+                                <div class="dash-label" style="color:#b91c1c;">💸 Despesas no mês</div>
+                                <div class="dash-valor" id="dashDespesasMes" style="color:#991b1b;">R$ 0,00</div>
+                            </div>
+                            <div class="dash-card" style="background:#fffbeb;border-color:#fde68a;">
+                                <div class="dash-label" style="color:#b45309;">🔧 OS em andamento</div>
+                                <div class="dash-valor" id="dashOSAndamento" style="color:#92400e;">0</div>
+                            </div>
+                            <div class="dash-card" style="background:#fef4f6;border-color:#fbcfe8;">
+                                <div class="dash-label" style="color:#be185d;">👤 Clientes cadastrados</div>
+                                <div class="dash-valor" id="dashClientes" style="color:#9d174d;">0</div>
+                            </div>
+                            <div class="dash-card" style="background:#fff7ed;border-color:#ffedd5;">
+                                <div class="dash-label" style="color:#c2410c;">📦 Estoque baixo</div>
+                                <div class="dash-valor" id="dashEstoqueBaixo" style="color:#9a3412;">0</div>
+                            </div>
                         </div>
-                        <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
-                        <button class="btn-danger" style="padding:6px 10px;" onclick="removerItem(this)">✕</button>
-                    </div>
-                </div>
-                <button id="btnAddItem" class="btn-secondary">+ Adicionar Item</button>
-                
-                <div style="margin-top:15px;padding:15px;background:var(--primary-soft);border-radius:var(--radius-sm);">
-                    <h3 style="font-size:14px;color:var(--primary);margin-bottom:8px;">⚡ Dados do Projeto Elétrico</h3>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                        <div><label style="font-size:12px;">Potência Total (W):</label><input type="number" id="potenciaProjeto" placeholder="Ex: 5000"></div>
-                        <div><label style="font-size:12px;">Distância (m):</label><input type="number" id="distancia" value="50"></div>
-                        <div><label style="font-size:12px;">Tensão (V):</label><select id="tensao"><option value="127">127V</option><option value="220" selected>220V</option><option value="380">380V</option></select></div>
-                        <div><label style="font-size:12px;">Fator de Potência:</label><input type="number" id="fp" step="0.01" value="0.92"></div>
-                    </div>
-                    <button class="btn-primary" style="margin-top:10px;width:100%;" onclick="calcularProjeto()">📊 Calcular Projeto</button>
-                    <div id="resultadoProjeto" style="margin-top:10px;"></div>
+                        <div id="dashProximasVisitas" style="margin-top:15px;"></div>
+                    </section>
                 </div>
 
-                <div style="display:flex;gap:8px;margin-top:10px;">
-                    <select id="formaPagamentoOrcamento" style="flex:1;">
-                        <option value="Pix à vista">Pix à vista</option>
-                        <option value="Cartão de Crédito">Cartão de Crédito</option>
-                        <option value="Boleto Bancário">Boleto Bancário</option>
-                        <option value="Crediário Próprio">Crediário Próprio</option>
-                    </select>
+                <!-- TAB CLIENTES -->
+                <div id="tabClientes" class="tab-content">
+                    <section>
+                        <h2>👤 Clientes</h2>
+                        <input type="text" id="buscaCliente" placeholder="🔍 Buscar cliente...">
+                        <ul id="listaClientes"></ul>
+                        <div class="paginacao">
+                            <button id="btnPagAnteriorClientes" class="btn-secondary">‹ Anteriores</button>
+                            <span id="infoPagClientes" style="font-size:12px;color:var(--text-sub);align-self:center;"></span>
+                            <button id="btnPagProximaClientes" class="btn-secondary">Próximos ›</button>
+                        </div>
+                        <button id="btnAddCliente" class="btn-primary" style="margin-top:12px;width:100%;">+ Adicionar Cliente</button>
+                    </section>
                 </div>
 
-                <div id="totalOrcamento" style="margin:15px 0;padding:14px;background:var(--primary-soft);border-radius:var(--radius-sm);text-align:center;font-size:18px;color:var(--primary);">
-                    <strong>Total: R$ <span id="totalValor">0,00</span></strong>
+                <!-- TAB PRODUTOS -->
+                <div id="tabProdutos" class="tab-content">
+                    <section>
+                        <h2>📦 Produtos</h2>
+                        <input type="text" id="buscaProduto" placeholder="🔍 Buscar produto...">
+                        <ul id="listaProdutos"></ul>
+                        <div class="paginacao">
+                            <button id="btnPagAnteriorProdutos" class="btn-secondary">‹ Anteriores</button>
+                            <span id="infoPagProdutos" style="font-size:12px;color:var(--text-sub);align-self:center;"></span>
+                            <button id="btnPagProximaProdutos" class="btn-secondary">Próximos ›</button>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:12px;">
+                            <button id="btnAddProduto" class="btn-primary" style="flex:1;">+ Adicionar Produto</button>
+                            <button id="btnEscanearProduto" class="btn-info" style="flex:1;">📷 Escanear Código</button>
+                        </div>
+                    </section>
                 </div>
 
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button id="btnLimpar" class="btn-danger" style="flex:1;">🗑️ Limpar</button>
-                    <button id="btnSalvarOrcamento" class="btn-success" style="flex:1;">💾 Salvar</button>
-                    <button id="btnGerarPDF" class="btn-primary" style="flex:1;">📄 PDF</button>
-                    <button id="btnWhatsApp" class="btn-whatsapp" style="flex:1;">💬 WhatsApp</button>
-                </div>
-            </section>
-        </div>
+                <!-- TAB ORÇAMENTO -->
+                <div id="tabOrcamento" class="tab-content">
+                    <section>
+                        <h2>📄 Novo Orçamento</h2>
+                        <div class="campo-autocomplete">
+                            <input type="text" id="selCliente" placeholder="🔍 Buscar cliente..." autocomplete="off">
+                        </div>
+                        <div id="itensOrcamento">
+                            <div class="item-orcamento">
+                                <div class="campo-autocomplete" style="flex:2;min-width:120px;">
+                                    <input type="text" class="selProduto" placeholder="🔍 Buscar produto..." autocomplete="off">
+                                </div>
+                                <input type="number" class="qtdProduto" placeholder="Qtd" min="1" value="1">
+                                <button class="btn-danger" style="padding:6px 10px;" onclick="removerItem(this)">✕</button>
+                            </div>
+                        </div>
+                        <button id="btnAddItem" class="btn-secondary">+ Adicionar Item</button>
+                        
+                        <div style="margin-top:15px;padding:15px;background:var(--primary-soft);border-radius:var(--radius-sm);">
+                            <h3 style="font-size:14px;color:var(--primary);margin-bottom:8px;">⚡ Dados do Projeto Elétrico</h3>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                <div><label style="font-size:12px;">Potência Total (W):</label><input type="number" id="potenciaProjeto" placeholder="Ex: 5000"></div>
+                                <div><label style="font-size:12px;">Distância (m):</label><input type="number" id="distancia" value="50"></div>
+                                <div><label style="font-size:12px;">Tensão (V):</label><select id="tensao"><option value="127">127V</option><option value="220" selected>220V</option><option value="380">380V</option></select></div>
+                                <div><label style="font-size:12px;">Fator de Potência:</label><input type="number" id="fp" step="0.01" value="0.92"></div>
+                            </div>
+                            <button class="btn-primary" style="margin-top:10px;width:100%;" onclick="calcularProjeto()">📊 Calcular Projeto</button>
+                            <div id="resultadoProjeto" style="margin-top:10px;"></div>
+                        </div>
 
-        <!-- DEMAIS ABAS PERMANECEM INTEGRADAS E MANTÊM OS MESMOS IDs DA SUA APLICAÇÃO -->
-        <div id="tabOS" class="tab-content"><section><h2>🔧 Ordens de Serviço</h2><div id="listaOS"></div></section></div>
-        <div id="tabRecibos" class="tab-content"><section><h2>💰 Recibos</h2><div id="listaRecibos"></div></section></div>
-        <div id="tabDespesas" class="tab-content"><section><h2>💸 Despesas</h2><div id="listaDespesas"></div></section></div>
-        <div id="tabCaixa" class="tab-content"><section><h2>💵 Caixa</h2><div id="caixaSaldo"></div></section></div>
-        <div id="tabAgenda" class="tab-content"><section><h2>📅 Agenda de Visitas</h2><div id="listaVisitas"></div></section></div>
-        <div id="tabCalculos" class="tab-content"><section><h2>🧮 Calculadora Elétrica</h2></section></div>
-        <div id="tabLogs" class="tab-content"><section><h2>📋 Log de Alterações</h2><div id="logList"></div></section></div>
-        <div id="tabUsuarios" class="tab-content"><section><h2>👥 Usuários do Sistema</h2><div id="listaUsuarios"></div></section></div>
-        <div id="tabConfig" class="tab-content">
-            <section>
-                <h2>⚙️ Configurações</h2>
-                <button onclick="limparDadosLocais()" class="btn-danger">🗑️ Limpar cache local</button>
-            </section>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <select id="formaPagamentoOrcamento" style="flex:1;">
+                                <option value="Pix à vista">Pix à vista</option>
+                                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                <option value="Boleto Bancário">Boleto Bancário</option>
+                                <option value="Crediário Próprio">Crediário Próprio</option>
+                            </select>
+                        </div>
+
+                        <div id="totalOrcamento" style="margin:15px 0;padding:14px;background:var(--primary-soft);border-radius:var(--radius-sm);text-align:center;font-size:18px;color:var(--primary);">
+                            <strong>Total: R$ <span id="totalValor">0,00</span></strong>
+                        </div>
+
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button id="btnLimpar" class="btn-danger" style="flex:1;">🗑️ Limpar</button>
+                            <button id="btnSalvarOrcamento" class="btn-success" style="flex:1;">💾 Salvar</button>
+                            <button id="btnGerarPDF" class="btn-primary" style="flex:1;">📄 PDF</button>
+                            <button id="btnWhatsApp" class="btn-whatsapp" style="flex:1;">💬 WhatsApp</button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ABAS RESTANTES INTEGRADAS -->
+                <div id="tabOS" class="tab-content"><section><h2>🔧 Ordens de Serviço</h2><div id="listaOS"></div></section></div>
+                <div id="tabRecibos" class="tab-content"><section><h2>💰 Recibos</h2><div id="listaRecibos"></div></section></div>
+                <div id="tabDespesas" class="tab-content"><section><h2>💸 Despesas</h2><div id="listaDespesas"></div></section></div>
+                <div id="tabCaixa" class="tab-content"><section><h2>💵 Caixa</h2><div id="caixaSaldo"></div></section></div>
+                <div id="tabAgenda" class="tab-content"><section><h2>📅 Agenda de Visitas</h2><div id="listaVisitas"></div></section></div>
+                <div id="tabCalculos" class="tab-content"><section><h2>🧮 Calculadora Elétrica</h2></section></div>
+                <div id="tabLogs" class="tab-content"><section><h2>📋 Log de Alterações</h2><div id="logList"></div></section></div>
+                <div id="tabUsuarios" class="tab-content"><section><h2>👥 Usuários do Sistema</h2><div id="listaUsuarios"></div></section></div>
+                <div id="tabConfig" class="tab-content">
+                    <section>
+                        <h2>⚙️ Configurações</h2>
+                        <button onclick="limparDadosLocais()" class="btn-danger">🗑️ Limpar cache local</button>
+                    </section>
+                </div>
+            </main>
         </div>
     </div>
 
-    <!-- BIBLIOTECAS E SCRIPTS -->
+    <!-- SCRIPTS DE NAVEGAÇÃO E REGRAS -->
+    <script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+    }
+
+    function selecionarTab(tabId) {
+        if (typeof abrirTab === 'function') {
+            abrirTab(tabId);
+        } else {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            const alvo = document.getElementById(tabId);
+            if (alvo) alvo.classList.add('active');
+        }
+
+        document.querySelectorAll('.sidebar-menu .tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(tabId)) {
+                btn.classList.add('active');
+            }
+        });
+
+        if (window.innerWidth <= 850) {
+            toggleSidebar();
+        }
+    }
+    </script>
+
+    <!-- BIBLIOTECAS DO SISTEMA -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js?v=9"></script>
-    <script src="script.js?v=9"></script>
+    <script src="config.js?v=10"></script>
+    <script src="script.js?v=10"></script>
 </body>
 </html>
