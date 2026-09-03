@@ -7,7 +7,7 @@
     --text-primary: #1e293b;
     --text-secondary: #64748b;
     --border: #e2e8f0;
-    
+
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -118,7 +118,7 @@ button:active { transform: scale(0.98); }
 .sync-status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sync-status .status { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
-/* Navegação em Abas (Scrollável) */
+/* Navegação em Abas */
 .tab-container {
     display: flex;
     gap: 6px;
@@ -203,7 +203,7 @@ input:focus, select:focus, textarea:focus {
 .dash-card {
     padding: 14px;
     border-radius: var(--radius-md);
-    border: 1fr solid transparent;
+    border: 1px solid var(--border);
     transition: transform 0.2s ease;
 }
 .dash-card:hover { transform: translateY(-2px); }
@@ -275,21 +275,21 @@ li:nth-child(even) { background: #f8fafc; }
 .login-screen h1 { color: var(--primary); font-size: 24px; margin-bottom: 20px; font-weight: 800; }
 .login-screen input { max-width: 320px; }
 
-/* ===== TELAS GRANDES (Desktop / Tablet) ===== */
+/* Desktop / Tablet */
 @media (min-width: 850px) {
     body { max-width: 1100px; padding: 24px; }
     header { padding: 18px 24px; }
     .header-logo img { height: 56px; }
     .header-logo .logo-title { font-size: 20px; }
-    
+
     #dashboardGrid {
         grid-template-columns: repeat(3, 1fr) !important;
         gap: 16px !important;
     }
-    
+
     .tab-container { gap: 8px; flex-wrap: wrap; }
     .tab-btn { font-size: 13px; padding: 10px 18px; border-radius: var(--radius-sm); }
-    
+
     section { padding: 24px; }
     .modal-content { max-width: 580px; padding: 28px; }
 }
@@ -298,4 +298,3 @@ li:nth-child(even) { background: #f8fafc; }
     body { max-width: 1280px; }
     #dashboardGrid { grid-template-columns: repeat(6, 1fr) !important; }
 }
-```[cite: 1]
