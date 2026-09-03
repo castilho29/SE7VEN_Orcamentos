@@ -24,11 +24,16 @@
             --sidebar-collapsed-width: 70px;
             --primary-color: #1a237e;
             --primary-dark: #0f174a;
+            --accent-color: #00e676;
             --bg-color: #f4f6f9;
             --card-bg: #ffffff;
             --text-color: #333333;
             --text-muted: #6c757d;
             --border-color: #e2e8f0;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
         }
 
         body {
@@ -57,7 +62,7 @@
             bottom: 0;
             left: 0;
             z-index: 999;
-            transition: width 0.3s ease, transform 0.3s ease;
+            transition: width 0.3s ease, transform 0.3s ease, background-color 0.3s ease;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             overflow: hidden;
         }
@@ -70,6 +75,7 @@
             background: var(--primary-dark);
             border-bottom: 1px solid rgba(255,255,255,0.1);
             min-height: 60px;
+            transition: background-color 0.3s ease;
         }
 
         .sidebar-brand .brand-info {
@@ -171,7 +177,7 @@
         .sidebar .tab-btn.active {
             background: rgba(255,255,255,0.15);
             color: white;
-            border-left-color: #00e676;
+            border-left-color: var(--accent-color);
         }
 
         .sidebar-user {
@@ -182,6 +188,7 @@
             align-items: center;
             justify-content: space-between;
             min-height: 55px;
+            transition: background-color 0.3s ease;
         }
 
         /* CONTEÚDO PRINCIPAL (MAIN) */
@@ -255,8 +262,68 @@
             flex: 1;
         }
 
+        /* ===== DESIGN DO DASHBOARD REDESENHADO ===== */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
+        }
+
+        .dash-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            border-left: 5px solid var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .dash-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+        }
+
+        .dash-card .dash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .dash-card .dash-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .dash-card .dash-icon {
+            font-size: 22px;
+            opacity: 0.85;
+        }
+
+        .dash-card .dash-valor {
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--text-color);
+            margin: 4px 0;
+        }
+
+        /* VARIAÇÕES DE CARDS DO DASHBOARD */
+        .dash-card.card-a-receber { border-left-color: #27ae60; }
+        .dash-card.card-recebido  { border-left-color: var(--primary-color); }
+        .dash-card.card-despesas  { border-left-color: #e74c3c; }
+        .dash-card.card-os        { border-left-color: #f39c12; }
+        .dash-card.card-clientes  { border-left-color: #8e24aa; }
+        .dash-card.card-estoque   { border-left-color: #d84315; }
+
         /* COMPONENTES DO SISTEMA */
-        .btn-primary{background:#1a237e;color:white;border:none;padding:10px 18px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold;}
+        .btn-primary{background:var(--primary-color);color:white;border:none;padding:10px 18px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold;transition:background-color 0.2s;}
         .btn-secondary{background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;padding:8px 16px;border-radius:8px;font-size:14px;cursor:pointer;}
         .btn-success{background:#27ae60;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-warning{background:#f39c12;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
@@ -265,13 +332,13 @@
         .btn-whatsapp{background:#25d366;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-logout{background:#e74c3c;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
 
-        .status-bar{background:#1a237e;color:white;padding:10px 15px;border-radius:8px;font-size:14px;margin-bottom:15px;text-align:center;font-weight:bold;}
+        .status-bar{background:var(--primary-color);color:white;padding:10px 15px;border-radius:8px;font-size:14px;margin-bottom:15px;text-align:center;font-weight:bold;transition:background-color 0.3s;}
         .status-bar.success{background:#27ae60;}
         .status-bar.error{background:#e74c3c;}
         .status-bar.warning{background:#f39c12;}
 
         .sync-info{background:white;padding:15px;border-radius:8px;margin-bottom:20px;border:1px solid var(--border-color);box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
-        .sync-info strong{color:#1a237e;font-size:13px;display:block;margin-bottom:8px;}
+        .sync-info strong{color:var(--primary-color);font-size:13px;display:block;margin-bottom:8px;}
         .sync-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
         .sync-status .status{font-size:12px;color:#666;}
         .sync-status .status.online{color:#27ae60;}
@@ -280,9 +347,6 @@
 
         .backup-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
         .backup-grid button{padding:12px 8px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;color:white;text-align:center;line-height:1.3;}
-        .dash-card{padding:16px;border-radius:8px;box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
-        .dash-label{font-size:12px;color:#555;font-weight:bold;margin-bottom:6px;}
-        .dash-valor{font-size:22px;font-weight:900;color:#222;}
         .estoque-baixo{color:#e74c3c;font-weight:bold;}
         .paginacao{display:flex;justify-content:center;gap:10px;margin-top:15px;}
         .paginacao button{padding:6px 16px;border-radius:6px;border:1px solid #bdc3c7;background:white;cursor:pointer;font-size:12px;}
@@ -292,7 +356,7 @@
         .tab-content.active{display:block;}
 
         section{background:white;border-radius:8px;padding:20px;margin-bottom:20px;box-shadow:0 2px 4px rgba(0,0,0,0.04);border:1px solid var(--border-color);}
-        h2{font-size:18px;margin-bottom:15px;color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:8px;}
+        h2{font-size:18px;margin-bottom:15px;color:var(--primary-color);border-bottom:2px solid var(--primary-color);padding-bottom:8px;}
         input,select{width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:8px;font-size:14px;}
         ul{list-style:none;margin:10px 0;max-height:350px;overflow-y:auto;}
         li{padding:12px;border-bottom:1px solid #ecf0f1;display:flex;justify-content:space-between;align-items:center;}
@@ -304,10 +368,10 @@
         .status-recebido{background:#27ae60;color:white;}
         .status-cancelado{background:#e74c3c;color:white;}
 
-        .os-card{background:#f8f9fa;border-radius:8px;padding:15px;margin:10px 0;border-left:4px solid #1a237e;cursor:pointer;transition:all 0.3s;}
+        .os-card{background:#f8f9fa;border-radius:8px;padding:15px;margin:10px 0;border-left:4px solid var(--primary-color);cursor:pointer;transition:all 0.3s;}
         .os-card:hover{background:#e8eaf6;}
 
-        .item-orcamento{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;background:#f8f9fa;padding:10px;border-radius:8px;border-left:3px solid #1a237e;}
+        .item-orcamento{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;background:#f8f9fa;padding:10px;border-radius:8px;border-left:3px solid var(--primary-color);}
         .item-orcamento select{flex:2;min-width:120px;padding:8px;border:1px solid #bdc3c7;border-radius:4px;}
         .item-orcamento input{flex:1;min-width:60px;padding:8px;border:1px solid #bdc3c7;border-radius:4px;}
         .item-orcamento input.selProduto{flex:2;min-width:120px;}
@@ -320,37 +384,37 @@
         .autocomplete-item small{display:block;color:#888;font-size:11px;}
         .btn-remove-item{background:#e74c3c;color:white;border:none;border-radius:50%;width:30px;height:30px;font-size:18px;cursor:pointer;}
 
-        #totalOrcamento{margin:15px 0;padding:12px;background:#e8eaf6;border-radius:8px;text-align:center;font-size:18px;color:#1a237e;}
+        #totalOrcamento{margin:15px 0;padding:12px;background:#e8eaf6;border-radius:8px;text-align:center;font-size:18px;color:var(--primary-color);}
 
         .footer-actions{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;}
         .footer-actions button{flex:1;min-width:100px;padding:10px;border-radius:6px;border:none;cursor:pointer;font-weight:bold;font-size:13px;}
 
-        .calc-card{background:#f8f9fa;border-radius:8px;padding:15px;margin:10px 0;border-left:4px solid #1a237e;}
+        .calc-card{background:#f8f9fa;border-radius:8px;padding:15px;margin:10px 0;border-left:4px solid var(--primary-color);}
         .calc-card label{font-weight:bold;display:block;margin:5px 0;}
         .calc-card input,.calc-card select{width:100%;padding:8px;border:1px solid #bdc3c7;border-radius:4px;font-size:14px;}
-        .calc-card .resultado{background:#e8eaf6;padding:10px;border-radius:4px;margin-top:10px;font-weight:bold;color:#1a237e;}
-        .btn-calcular{background:#1a237e;color:white;border:none;padding:8px 16px;border-radius:4px;margin-top:10px;cursor:pointer;}
+        .calc-card .resultado{background:#e8eaf6;padding:10px;border-radius:4px;margin-top:10px;font-weight:bold;color:var(--primary-color);}
+        .btn-calcular{background:var(--primary-color);color:white;border:none;padding:8px 16px;border-radius:4px;margin-top:10px;cursor:pointer;}
 
         .recibo-area{background:white;padding:20px;border-radius:8px;border:1px solid #ddd;margin:10px 0;}
         .recibo-area .assinatura{border-top:1px solid #333;margin-top:20px;padding-top:10px;text-align:center;}
 
         .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000;}
         .modal-content{background:white;padding:20px;border-radius:12px;width:90%;max-width:500px;max-height:90vh;overflow-y:auto;}
-        .modal-content h3{color:#1a237e;margin-bottom:15px;}
+        .modal-content h3{color:var(--primary-color);margin-bottom:15px;}
         .modal-content input,.modal-content select{width:100%;padding:10px;margin:5px 0;border:1px solid #bdc3c7;border-radius:4px;font-size:14px;}
         .modal-content button{margin:5px 5px 5px 0;padding:8px 16px;border-radius:4px;border:none;cursor:pointer;font-weight:bold;}
 
         .login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:white;padding:20px;}
         .login-screen img{max-height:100px;width:auto;margin-bottom:10px;border-radius:12px;object-fit:contain;}
-        .login-screen h1{color:#1a237e;font-size:22px;margin-bottom:20px;text-align:center;}
+        .login-screen h1{color:var(--primary-color);font-size:22px;margin-bottom:20px;text-align:center;}
         .login-screen input{width:100%;max-width:300px;padding:12px;margin:5px auto;border:1px solid #bdc3c7;border-radius:8px;font-size:16px;display:block;}
         .login-screen .error{color:#e74c3c;font-size:14px;margin-top:10px;display:none;text-align:center;}
         .login-screen .sucesso{color:#27ae60;font-size:14px;margin-top:10px;display:none;text-align:center;}
         .login-screen .info{color:#666;font-size:12px;margin-top:15px;text-align:center;max-width:300px;}
-        .login-screen .link-alternar{background:none;border:none;color:#1a237e;font-size:13px;cursor:pointer;text-decoration:underline;margin-top:8px;}
+        .login-screen .link-alternar{background:none;border:none;color:var(--primary-color);font-size:13px;cursor:pointer;text-decoration:underline;margin-top:8px;}
 
         .user-info{display:flex;align-items:center;gap:10px;font-size:12px;color:#666;}
-        .user-info .name{font-weight:bold;color:#1a237e;}
+        .user-info .name{font-weight:bold;color:white;}
 
         .log-list{max-height:250px;overflow-y:auto;font-size:12px;background:#f8f9fa;padding:10px;border-radius:4px;margin-top:5px;}
         .log-list .entry{padding:6px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;}
@@ -366,6 +430,30 @@
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5);
             z-index: 998;
+        }
+
+        /* ===== CONTROLES DE TEMA ===== */
+        .color-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .color-field label {
+            font-size: 12px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-color);
+        }
+
+        .color-field input[type="color"] {
+            height: 42px;
+            padding: 2px;
+            cursor: pointer;
+            border-radius: var(--radius-md);
+            border: 1px solid #bdc3c7;
         }
 
         /* ===== ADAPTAÇÃO RESPONSIVA ===== */
@@ -419,7 +507,7 @@
         <input type="password" id="loginSenha" placeholder="Senha" autocomplete="current-password">
         <div id="loginError" class="error">❌ Usuário ou senha incorretos</div>
         <div id="loginSucesso" class="sucesso">✅ Conta criada! Verifique seu e-mail se for pedido.</div>
-        <button id="btnEntrar" onclick="fazerLogin()" style="background:#1a237e;color:white;width:100%;max-width:300px;padding:12px;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;border:none;margin:5px auto;">🔑 Entrar</button>
+        <button id="btnEntrar" onclick="fazerLogin()" class="btn-primary" style="width:100%;max-width:300px;padding:12px;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;margin:5px auto;display:block;">🔑 Entrar</button>
         <button class="link-alternar" onclick="alternarModoCadastro()" id="btnAlternarCadastro">Não tem conta? Criar uma agora</button>
 
         <div class="info">
@@ -534,48 +622,53 @@
                 </header>
 
                 <main class="content-area">
-                    <!-- SINCRONIZAÇÃO -->
-                    <div class="sync-info">
-                        <strong>🔄 SINCRONIZAÇÃO COM SUPABASE</strong>
-                        <div class="sync-status">
-                            <span class="status" id="syncStatus">🔄 Aguardando...</span>
-                            <button class="btn-primary" onclick="sincronizarDados()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizar</button>
-                            <span style="font-size:10px;color:#999;" id="ultimaSync">Última: nunca</span>
-                        </div>
-                        <div id="syncProgress" style="display:none;margin-top:5px;font-size:12px;color:#1a237e;">⏳ Sincronizando...</div>
-                        <div id="bannerOffline" style="display:none;margin-top:8px;padding:8px 10px;background:#fff3cd;color:#856404;border-radius:6px;font-size:12px;"></div>
-                        <div id="indicadorFilaOffline" style="display:none;margin-top:8px;padding:8px 10px;background:#fde8d7;color:#8a4b0a;border-radius:6px;font-size:12px;"></div>
-                    </div>
-
                     <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
 
                     <!-- TAB DASHBOARD -->
                     <div id="tabDashboard" class="tab-content active">
                         <section>
                             <h2>📊 Resumo do Negócio</h2>
-                            <div id="dashboardGrid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:15px;">
-                                <div class="dash-card" style="background:#e8f5e9;border-left:4px solid #27ae60;">
-                                    <div class="dash-label">💰 A receber</div>
+                            <div id="dashboardGrid" class="dashboard-grid">
+                                <div class="dash-card card-a-receber">
+                                    <div class="dash-header">
+                                        <span class="dash-label">A receber</span>
+                                        <span class="dash-icon">💰</span>
+                                    </div>
                                     <div class="dash-valor" id="dashAReceber">R$ 0,00</div>
                                 </div>
-                                <div class="dash-card" style="background:#e3f2fd;border-left:4px solid #1a237e;">
-                                    <div class="dash-label">✅ Recebido no mês</div>
+                                <div class="dash-card card-recebido">
+                                    <div class="dash-header">
+                                        <span class="dash-label">Recebido no mês</span>
+                                        <span class="dash-icon">✅</span>
+                                    </div>
                                     <div class="dash-valor" id="dashRecebidoMes">R$ 0,00</div>
                                 </div>
-                                <div class="dash-card" style="background:#fdecea;border-left:4px solid #e74c3c;">
-                                    <div class="dash-label">💸 Despesas no mês</div>
+                                <div class="dash-card card-despesas">
+                                    <div class="dash-header">
+                                        <span class="dash-label">Despesas no mês</span>
+                                        <span class="dash-icon">💸</span>
+                                    </div>
                                     <div class="dash-valor" id="dashDespesasMes">R$ 0,00</div>
                                 </div>
-                                <div class="dash-card" style="background:#fff8e1;border-left:4px solid #f39c12;">
-                                    <div class="dash-label">🔧 OS em andamento</div>
+                                <div class="dash-card card-os">
+                                    <div class="dash-header">
+                                        <span class="dash-label">OS em andamento</span>
+                                        <span class="dash-icon">🔧</span>
+                                    </div>
                                     <div class="dash-valor" id="dashOSAndamento">0</div>
                                 </div>
-                                <div class="dash-card" style="background:#f3e5f5;border-left:4px solid #8e24aa;">
-                                    <div class="dash-label">👤 Clientes cadastrados</div>
+                                <div class="dash-card card-clientes">
+                                    <div class="dash-header">
+                                        <span class="dash-label">Clientes cadastrados</span>
+                                        <span class="dash-icon">👤</span>
+                                    </div>
                                     <div class="dash-valor" id="dashClientes">0</div>
                                 </div>
-                                <div class="dash-card" style="background:#fbe9e7;border-left:4px solid #d84315;">
-                                    <div class="dash-label">📦 Estoque baixo</div>
+                                <div class="dash-card card-estoque">
+                                    <div class="dash-header">
+                                        <span class="dash-label">Estoque baixo</span>
+                                        <span class="dash-icon">📦</span>
+                                    </div>
                                     <div class="dash-valor" id="dashEstoqueBaixo">0</div>
                                 </div>
                             </div>
@@ -765,8 +858,8 @@
                                 </div>
                             </div>
                             <div style="background:#e8eaf6;border-radius:8px;padding:12px;text-align:center;margin-bottom:15px;">
-                                <div style="font-size:11px;color:#1a237e;font-weight:bold;">⚖️ SALDO PROJETADO (a receber − a pagar)</div>
-                                <div id="caixaSaldo" style="font-size:20px;font-weight:bold;color:#1a237e;">R$ 0,00</div>
+                                <div style="font-size:11px;color:var(--primary-color);font-weight:bold;">⚖️ SALDO PROJETADO (a receber − a pagar)</div>
+                                <div id="caixaSaldo" style="font-size:20px;font-weight:bold;color:var(--primary-color);">R$ 0,00</div>
                             </div>
 
                             <h3 style="font-size:14px;color:#2e7d32;margin-bottom:8px;">📥 Recibos em aberto</h3>
@@ -866,9 +959,44 @@
                         <section>
                             <h2>⚙️ Configurações</h2>
 
+                            <!-- Bloco de Personalização do Tema -->
+                            <div style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid var(--primary-color);margin-bottom:15px;">
+                                <h3 style="color:var(--primary-color);font-size:15px;margin-bottom:10px;">🎨 Personalização de Tema</h3>
+                                <div class="color-picker-grid">
+                                    <div class="color-field">
+                                        <label for="pickerPrimary">Cor do Menu (Sidebar):</label>
+                                        <input type="color" id="pickerPrimary" value="#1a237e">
+                                    </div>
+                                    <div class="color-field">
+                                        <label for="pickerDark">Cor do Cabeçalho/Sombra:</label>
+                                        <input type="color" id="pickerDark" value="#0f174a">
+                                    </div>
+                                    <div class="color-field">
+                                        <label for="pickerAccent">Cor do Item Ativo:</label>
+                                        <input type="color" id="pickerAccent" value="#00e676">
+                                    </div>
+                                    <div>
+                                        <button id="btnResetTheme" class="btn-secondary" style="width:100%;height:42px;">Restaurar Padrão</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bloco de Sincronização (Transferido para Configurações) -->
+                            <div class="sync-info" style="margin-bottom:15px;">
+                                <strong>🔄 SINCRONIZAÇÃO COM SUPABASE</strong>
+                                <div class="sync-status">
+                                    <span class="status" id="syncStatus">🔄 Aguardando...</span>
+                                    <button class="btn-primary" onclick="sincronizarDados()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizar</button>
+                                    <span style="font-size:10px;color:#999;" id="ultimaSync">Última: nunca</span>
+                                </div>
+                                <div id="syncProgress" style="display:none;margin-top:5px;font-size:12px;color:var(--primary-color);">⏳ Sincronizando...</div>
+                                <div id="bannerOffline" style="display:none;margin-top:8px;padding:8px 10px;background:#fff3cd;color:#856404;border-radius:6px;font-size:12px;"></div>
+                                <div id="indicadorFilaOffline" style="display:none;margin-top:8px;padding:8px 10px;background:#fde8d7;color:#8a4b0a;border-radius:6px;font-size:12px;"></div>
+                            </div>
+
                             <!-- Logo da Empresa (admin) -->
-                            <div id="blocoLogoConfig" style="display:none;background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #1a237e;margin-bottom:15px;">
-                                <h3 style="color:#1a237e;font-size:15px;margin-bottom:8px;">🖼️ Logo da Empresa</h3>
+                            <div id="blocoLogoConfig" style="display:none;background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid var(--primary-color);margin-bottom:15px;">
+                                <h3 style="color:var(--primary-color);font-size:15px;margin-bottom:8px;">🖼️ Logo da Empresa</h3>
                                 <img id="previewLogoConfig" src="" alt="Logo atual" style="display:none;max-height:70px;max-width:160px;object-fit:contain;border-radius:8px;margin-bottom:8px;background:white;padding:5px;">
                                 <input type="file" id="uploadLogoInput" accept="image/*" style="padding:8px 0;">
                                 <button id="btnSalvarLogo" class="btn-primary" style="width:100%;margin-top:5px;">📤 Salvar Nova Logo</button>
@@ -886,8 +1014,8 @@
                             </div>
 
                             <!-- Backup e Dados -->
-                            <div style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #1a237e;">
-                                <h3 style="color:#1a237e;font-size:15px;margin-bottom:5px;">💾 Backup e Dados</h3>
+                            <div style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid var(--primary-color);">
+                                <h3 style="color:var(--primary-color);font-size:15px;margin-bottom:5px;">💾 Backup e Dados</h3>
                                 <div class="backup-grid">
                                     <button onclick="enviarBackupGoogleDrive()" style="background:#4285f4;grid-column:span 2;">☁️ Enviar Backup para o Google Drive</button>
                                     <button onclick="document.getElementById('fileInput').click()" style="background:#f39c12;">📥 Restaurar Backup (JSON)</button>
@@ -964,7 +1092,7 @@
 
     <div id="modalHistoricoCliente" class="modal"><div class="modal-content" style="max-width:500px;"><h3 id="tituloHistoricoCliente">📋 Histórico</h3><div id="conteudoHistoricoCliente"></div><button id="btnFecharHistorico" class="btn-secondary" style="width:100%;margin-top:10px;">Fechar</button></div></div>
 
-    <!-- ========== SCRIPT DE CONTROLE DA SIDEBAR RESPONSIVA E RECOLHÍVEL ========== -->
+    <!-- ========== SCRIPT DE CONTROLE DE TEMAS & NAVEGAÇÃO ========== -->
     <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -999,10 +1127,60 @@
             localStorage.setItem('se7ven_sidebar_collapsed', estaRecolhido ? 'true' : 'false');
         }
 
+        /* GERENCIAMENTO DE CORES E TEMAS */
+        function aplicarCorTema(variavel, valor) {
+            document.documentElement.style.setProperty(variavel, valor);
+            localStorage.setItem('se7ven_theme_' + variavel, valor);
+        }
+
+        function carregarTemaSalvo() {
+            const primary = localStorage.getItem('se7ven_theme_--primary-color');
+            const dark = localStorage.getItem('se7ven_theme_--primary-dark');
+            const accent = localStorage.getItem('se7ven_theme_--accent-color');
+
+            if (primary) {
+                document.documentElement.style.setProperty('--primary-color', primary);
+                const el = document.getElementById('pickerPrimary');
+                if (el) el.value = primary;
+            }
+            if (dark) {
+                document.documentElement.style.setProperty('--primary-dark', dark);
+                const el = document.getElementById('pickerDark');
+                if (el) el.value = dark;
+            }
+            if (accent) {
+                document.documentElement.style.setProperty('--accent-color', accent);
+                const el = document.getElementById('pickerAccent');
+                if (el) el.value = accent;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            // Restaurar estado da sidebar
             if (localStorage.getItem('se7ven_sidebar_collapsed') === 'true') {
                 toggleSidebarCollapse();
             }
+
+            // Inicializar tema de cores
+            carregarTemaSalvo();
+
+            // Listeners para os Pickers de Cores
+            document.getElementById('pickerPrimary')?.addEventListener('input', (e) => aplicarCorTema('--primary-color', e.target.value));
+            document.getElementById('pickerDark')?.addEventListener('input', (e) => aplicarCorTema('--primary-dark', e.target.value));
+            document.getElementById('pickerAccent')?.addEventListener('input', (e) => aplicarCorTema('--accent-color', e.target.value));
+
+            // Reset de Tema
+            document.getElementById('btnResetTheme')?.addEventListener('click', () => {
+                localStorage.removeItem('se7ven_theme_--primary-color');
+                localStorage.removeItem('se7ven_theme_--primary-dark');
+                localStorage.removeItem('se7ven_theme_--accent-color');
+                document.documentElement.style.removeProperty('--primary-color');
+                document.documentElement.style.removeProperty('--primary-dark');
+                document.documentElement.style.removeProperty('--accent-color');
+                if (document.getElementById('pickerPrimary')) document.getElementById('pickerPrimary').value = '#1a237e';
+                if (document.getElementById('pickerDark')) document.getElementById('pickerDark').value = '#0f174a';
+                if (document.getElementById('pickerAccent')) document.getElementById('pickerAccent').value = '#00e676';
+            });
         });
     </script>
 
