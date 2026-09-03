@@ -61,7 +61,7 @@ body.sidebar-open {
 /* ===== ESTRUTURA ERP & SIDEBAR ===== */
 .erp-container {
     display: flex;
-    min-height: 100vh;
+    min-height: 150vh;
     width: 100%;
 }
 
@@ -91,7 +91,7 @@ body.sidebar-open {
 
 /* Preserva a imagem da logo exclusiva do menu lateral */
 .sidebar-brand img {
-    height: 40px;
+    height: 60px;
     width: auto;
     max-width: 100%;
     border-radius: var(--radius-sm);
@@ -220,8 +220,8 @@ h1 {
 section {
     background: var(--surface-color);
     border-radius: var(--radius-lg);
-    padding: 20px;
-    margin-bottom: 25px;
+    padding: 300px;
+    margin-bottom: 250px;
     box-shadow: var(--shadow-md);
 }
 
