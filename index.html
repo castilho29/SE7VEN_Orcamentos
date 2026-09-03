@@ -21,6 +21,7 @@
         *{margin:0;padding:0;box-sizing:border-box;}
         :root {
             --sidebar-width: 250px;
+            --sidebar-collapsed-width: 70px;
             --primary-color: #1a237e;
             --primary-dark: #0f174a;
             --bg-color: #f4f6f9;
@@ -56,26 +57,36 @@
             bottom: 0;
             left: 0;
             z-index: 999;
-            transition: transform 0.3s ease;
+            transition: width 0.3s ease, transform 0.3s ease;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
 
         .sidebar-brand {
-            padding: 15px;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--primary-dark);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            min-height: 60px;
+        }
+
+        .sidebar-brand .brand-info {
             display: flex;
             align-items: center;
             gap: 10px;
-            background: var(--primary-dark);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
         }
 
         .sidebar-brand img {
-            height: 40px;
+            height: 36px;
             width: auto;
             border-radius: 6px;
             object-fit: contain;
             background: white;
             padding: 2px;
+            flex-shrink: 0;
         }
 
         .sidebar-brand .logo-title {
@@ -84,6 +95,29 @@
             letter-spacing: 0.5px;
             color: white;
             line-height: 1.2;
+            white-space: nowrap;
+            transition: opacity 0.2s ease;
+        }
+
+        /* BOTÃO RECOLHER/EXPANDIR MENU */
+        .btn-toggle-collapse {
+            background: rgba(255, 255, 255, 0.12);
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-toggle-collapse:hover {
+            background: rgba(255, 255, 255, 0.25);
         }
 
         .sidebar-menu {
@@ -92,22 +126,41 @@
             padding: 10px 0;
         }
 
-        /* Mantendo a classe .tab-btn para compatibilidade total com o script JS original */
+        /* BOTÕES DE NAVEGAÇÃO */
         .sidebar .tab-btn {
             display: flex;
             align-items: center;
             width: 100%;
-            padding: 12px 20px;
+            padding: 12px 18px;
             background: transparent;
-            color: rgba(255,255,255,0.8);
+            color: rgba(255,255,255,0.85);
             border: none;
             border-left: 4px solid transparent;
             text-align: left;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             border-radius: 0;
+            white-space: nowrap;
+        }
+
+        .sidebar .nav-icon {
+            font-size: 20px;
+            min-width: 30px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .sidebar .tab-btn:hover .nav-icon {
+            transform: scale(1.15);
+        }
+
+        .sidebar .nav-text {
+            margin-left: 10px;
+            transition: opacity 0.2s ease;
         }
 
         .sidebar .tab-btn:hover {
@@ -122,12 +175,13 @@
         }
 
         .sidebar-user {
-            padding: 15px;
+            padding: 12px 15px;
             background: var(--primary-dark);
             border-top: 1px solid rgba(255,255,255,0.1);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            min-height: 55px;
         }
 
         /* CONTEÚDO PRINCIPAL (MAIN) */
@@ -138,6 +192,40 @@
             flex-direction: column;
             min-width: 0;
             transition: margin-left 0.3s ease;
+        }
+
+        /* ===== MODO RECOLHIDO (COLLAPSED) ===== */
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar.collapsed .logo-title,
+        .sidebar.collapsed .nav-text {
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+        }
+
+        .sidebar.collapsed .tab-btn {
+            padding: 14px 0;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .nav-icon {
+            min-width: auto;
+            font-size: 22px;
+        }
+
+        .sidebar.collapsed .sidebar-user {
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .sidebar-user .btn-logout {
+            display: none;
+        }
+
+        .main-wrapper.sidebar-collapsed {
+            margin-left: var(--sidebar-collapsed-width);
         }
 
         .top-navbar {
@@ -282,6 +370,9 @@
 
         /* ===== ADAPTAÇÃO RESPONSIVA ===== */
         @media (max-width: 900px) {
+            .btn-toggle-collapse {
+                display: none;
+            }
             .sidebar {
                 transform: translateX(-100%);
             }
@@ -292,6 +383,9 @@
                 display: block;
             }
             .main-wrapper {
+                margin-left: 0;
+            }
+            .main-wrapper.sidebar-collapsed {
                 margin-left: 0;
             }
             .btn-menu-toggle {
@@ -356,29 +450,77 @@
             <!-- BARRA LATERAL (SIDEBAR) -->
             <aside class="sidebar" id="sidebar">
                 <div class="sidebar-brand" id="headerLogo">
-                    <img src="logo.png" alt="SE7VEN ENERGIA" class="logo-dinamica" onerror="this.style.display='none'">
-                    <span class="logo-title">SE7VEN ENERGIA</span>
+                    <div class="brand-info">
+                        <img src="logo.png" alt="SE7VEN ENERGIA" class="logo-dinamica" onerror="this.style.display='none'">
+                        <span class="logo-title">SE7VEN ENERGIA</span>
+                    </div>
+                    <!-- Botão para Recolher/Expandir Menu -->
+                    <button class="btn-toggle-collapse" onclick="toggleSidebarCollapse()" title="Recolher / Expandir Menu">
+                        <span id="collapseIcon">◀</span>
+                    </button>
                 </div>
 
                 <nav class="sidebar-menu">
-                    <button class="tab-btn active" onclick="abrirTab('tabDashboard'); fecharMenuMobile();">📊 Resumo</button>
-                    <button class="tab-btn" onclick="abrirTab('tabClientes'); fecharMenuMobile();">👤 Clientes</button>
-                    <button class="tab-btn" onclick="abrirTab('tabProdutos'); fecharMenuMobile();">📦 Produtos</button>
-                    <button class="tab-btn" onclick="abrirTab('tabOrcamento'); fecharMenuMobile();">📄 Orçamento</button>
-                    <button class="tab-btn" onclick="abrirTab('tabOS'); fecharMenuMobile();">🔧 OS</button>
-                    <button class="tab-btn" onclick="abrirTab('tabRecibos'); fecharMenuMobile();">💰 Recibos</button>
-                    <button class="tab-btn" onclick="abrirTab('tabDespesas'); fecharMenuMobile();">💸 Despesas</button>
-                    <button class="tab-btn" onclick="abrirTab('tabCaixa'); fecharMenuMobile();">💵 Caixa</button>
-                    <button class="tab-btn" onclick="abrirTab('tabAgenda'); fecharMenuMobile();">📅 Agenda</button>
-                    <button class="tab-btn" onclick="abrirTab('tabCalculos'); fecharMenuMobile();">🧮 Cálculos</button>
-                    <button class="tab-btn" onclick="abrirTab('tabLogs'); fecharMenuMobile();">📋 Logs</button>
-                    <button class="tab-btn" onclick="abrirTab('tabUsuarios'); fecharMenuMobile();">👥 Usuários</button>
-                    <button class="tab-btn" onclick="abrirTab('tabConfig'); fecharMenuMobile();">⚙️ Config</button>
+                    <button class="tab-btn active" title="Resumo" onclick="abrirTab('tabDashboard'); fecharMenuMobile();">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">Resumo</span>
+                    </button>
+                    <button class="tab-btn" title="Clientes" onclick="abrirTab('tabClientes'); fecharMenuMobile();">
+                        <span class="nav-icon">👤</span>
+                        <span class="nav-text">Clientes</span>
+                    </button>
+                    <button class="tab-btn" title="Produtos" onclick="abrirTab('tabProdutos'); fecharMenuMobile();">
+                        <span class="nav-icon">📦</span>
+                        <span class="nav-text">Produtos</span>
+                    </button>
+                    <button class="tab-btn" title="Orçamento" onclick="abrirTab('tabOrcamento'); fecharMenuMobile();">
+                        <span class="nav-icon">📄</span>
+                        <span class="nav-text">Orçamento</span>
+                    </button>
+                    <button class="tab-btn" title="OS" onclick="abrirTab('tabOS'); fecharMenuMobile();">
+                        <span class="nav-icon">🔧</span>
+                        <span class="nav-text">OS</span>
+                    </button>
+                    <button class="tab-btn" title="Recibos" onclick="abrirTab('tabRecibos'); fecharMenuMobile();">
+                        <span class="nav-icon">💰</span>
+                        <span class="nav-text">Recibos</span>
+                    </button>
+                    <button class="tab-btn" title="Despesas" onclick="abrirTab('tabDespesas'); fecharMenuMobile();">
+                        <span class="nav-icon">💸</span>
+                        <span class="nav-text">Despesas</span>
+                    </button>
+                    <button class="tab-btn" title="Caixa" onclick="abrirTab('tabCaixa'); fecharMenuMobile();">
+                        <span class="nav-icon">💵</span>
+                        <span class="nav-text">Caixa</span>
+                    </button>
+                    <button class="tab-btn" title="Agenda" onclick="abrirTab('tabAgenda'); fecharMenuMobile();">
+                        <span class="nav-icon">📅</span>
+                        <span class="nav-text">Agenda</span>
+                    </button>
+                    <button class="tab-btn" title="Cálculos" onclick="abrirTab('tabCalculos'); fecharMenuMobile();">
+                        <span class="nav-icon">🧮</span>
+                        <span class="nav-text">Cálculos</span>
+                    </button>
+                    <button class="tab-btn" title="Logs" onclick="abrirTab('tabLogs'); fecharMenuMobile();">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-text">Logs</span>
+                    </button>
+                    <button class="tab-btn" title="Usuários" onclick="abrirTab('tabUsuarios'); fecharMenuMobile();">
+                        <span class="nav-icon">👥</span>
+                        <span class="nav-text">Usuários</span>
+                    </button>
+                    <button class="tab-btn" title="Config" onclick="abrirTab('tabConfig'); fecharMenuMobile();">
+                        <span class="nav-icon">⚙️</span>
+                        <span class="nav-text">Config</span>
+                    </button>
                 </nav>
 
                 <div class="sidebar-user">
                     <div class="user-info">
-                        <span style="color:white;">👤 <span class="name" id="nomeUsuario" style="color:white;">Admin</span></span>
+                        <span style="color:white; display:flex; align-items:center; gap:8px;">
+                            <span class="nav-icon">👤</span>
+                            <span class="name nav-text" id="nomeUsuario" style="color:white;">Admin</span>
+                        </span>
                     </div>
                     <button class="btn-logout" onclick="fazerLogout()">Sair</button>
                 </div>
@@ -822,7 +964,7 @@
 
     <div id="modalHistoricoCliente" class="modal"><div class="modal-content" style="max-width:500px;"><h3 id="tituloHistoricoCliente">📋 Histórico</h3><div id="conteudoHistoricoCliente"></div><button id="btnFecharHistorico" class="btn-secondary" style="width:100%;margin-top:10px;">Fechar</button></div></div>
 
-    <!-- ========== SCRIPT DE CONTROLE DA SIDEBAR RESPONSIVA ========== -->
+    <!-- ========== SCRIPT DE CONTROLE DA SIDEBAR RESPONSIVA E RECOLHÍVEL ========== -->
     <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -839,6 +981,29 @@
                 overlay.classList.remove('active');
             }
         }
+
+        function toggleSidebarCollapse() {
+            const sidebar = document.getElementById('sidebar');
+            const mainWrapper = document.querySelector('.main-wrapper');
+            const collapseIcon = document.getElementById('collapseIcon');
+
+            sidebar.classList.toggle('collapsed');
+            if (mainWrapper) mainWrapper.classList.toggle('sidebar-collapsed');
+
+            const estaRecolhido = sidebar.classList.contains('collapsed');
+            
+            if (collapseIcon) {
+                collapseIcon.textContent = estaRecolhido ? '▶' : '◀';
+            }
+
+            localStorage.setItem('se7ven_sidebar_collapsed', estaRecolhido ? 'true' : 'false');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('se7ven_sidebar_collapsed') === 'true') {
+                toggleSidebarCollapse();
+            }
+        });
     </script>
 
     <!-- ========== BIBLIOTECAS ========== -->
