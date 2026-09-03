@@ -262,6 +262,54 @@
             flex: 1;
         }
 
+        /* ===== TELA INICIAL (HOME) ===== */
+        .hero-welcome-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 50px 20px;
+            min-height: 65vh;
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .hero-logo-wrapper {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            max-width: 400px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hero-logo-img {
+            max-width: 100%;
+            max-height: 220px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .hero-welcome-title {
+            font-size: 26px;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .hero-welcome-subtitle {
+            font-size: 15px;
+            color: var(--text-muted);
+            max-width: 500px;
+            line-height: 1.5;
+        }
+
         /* ===== DESIGN DO DASHBOARD REDESENHADO ===== */
         .dashboard-grid {
             display: grid;
@@ -549,7 +597,11 @@
                 </div>
 
                 <nav class="sidebar-menu">
-                    <button class="tab-btn active" title="Resumo" onclick="abrirTab('tabDashboard'); fecharMenuMobile();">
+                    <button class="tab-btn active" title="Início" onclick="abrirTab('tabInicio'); fecharMenuMobile();">
+                        <span class="nav-icon">🏠</span>
+                        <span class="nav-text">Início</span>
+                    </button>
+                    <button class="tab-btn" title="Resumo" onclick="abrirTab('tabDashboard'); fecharMenuMobile();">
                         <span class="nav-icon">📊</span>
                         <span class="nav-text">Resumo</span>
                     </button>
@@ -624,8 +676,21 @@
                 <main class="content-area">
                     <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importarDados(event)">
 
+                    <!-- TAB INÍCIO -->
+                    <div id="tabInicio" class="tab-content active">
+                        <section class="hero-welcome-card">
+                            <div class="hero-logo-wrapper">
+                                <img src="logo.png" alt="SE7VEN ENERGIA" class="logo-dinamica hero-logo-img" onerror="this.src='icone-192.png'">
+                            </div>
+                            <h1 class="hero-welcome-title">Bem-vindo ao SE7VEN ENERGIA</h1>
+                            <p class="hero-welcome-subtitle">
+                                Sistema Integrado de Gestão. Utilize o menu lateral para navegar entre orçamentos, ordens de serviço, clientes e relatórios.
+                            </p>
+                        </section>
+                    </div>
+
                     <!-- TAB DASHBOARD -->
-                    <div id="tabDashboard" class="tab-content active">
+                    <div id="tabDashboard" class="tab-content">
                         <section>
                             <h2>📊 Resumo do Negócio</h2>
                             <div id="dashboardGrid" class="dashboard-grid">
