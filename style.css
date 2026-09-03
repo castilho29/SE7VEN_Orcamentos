@@ -89,6 +89,7 @@ body.sidebar-open {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Preserva a imagem da logo exclusiva do menu lateral */
 .sidebar-brand img {
     height: 40px;
     width: auto;
@@ -319,6 +320,85 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.15);
+}
+
+/* ===== CONFIGURAÇÕES - LOGO / FOTO DA TELA INICIAL ===== */
+.settings-section {
+    padding: 20px;
+    background: var(--surface-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 20px;
+}
+
+.logo-uploader-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 15px;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-color);
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.home-logo-preview-box {
+    width: 120px;
+    height: 120px;
+    border-radius: var(--radius-md);
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.home-logo-preview-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 4px;
+}
+
+.logo-uploader-info {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.logo-uploader-info p {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.logo-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.input-file-hidden {
+    display: none;
+}
+
+/* Exibição da Logo/Foto na Tela Inicial (Dashboard) */
+.home-banner-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.home-logo-display {
+    max-height: 70px;
+    width: auto;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
 }
 
 /* ===== LISTAS E ITENS ===== */
@@ -587,5 +667,10 @@ li small {
 
     .content-area {
         padding: 12px;
+    }
+
+    .logo-uploader-card {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
