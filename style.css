@@ -344,8 +344,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 }
 
 .home-logo-preview-box {
-    width: 120px;
-    height: 120px;
+    width: 160px;
+    height: 90px;
     border-radius: var(--radius-md);
     background: var(--surface-color);
     border: 1px solid var(--border-color);
@@ -359,8 +359,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 .home-logo-preview-box img {
     width: 100%;
     height: 100%;
-    object-fit: contain;
-    padding: 4px;
+    object-fit: cover;
 }
 
 .logo-uploader-info {
@@ -386,19 +385,45 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
     display: none;
 }
 
-/* Exibição da Logo/Foto na Tela Inicial (Dashboard) */
+/* ===== HERO / PAPEL DE PAREDE DA TELA INICIAL ===== */
 .home-banner-container {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-lg);
+    background: var(--primary-dark);
     display: flex;
     align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
+    justify-content: center;
 }
 
 .home-logo-display {
-    max-height: 70px;
-    width: auto;
-    object-fit: contain;
-    border-radius: var(--radius-sm);
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    z-index: 1;
+}
+
+/* Camada opcional de sombra sobre o papel de parede para legibilidade */
+.home-banner-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.15));
+    z-index: 2;
+}
+
+.home-banner-content {
+    position: relative;
+    z-index: 3;
+    color: #ffffff;
+    text-align: center;
+    padding: 20px;
 }
 
 /* ===== LISTAS E ITENS ===== */
@@ -672,5 +697,9 @@ li small {
     .logo-uploader-card {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .home-banner-container {
+        height: 180px;
     }
 }
