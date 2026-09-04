@@ -61,7 +61,7 @@ body.sidebar-open {
 /* ===== ESTRUTURA ERP & SIDEBAR ===== */
 .erp-container {
     display: flex;
-    min-height: 150vh;
+    min-height: 100vh; /* Ajustado de 150vh para 100vh */
     width: 100%;
 }
 
@@ -220,8 +220,8 @@ h1 {
 section {
     background: var(--surface-color);
     border-radius: var(--radius-lg);
-    padding: 300px;
-    margin-bottom: 250px;
+    padding: 25px; /* Ajustado de 300px para um valor padrão adequado */
+    margin-bottom: 25px; /* Ajustado de 250px para 25px */
     box-shadow: var(--shadow-md);
 }
 
