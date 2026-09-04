@@ -448,3 +448,88 @@ li small{color:#7a8494 !important}
   .user-info .name{max-width:95px;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
   .tab-btn{padding:8px 11px !important}
 }
+
+
+/* =========================================================
+   NAVEGAÇÃO LATERAL — ícones SVG, visual profissional
+   ========================================================= */
+.tab-container{
+  position:fixed !important;
+  left:18px !important;
+  top:108px !important;
+  bottom:18px !important;
+  width:224px !important;
+  height:auto !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  gap:6px !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  padding:12px !important;
+  margin:0 !important;
+  background:linear-gradient(180deg,#102d61 0%,#0b2148 100%) !important;
+  border:1px solid rgba(255,255,255,.08) !important;
+  border-radius:18px !important;
+  box-shadow:0 18px 42px rgba(12,31,65,.20) !important;
+}
+.tab-container::-webkit-scrollbar{width:5px}
+.tab-container::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:8px}
+.tab-btn{
+  flex:0 0 auto !important;
+  width:100% !important;
+  min-height:46px !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:12px !important;
+  padding:10px 12px !important;
+  border:1px solid transparent !important;
+  border-radius:11px !important;
+  background:transparent !important;
+  color:rgba(255,255,255,.72) !important;
+  font-size:13px !important;
+  font-weight:650 !important;
+  text-align:left !important;
+  box-shadow:none !important;
+  transition:background .18s ease,color .18s ease,transform .18s ease !important;
+}
+.tab-btn:hover{background:rgba(255,255,255,.08) !important;color:#fff !important;border-color:rgba(255,255,255,.05) !important;transform:translateX(2px)}
+.tab-btn.active{
+  color:#fff !important;
+  border-color:rgba(255,255,255,.12) !important;
+  background:linear-gradient(135deg,rgba(68,143,255,.95),rgba(35,91,177,.95)) !important;
+  box-shadow:0 8px 18px rgba(4,17,42,.28) !important;
+}
+.nav-icon{
+  width:34px;height:34px;min-width:34px;
+  display:grid;place-items:center;
+  border-radius:9px;
+  background:rgba(255,255,255,.07);
+  color:inherit;
+}
+.tab-btn.active .nav-icon{background:rgba(255,255,255,.15)}
+.nav-icon svg{width:19px;height:19px;display:block}
+.nav-label{overflow:hidden;text-overflow:ellipsis}
+body{max-width:none !important;padding:18px 18px 18px 264px !important;margin:0 !important}
+header{margin-left:0 !important}
+
+@media (max-width:900px){
+  body{padding:12px !important}
+  .tab-container{
+    position:sticky !important;
+    top:92px !important;
+    left:auto !important;
+    bottom:auto !important;
+    width:100% !important;
+    height:auto !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    border-radius:14px !important;
+    padding:7px !important;
+  }
+  .tab-btn{width:auto !important;min-height:42px !important;padding:8px 11px !important}
+  .nav-icon{width:30px;height:30px;min-width:30px}
+  .nav-icon svg{width:17px;height:17px}
+}
