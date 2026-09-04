@@ -239,6 +239,34 @@
         <button onclick="fazerLogout()" class="btn-secondary" style="padding:10px 20px;">Sair</button>
     </div>
 
+    <!-- ========== TELA INICIAL / CAPA PERSONALIZÁVEL ========== -->
+    <div id="telaInicialImagem" class="tela-inicial-imagem" style="display:none;" aria-label="Tela inicial do sistema">
+        <div class="tela-inicial-card">
+            <div class="tela-inicial-brand">
+                <div class="tela-inicial-logo">⚡</div>
+                <div>
+                    <strong>SE7VEN ENERGIA</strong>
+                    <span>Soluções Energéticas</span>
+                </div>
+            </div>
+            <div class="tela-inicial-preview-wrap">
+                <div id="telaInicialPlaceholder" class="tela-inicial-placeholder">
+                    <div class="upload-icon">↥</div>
+                    <strong>Personalize sua tela inicial</strong>
+                    <span>Escolha uma foto da empresa, instalação, equipe ou projeto.</span>
+                </div>
+                <img id="telaInicialPreview" class="tela-inicial-preview" alt="Imagem da tela inicial" style="display:none;">
+                <button type="button" id="btnTrocarImagemInicial" class="tela-inicial-change" style="display:none;">📷 Trocar imagem</button>
+            </div>
+            <input type="file" id="inputImagemInicial" accept="image/*" capture="environment" style="display:none;">
+            <div class="tela-inicial-actions">
+                <button type="button" id="btnSelecionarImagemInicial" class="btn-primary">🖼️ Escolher foto</button>
+                <button type="button" id="btnEntrarSistemaInicial" class="btn-secondary">Entrar no sistema →</button>
+            </div>
+            <small class="tela-inicial-hint">A imagem fica salva neste dispositivo e pode ser alterada quando quiser.</small>
+        </div>
+    </div>
+
     <!-- ========== SISTEMA ========== -->
     <div id="sistemaScreen" style="display:none;">
         <header>
@@ -711,6 +739,67 @@
     <!-- ========== CONFIGURAÇÃO E SCRIPT PRINCIPAL ========== -->
     <script src="config.js?v=8"></script>
     <script src="script.js?v=8"></script>
+    <script>
+        /* ===== Tela inicial personalizável — somente apresentação ===== */
+        (function(){
+            const STORAGE_KEY = 'se7ven_tela_inicial_imagem';
+            const tela = document.getElementById('telaInicialImagem');
+            const input = document.getElementById('inputImagemInicial');
+            const preview = document.getElementById('telaInicialPreview');
+            const placeholder = document.getElementById('telaInicialPlaceholder');
+            const escolher = document.getElementById('btnSelecionarImagemInicial');
+            const trocar = document.getElementById('btnTrocarImagemInicial');
+            const entrar = document.getElementById('btnEntrarSistemaInicial');
+            const sistema = document.getElementById('sistemaScreen');
+            if(!tela || !input || !sistema) return;
+
+            function aplicarImagem(src){
+                if(!src){
+                    preview.style.display='none';
+                    placeholder.style.display='flex';
+                    trocar.style.display='none';
+                    return;
+                }
+                preview.src=src;
+                preview.style.display='block';
+                placeholder.style.display='none';
+                trocar.style.display='inline-flex';
+            }
+
+            try { aplicarImagem(localStorage.getItem(STORAGE_KEY)); } catch(e){}
+
+            function abrirTela(){
+                if(sistema.style.display !== 'none' && getComputedStyle(sistema).display !== 'none'){
+                    tela.style.display='flex';
+                }
+            }
+            function fecharTela(){ tela.style.display='none'; }
+
+            escolher.addEventListener('click',()=>input.click());
+            trocar.addEventListener('click',()=>input.click());
+            preview.addEventListener('click',()=>input.click());
+            entrar.addEventListener('click',fecharTela);
+            input.addEventListener('change',function(){
+                const file=this.files && this.files[0];
+                if(!file || !file.type.startsWith('image/')) return;
+                const reader=new FileReader();
+                reader.onload=function(e){
+                    aplicarImagem(e.target.result);
+                    try{ localStorage.setItem(STORAGE_KEY,e.target.result); }catch(err){ console.warn('Não foi possível salvar a imagem:',err); }
+                };
+                reader.readAsDataURL(file);
+            });
+
+            const obs=new MutationObserver(()=>{
+                if(sistema.style.display !== 'none' && getComputedStyle(sistema).display !== 'none' && !window.__se7venTelaInicialFechada){
+                    abrirTela();
+                }
+            });
+            obs.observe(sistema,{attributes:true,attributeFilter:['style','class']});
+            window.addEventListener('load',()=>setTimeout(()=>{ if(!window.__se7venTelaInicialFechada) abrirTela(); },350));
+            entrar.addEventListener('click',()=>{window.__se7venTelaInicialFechada=true;});
+        })();
+    </script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
