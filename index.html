@@ -1,208 +1,286 @@
-<div class="hero-logo-wrapper">
-                                <img src="logo.png" alt="SE7VEN ENERGIA" class="hero-logo-img" onerror="this.style.display='none'">
-                            </div>
-                            <h1 class="hero-welcome-title">Bem-vindo, José!</h1>
-                            <p class="hero-welcome-subtitle">Sistema Integrado de Gestão para Projetos Fotovoltaicos e Instalações Elétricas.</p>
-                        </section>
-                    </div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema integrado de gestão da SE7VEN Energia">
+    <title>SE7VEN Energia | Gestão</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loginScreen" class="auth-screen">
+        <div class="auth-card">
+            <div class="auth-brand">
+                <div class="brand-mark">S7</div>
+                <div>
+                    <strong>SE7VEN ENERGIA</strong>
+                    <span>Gestão inteligente</span>
+                </div>
+            </div>
 
-                    <!-- TAB DASHBOARD -->
-                    <div id="tabDashboard" class="tab-content">
-                        <h2>📊 Resumo Financeiro e Operacional</h2>
+            <div class="auth-heading">
+                <h1>Acesse sua conta</h1>
+                <p>Entre para gerenciar projetos, estoque, clientes e operações.</p>
+            </div>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="loginNome">Nome completo</label>
+                    <input id="loginNome" type="text" placeholder="Seu nome" autocomplete="name" hidden>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginEmail">E-mail</label>
+                    <input id="loginEmail" type="email" placeholder="voce@empresa.com" autocomplete="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginSenha">Senha</label>
+                    <input id="loginSenha" type="password" placeholder="Digite sua senha" autocomplete="current-password" required>
+                </div>
+
+                <button id="btnEntrar" class="btn btn-primary btn-block" type="submit">Entrar</button>
+                <button id="btnAlternarCadastro" class="btn btn-link btn-block" type="button">Não tem conta? Criar uma agora</button>
+            </form>
+
+            <div class="auth-footer">Versão <span id="versaoApp">1.0.0</span></div>
+        </div>
+    </div>
+
+    <div id="pendingScreen" class="pending-screen" hidden>
+        <div class="pending-card">
+            <div class="pending-icon">⏳</div>
+            <h2>Cadastro em análise</h2>
+            <p>Seu acesso está aguardando aprovação do administrador.</p>
+        </div>
+    </div>
+
+    <div id="sistemaScreen" class="app-screen" hidden>
+        <div class="erp-container">
+            <aside id="sidebar" class="sidebar" aria-label="Menu principal">
+                <div class="sidebar-brand">
+                    <div class="brand-mark brand-mark-sm">S7</div>
+                    <div class="brand-copy">
+                        <strong>SE7VEN</strong>
+                        <span>ENERGIA</span>
+                    </div>
+                    <button id="btnCollapse" class="sidebar-collapse" type="button" aria-label="Recolher menu" title="Recolher menu">
+                        <span id="collapseIcon">◀</span>
+                    </button>
+                </div>
+
+                <nav class="sidebar-menu">
+                    <div class="menu-label">Visão geral</div>
+                    <button class="tab-btn active" data-tab="tabHome" type="button"><span class="menu-icon">⌂</span><span class="menu-text">Início</span></button>
+                    <button class="tab-btn" data-tab="tabDashboard" type="button"><span class="menu-icon">▦</span><span class="menu-text">Dashboard</span></button>
+
+                    <div class="menu-label">Operação</div>
+                    <button class="tab-btn" data-tab="tabProdutos" type="button"><span class="menu-icon">□</span><span class="menu-text">Estoque</span></button>
+                    <button class="tab-btn" data-tab="tabClientes" type="button"><span class="menu-icon">♙</span><span class="menu-text">Clientes</span></button>
+                    <button class="tab-btn" data-tab="tabOrcamento" type="button"><span class="menu-icon">≡</span><span class="menu-text">Orçamentos</span></button>
+                    <button class="tab-btn" data-tab="tabOS" type="button"><span class="menu-icon">⚒</span><span class="menu-text">Ordens de Serviço</span></button>
+                    <button class="tab-btn" data-tab="tabAgenda" type="button"><span class="menu-icon">▣</span><span class="menu-text">Agenda</span></button>
+
+                    <div class="menu-label">Financeiro</div>
+                    <button class="tab-btn" data-tab="tabRecibos" type="button"><span class="menu-icon">$</span><span class="menu-text">Recibos</span></button>
+                    <button class="tab-btn" data-tab="tabDespesas" type="button"><span class="menu-icon">↓</span><span class="menu-text">Despesas</span></button>
+                    <button class="tab-btn" data-tab="tabCaixa" type="button"><span class="menu-icon">↔</span><span class="menu-text">Fluxo de Caixa</span></button>
+
+                    <div class="menu-label">Administração</div>
+                    <button class="tab-btn" data-tab="tabCalculos" type="button"><span class="menu-icon">∑</span><span class="menu-text">Cálculos</span></button>
+                    <button class="tab-btn" data-tab="tabUsuarios" type="button"><span class="menu-icon">♟</span><span class="menu-text">Equipe</span></button>
+                    <button class="tab-btn" data-tab="tabLogs" type="button"><span class="menu-icon">☷</span><span class="menu-text">Logs</span></button>
+                    <button class="tab-btn" data-tab="tabConfig" type="button"><span class="menu-icon">⚙</span><span class="menu-text">Configurações</span></button>
+                </nav>
+
+                <div class="sidebar-user">
+                    <div class="user-avatar">JC</div>
+                    <div class="user-info">
+                        <strong id="nomeUsuario">José Castilho</strong>
+                        <span>Administrador</span>
+                    </div>
+                    <button id="btnLogoutSidebar" class="icon-btn light" type="button" title="Sair" aria-label="Sair">↪</button>
+                </div>
+            </aside>
+
+            <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
+
+            <div class="main-wrapper">
+                <header class="top-navbar">
+                    <div class="topbar-left">
+                        <button id="btnMenuMobile" class="btn-menu-toggle" type="button" aria-label="Abrir menu">☰</button>
+                        <div>
+                            <span class="eyebrow">SE7VEN ENERGIA</span>
+                            <h2 id="pageTitle">Início</h2>
+                        </div>
+                    </div>
+                    <div class="topbar-actions">
+                        <span class="system-status"><span class="status-dot"></span>Sistema operacional</span>
+                        <button id="btnLogout" class="btn btn-secondary btn-sm" type="button">Sair</button>
+                    </div>
+                </header>
+
+                <main class="content-area">
+                    <section id="tabHome" class="tab-content active home-welcome-card">
+                        <div class="hero-badge">Sistema Integrado de Gestão</div>
+                        <div class="hero-logo-wrapper">
+                            <div class="hero-logo-fallback">S7</div>
+                            <img src="logo.png" alt="SE7VEN ENERGIA" class="hero-logo-img" onerror="this.hidden=true">
+                        </div>
+                        <h1 class="hero-welcome-title">Bem-vindo, José!</h1>
+                        <p class="hero-welcome-subtitle">Gerencie projetos fotovoltaicos, instalações elétricas, estoque e financeiro em um único ambiente.</p>
+                        <div class="hero-actions">
+                            <button class="btn btn-primary" type="button" data-tab="tabDashboard">Ver dashboard</button>
+                            <button class="btn btn-secondary" type="button" data-tab="tabProdutos">Consultar estoque</button>
+                        </div>
+                    </section>
+
+                    <section id="tabDashboard" class="tab-content">
+                        <div class="section-header">
+                            <div><span class="eyebrow">Indicadores</span><h1>Resumo financeiro e operacional</h1></div>
+                            <span class="updated-at">Atualizado agora</span>
+                        </div>
                         <div class="dashboard-grid">
-                            <div class="dash-card card-recebido">
-                                <div class="dash-header">
-                                    <span class="dash-label">Caixa Atual</span>
-                                    <span class="dash-icon">💵</span>
-                                </div>
-                                <div class="dash-valor">R$ 0,00</div>
-                            </div>
-                            <div class="dash-card card-os">
-                                <div class="dash-header">
-                                    <span class="dash-label">OS em Andamento</span>
-                                    <span class="dash-icon">🔧</span>
-                                </div>
-                                <div class="dash-valor">0</div>
-                            </div>
-                            <div class="dash-card card-estoque">
-                                <div class="dash-header">
-                                    <span class="dash-label">Alertas de Estoque</span>
-                                    <span class="dash-icon">📦</span>
-                                </div>
-                                <div class="dash-valor">3</div>
-                            </div>
+                            <article class="dash-card"><div class="dash-icon">R$</div><div><span class="dash-label">Caixa atual</span><strong class="dash-valor">R$ 0,00</strong><small>Saldo disponível</small></div></article>
+                            <article class="dash-card"><div class="dash-icon">OS</div><div><span class="dash-label">OS em andamento</span><strong class="dash-valor">0</strong><small>Serviços ativos</small></div></article>
+                            <article class="dash-card alert"><div class="dash-icon">!</div><div><span class="dash-label">Alertas de estoque</span><strong class="dash-valor">3</strong><small>Itens requerem atenção</small></div></article>
                         </div>
-                    </div>
-
-                    <!-- TAB PRODUTOS -->
-                    <div id="tabProdutos" class="tab-content">
-                        <h2>📦 Controle de Estoque</h2>
-                        <div class="sync-info">
-                            <strong>Visão Geral do Almoxarifado</strong>
-                            <ul>
-                                <li>Cabo Solar 6mm <small>Estoque: 250m</small></li>
-                                <li>Bateria Moura 162 Amperes <small>Estoque: 8 un</small></li>
-                                <li>Inversor Off Grid Trifásico 220v 3cv Intelbras <small>Estoque: 2 un</small></li>
-                                <li>Inversor Must PV1800 PRO <small>Estoque: 1 un</small></li>
-                                <li>Bateria de Lítio 24v <small>Estoque: 4 un</small></li>
-                            </ul>
+                        <div class="dashboard-panel">
+                            <div class="panel-heading"><h3>Visão rápida</h3><span class="badge badge-success">Operacional</span></div>
+                            <div class="empty-state"><span class="empty-icon">⌁</span><strong>Dados prontos para integração</strong><p>Conecte suas fontes para acompanhar receitas, custos e produtividade em tempo real.</p></div>
                         </div>
-                    </div>
+                    </section>
 
-                    <!-- DEMAIS ABAS (Módulos em Desenvolvimento) -->
-                    <div id="tabClientes" class="tab-content">
-                        <h2>👤 Gestão de Clientes</h2>
-                        <p>Módulo de CRM integrado em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabOrcamento" class="tab-content">
-                        <h2>📄 Orçamentos Solares</h2>
-                        <p>Módulo de precificação e propostas comerciais em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabOS" class="tab-content">
-                        <h2>🔧 Ordens de Serviço (Instalação e Manutenção)</h2>
-                        <p>Módulo de agendamento de painéis solares em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabRecibos" class="tab-content">
-                        <h2>💰 Emissão de Recibos</h2>
-                        <p>Módulo em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabDespesas" class="tab-content">
-                        <h2>💸 Controle de Despesas</h2>
-                        <p>Módulo em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabCaixa" class="tab-content">
-                        <h2>💵 Fluxo de Caixa</h2>
-                        <p>Módulo em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabAgenda" class="tab-content">
-                        <h2>📅 Agenda de Visitas Técnicas</h2>
-                        <p>Módulo em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabCalculos" class="tab-content">
-                        <h2>🧮 Dimensionamento Off-Grid</h2>
-                        <p>Módulo de cálculo estrutural e elétrico em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabLogs" class="tab-content">
-                        <h2>📋 Logs de Sincronização</h2>
-                        <p>Módulo em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabUsuarios" class="tab-content">
-                        <h2>👥 Gestão de Equipe</h2>
-                        <p>Módulo em desenvolvimento.</p>
-                    </div>
-                    
-                    <div id="tabConfig" class="tab-content">
-                        <h2>⚙️ Configurações de Banco de Dados</h2>
-                        <p>Integração com Supabase (Auth/PostgreSQL) pendente de chaves de API e configuração do ambiente.</p>
-                    </div>
+                    <section id="tabProdutos" class="tab-content">
+                        <div class="section-header"><div><span class="eyebrow">Almoxarifado</span><h1>Controle de estoque</h1></div><button class="btn btn-primary btn-sm" type="button">+ Novo item</button></div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Status</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Cabo Solar 6mm</td><td>Cabos</td><td>250 m</td><td><span class="badge badge-success">Disponível</span></td></tr>
+                                    <tr><td>Bateria Moura 162 Amperes</td><td>Baterias</td><td>8 un</td><td><span class="badge badge-success">Disponível</span></td></tr>
+                                    <tr><td>Inversor Off Grid Trifásico 220V 3CV Intelbras</td><td>Inversores</td><td>2 un</td><td><span class="badge badge-warning">Baixo</span></td></tr>
+                                    <tr><td>Inversor Must PV1800 PRO</td><td>Inversores</td><td>1 un</td><td><span class="badge badge-danger">Crítico</span></td></tr>
+                                    <tr><td>Bateria de Lítio 24V</td><td>Baterias</td><td>4 un</td><td><span class="badge badge-warning">Baixo</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
 
+                    <section id="tabClientes" class="tab-content module-placeholder"><span class="placeholder-icon">♙</span><h1>Gestão de clientes</h1><p>Módulo de CRM integrado em desenvolvimento.</p></section>
+                    <section id="tabOrcamento" class="tab-content module-placeholder"><span class="placeholder-icon">≡</span><h1>Orçamentos solares</h1><p>Módulo de precificação e propostas comerciais em desenvolvimento.</p></section>
+                    <section id="tabOS" class="tab-content module-placeholder"><span class="placeholder-icon">⚒</span><h1>Ordens de serviço</h1><p>Módulo de instalação e manutenção em desenvolvimento.</p></section>
+                    <section id="tabRecibos" class="tab-content module-placeholder"><span class="placeholder-icon">$</span><h1>Emissão de recibos</h1><p>Módulo em desenvolvimento.</p></section>
+                    <section id="tabDespesas" class="tab-content module-placeholder"><span class="placeholder-icon">↓</span><h1>Controle de despesas</h1><p>Módulo em desenvolvimento.</p></section>
+                    <section id="tabCaixa" class="tab-content module-placeholder"><span class="placeholder-icon">↔</span><h1>Fluxo de caixa</h1><p>Módulo em desenvolvimento.</p></section>
+                    <section id="tabAgenda" class="tab-content module-placeholder"><span class="placeholder-icon">▣</span><h1>Agenda de visitas técnicas</h1><p>Módulo em desenvolvimento.</p></section>
+                    <section id="tabCalculos" class="tab-content module-placeholder"><span class="placeholder-icon">∑</span><h1>Dimensionamento Off-Grid</h1><p>Módulo de cálculo estrutural e elétrico em desenvolvimento.</p></section>
+                    <section id="tabLogs" class="tab-content module-placeholder"><span class="placeholder-icon">☷</span><h1>Logs de sincronização</h1><p>Módulo em desenvolvimento.</p></section>
+                    <section id="tabUsuarios" class="tab-content module-placeholder"><span class="placeholder-icon">♟</span><h1>Gestão de equipe</h1><p>Módulo em desenvolvimento.</p></section>
+                    <section id="tabConfig" class="tab-content module-placeholder"><span class="placeholder-icon">⚙</span><h1>Configurações</h1><p>Integração com Supabase (Auth/PostgreSQL) pendente de chaves de API e configuração do ambiente.</p></section>
                 </main>
             </div>
         </div>
     </div>
 
-    <!-- ========== SCRIPTS DE CONTROLE ========== -->
     <script>
-        // Sistema de Abas (Navegação Interna)
-        function abrirTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
+        (() => {
+            const qs = (selector, scope = document) => scope.querySelector(selector);
+            const qsa = (selector, scope = document) => [...scope.querySelectorAll(selector)];
+
+            const loginScreen = qs('#loginScreen');
+            const sistemaScreen = qs('#sistemaScreen');
+            const pendingScreen = qs('#pendingScreen');
+            const sidebar = qs('#sidebar');
+            const overlay = qs('#sidebarOverlay');
+            const pageTitle = qs('#pageTitle');
+            const loginNome = qs('#loginNome');
+            const btnEntrar = qs('#btnEntrar');
+            const btnAlternarCadastro = qs('#btnAlternarCadastro');
+
+            const tabTitles = {
+                tabHome: 'Início', tabDashboard: 'Dashboard', tabProdutos: 'Estoque', tabClientes: 'Clientes',
+                tabOrcamento: 'Orçamentos', tabOS: 'Ordens de Serviço', tabRecibos: 'Recibos',
+                tabDespesas: 'Despesas', tabCaixa: 'Fluxo de Caixa', tabAgenda: 'Agenda',
+                tabCalculos: 'Cálculos', tabLogs: 'Logs', tabUsuarios: 'Equipe', tabConfig: 'Configurações'
+            };
+
+            function abrirTab(tabId) {
+                const target = document.getElementById(tabId);
+                if (!target) return;
+
+                qsa('.tab-content').forEach(tab => tab.classList.remove('active'));
+                qsa('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
+                target.classList.add('active');
+                pageTitle.textContent = tabTitles[tabId] || 'SE7VEN Energia';
+                fecharMenuMobile();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function toggleSidebar() {
+                const isOpen = sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active', isOpen);
+                overlay.setAttribute('aria-hidden', String(!isOpen));
+            }
+
+            function fecharMenuMobile() {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+
+            function toggleSidebarCollapse() {
+                const collapsed = sidebar.classList.toggle('collapsed');
+                document.body.classList.toggle('sidebar-collapsed', collapsed);
+                qs('#collapseIcon').textContent = collapsed ? '▶' : '◀';
+                qs('#btnCollapse').setAttribute('aria-label', collapsed ? 'Expandir menu' : 'Recolher menu');
+            }
+
+            function fazerLogin() {
+                loginScreen.hidden = true;
+                pendingScreen.hidden = true;
+                sistemaScreen.hidden = false;
+            }
+
+            function fazerLogout() {
+                sistemaScreen.hidden = true;
+                pendingScreen.hidden = true;
+                loginScreen.hidden = false;
+                qs('#loginSenha').value = '';
+                fecharMenuMobile();
+            }
+
+            function alternarModoCadastro() {
+                const entrandoEmCadastro = loginNome.hidden;
+                loginNome.hidden = !entrandoEmCadastro;
+                loginNome.required = entrandoEmCadastro;
+                btnAlternarCadastro.textContent = entrandoEmCadastro ? 'Já tem uma conta? Entrar' : 'Não tem conta? Criar uma agora';
+                btnEntrar.textContent = entrandoEmCadastro ? 'Criar conta' : 'Entrar';
+            }
+
+            qsa('[data-tab]').forEach(el => el.addEventListener('click', () => abrirTab(el.dataset.tab)));
+            qs('#btnMenuMobile').addEventListener('click', toggleSidebar);
+            qs('#btnCollapse').addEventListener('click', toggleSidebarCollapse);
+            overlay.addEventListener('click', fecharMenuMobile);
+            qs('#btnLogout').addEventListener('click', fazerLogout);
+            qs('#btnLogoutSidebar').addEventListener('click', fazerLogout);
+            btnAlternarCadastro.addEventListener('click', alternarModoCadastro);
+
+            qs('#loginForm').addEventListener('submit', event => {
+                event.preventDefault();
+                fazerLogin();
             });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
+
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') fecharMenuMobile();
             });
 
-            const tabAlvo = document.getElementById(tabId);
-            if (tabAlvo) {
-                tabAlvo.classList.add('active');
-            }
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            }
-        }
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 900) fecharMenuMobile();
+            });
 
-        // Toggle do Menu Mobile
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('mobile-open');
-            overlay.classList.toggle('active');
-        }
-
-        // Fecha o Menu Mobile ao clicar em um link
-        function fecharMenuMobile() {
-            if (window.innerWidth <= 900) {
-                document.getElementById('sidebar').classList.remove('mobile-open');
-                document.getElementById('sidebarOverlay').classList.remove('active');
-            }
-        }
-
-        // Recolher/Expandir Menu Lateral (Desktop)
-        function toggleSidebarCollapse() {
-            const sidebar = document.getElementById('sidebar');
-            const icon = document.getElementById('collapseIcon');
-            sidebar.classList.toggle('collapsed');
-            
-            if (sidebar.classList.contains('collapsed')) {
-                icon.textContent = '▶';
-            } else {
-                icon.textContent = '◀';
-            }
-        }
-
-        // Lógica Visual de Login
-        function fazerLogin() {
-            // TODO: Integrar lógica real de autenticação do Supabase aqui
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('sistemaScreen').style.display = 'block';
-            document.getElementById('nomeUsuario').textContent = 'José Castilho';
-        }
-
-        // Lógica Visual de Logout
-        function fazerLogout() {
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('sistemaScreen').style.display = 'none';
-            document.getElementById('pendingScreen').style.display = 'none';
-            
-            // Limpa os campos de input de senha por segurança
-            document.getElementById('loginSenha').value = '';
-        }
-
-        // Alternar entre Tela de Login e Cadastro
-        function alternarModoCadastro() {
-            const btn = document.getElementById('btnAlternarCadastro');
-            const nomeInput = document.getElementById('loginNome');
-            const entrarBtn = document.getElementById('btnEntrar');
-
-            if (nomeInput.style.display === 'none') {
-                nomeInput.style.display = 'block';
-                btn.textContent = 'Já tem uma conta? Entrar';
-                entrarBtn.textContent = '📝 Criar Conta';
-                entrarBtn.classList.replace('btn-primary', 'btn-success');
-            } else {
-                nomeInput.style.display = 'none';
-                btn.textContent = 'Não tem conta? Criar uma agora';
-                entrarBtn.textContent = '🔑 Entrar';
-                entrarBtn.classList.replace('btn-success', 'btn-primary');
-            }
-        }
-
-        // Inicialização de Versão
-        document.addEventListener("DOMContentLoaded", () => {
-            const versaoEl = document.getElementById('versaoApp');
-            if (versaoEl) {
-                versaoEl.textContent = '1.0.0 (Beta)';
-            }
-        });
+            qs('#versaoApp').textContent = '1.1.0';
+        })();
     </script>
 </body>
 </html>
