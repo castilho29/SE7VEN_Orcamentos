@@ -41,28 +41,33 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-color);
             color: var(--text-color);
-            min-height: 100vh;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
             line-height: 1.5;
         }
 
         /* ===== LAYOUT ESTRUTURAL ERP ===== */
         .erp-container {
             display: flex;
-            min-height: 100vh;
+            height: 100vh;
             width: 100%;
+            overflow: hidden;
         }
 
-        /* BARRA LATERAL (SIDEBAR) */
+        /* BARRA LATERAL (SIDEBAR) AUTOAJUSTÁVEL */
         .sidebar {
             width: var(--sidebar-width);
+            min-width: var(--sidebar-width);
+            max-width: var(--sidebar-width);
             background: var(--primary-color);
             color: white;
             display: flex;
             flex-direction: column;
-            position: fixed;
-            top: 0; bottom: 0; left: 0;
+            height: 100vh;
+            position: relative;
             z-index: 999;
-            transition: width 0.3s ease, transform 0.3s ease, background-color 0.3s ease;
+            transition: width 0.3s ease, min-width 0.3s ease, transform 0.3s ease, background-color 0.3s ease;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             overflow: hidden;
         }
@@ -102,6 +107,8 @@
             color: white;
             line-height: 1.2;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; /* Preserva o nome da empresa sem quebrar layout */
             transition: opacity 0.2s ease;
         }
 
@@ -128,6 +135,7 @@
         .sidebar-menu {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 10px 0;
         }
 
@@ -192,16 +200,19 @@
         /* CONTEÚDO PRINCIPAL */
         .main-wrapper {
             flex: 1;
-            margin-left: var(--sidebar-width);
             display: flex;
             flex-direction: column;
+            height: 100vh;
             min-width: 0;
-            transition: margin-left 0.3s ease;
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
 
         /* MODO RECOLHIDO (COLLAPSED) */
         .sidebar.collapsed {
             width: var(--sidebar-collapsed-width);
+            min-width: var(--sidebar-collapsed-width);
+            max-width: var(--sidebar-collapsed-width);
         }
 
         .sidebar.collapsed .logo-title,
@@ -229,10 +240,6 @@
             display: none;
         }
 
-        .main-wrapper.sidebar-collapsed {
-            margin-left: var(--sidebar-collapsed-width);
-        }
-
         .top-navbar {
             background: white;
             padding: 12px 20px;
@@ -241,9 +248,8 @@
             justify-content: space-between;
             box-shadow: 0 2px 4px rgba(0,0,0,0.04);
             border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
             z-index: 100;
+            flex-shrink: 0;
         }
 
         .btn-menu-toggle {
@@ -258,17 +264,29 @@
         .content-area {
             padding: 20px;
             flex: 1;
+            overflow-y: auto;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
         }
 
-        /* TELA INICIAL (HOME) */
+        /* TELA INICIAL (HOME) COM TAMANHO TOTAL AJUSTÁVEL */
+        #tabInicio {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
         .hero-welcome-card {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 50px 20px;
-            min-height: 65vh;
+            padding: 30px 20px;
+            flex: 1;
+            width: 100%;
             background: white;
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-md);
@@ -280,7 +298,7 @@
             padding: 20px;
             background: #ffffff;
             border-radius: var(--radius-lg);
-            max-width: 400px;
+            max-width: 450px;
             width: 100%;
             display: flex;
             justify-content: center;
@@ -289,22 +307,22 @@
 
         .hero-logo-img {
             max-width: 100%;
-            max-height: 220px;
+            max-height: 35vh; /* Ajusta proporcionalmente ao tamanho total da tela */
             object-fit: contain;
             border-radius: 8px;
         }
 
         .hero-welcome-title {
-            font-size: 26px;
+            font-size: clamp(20px, 2.5vw, 28px);
             color: var(--primary-color);
             margin-bottom: 10px;
             font-weight: bold;
         }
 
         .hero-welcome-subtitle {
-            font-size: 15px;
+            font-size: clamp(13px, 1.5vw, 16px);
             color: var(--text-muted);
-            max-width: 500px;
+            max-width: 600px;
             line-height: 1.5;
         }
 
@@ -377,7 +395,7 @@
         .btn-whatsapp { background: #25d366; color: white; border: none; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: bold; }
         .btn-logout { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: bold; }
 
-        .status-bar { background: var(--primary-color); color: white; padding: 10px 15px; border-radius: var(--radius-md); font-size: 14px; margin-bottom: 15px; text-align: center; font-weight: bold; transition: background-color 0.3s; }
+        .status-bar { background: var(--primary-color); color: white; padding: 10px 15px; border-radius: var(--radius-md); font-size: 14px; text-align: center; font-weight: bold; transition: background-color 0.3s; }
         .status-bar.success { background: #27ae60; }
         .status-bar.error { background: #e74c3c; }
         .status-bar.warning { background: #f39c12; }
@@ -399,7 +417,7 @@
         .paginacao button:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .tab-content.active { display: flex; flex-direction: column; flex: 1; }
 
         section { background: white; border-radius: var(--radius-md); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); }
         h2 { font-size: 18px; margin-bottom: 15px; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; }
@@ -507,11 +525,14 @@
         /* ADAPTAÇÃO RESPONSIVA */
         @media (max-width: 900px) {
             .btn-toggle-collapse { display: none; }
-            .sidebar { transform: translateX(-100%); }
+            .sidebar { 
+                position: fixed;
+                top: 0; bottom: 0; left: 0;
+                transform: translateX(-100%); 
+            }
             .sidebar.mobile-open { transform: translateX(0); }
             .sidebar-overlay.active { display: block; }
             .main-wrapper { margin-left: 0; }
-            .main-wrapper.sidebar-collapsed { margin-left: 0; }
             .btn-menu-toggle { display: block; }
             .item-orcamento { flex-direction: column; align-items: stretch; }
             .item-orcamento select, .item-orcamento input { width: 100% !important; }
@@ -563,7 +584,7 @@
     </div>
 
     <!-- ========== SISTEMA ERP ========== -->
-    <div id="sistemaScreen" style="display:none;">
+    <div id="sistemaScreen" style="display:none; height:100vh; width:100vw; overflow:hidden;">
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
         <div class="erp-container">
             
@@ -1303,12 +1324,10 @@
 
         function toggleSidebarCollapse() {
             const sidebar = document.getElementById('sidebar');
-            const mainWrapper = document.querySelector('.main-wrapper');
             const collapseIcon = document.getElementById('collapseIcon');
 
             if (sidebar) {
                 sidebar.classList.toggle('collapsed');
-                if (mainWrapper) mainWrapper.classList.toggle('sidebar-collapsed');
 
                 const estaRecolhido = sidebar.classList.contains('collapsed');
                 if (collapseIcon) {
@@ -1370,7 +1389,7 @@
         });
     </script>
 
-    <!-- ========== BIBLIOTECAS EXTERNAS (CORRIGIDO) ===== -->
+    <!-- ========== BIBLIOTECAS EXTERNAS ===== -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1387,4 +1406,3 @@
     </script>
 </body>
 </html>
-```[cite: 7]
