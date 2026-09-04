@@ -652,3 +652,58 @@ header{margin-left:0 !important}
   }
   #telaInicialImagem .tela-inicial-preview-wrap{border-radius:16px !important}
 }
+
+/* ===== LOGIN BIPARTIDO SE7VEN ===== */
+#loginScreen.login-screen{
+  min-height:100vh!important; width:100%; box-sizing:border-box; padding:0!important;
+  display:grid!important; grid-template-columns:minmax(45%,1.08fr) minmax(420px,.92fr);
+  background:#f5f7fb!important; align-items:stretch!important; justify-content:stretch!important;
+  overflow:hidden;
+}
+#loginScreen.login-screen::before{
+  content:""; grid-column:1; grid-row:1; min-height:100vh;
+  background:linear-gradient(135deg,rgba(10,35,82,.94),rgba(26,55,126,.82)),url('logo.png') center/contain no-repeat;
+  background-color:#102b63; position:relative;
+}
+#loginScreen.login-screen::after{
+  content:"SE7VEN ENERGIA\A Soluções Energéticas\A\A Gestão inteligente para sua empresa";
+  white-space:pre-wrap; position:absolute; left:8%; top:50%; transform:translateY(-50%);
+  width:35%; color:#fff; font-size:clamp(24px,2.7vw,42px); line-height:1.2; font-weight:800; letter-spacing:.3px;
+  text-shadow:0 3px 16px rgba(0,0,0,.25); pointer-events:none;
+}
+#loginScreen.login-screen > *:not(.login-logo-panel){ grid-column:2; }
+#loginScreen.login-screen .logo-dinamica{ grid-column:2; grid-row:1; align-self:start; justify-self:center; margin:55px 0 12px!important; max-height:78px!important; z-index:2; }
+#loginScreen.login-screen h1{ grid-column:2; grid-row:1; align-self:start; justify-self:center; margin:145px 20px 0!important; color:#153a7a!important; font-size:27px!important; }
+#loginScreen.login-screen #loginNome,
+#loginScreen.login-screen #loginEmail,
+#loginScreen.login-screen #loginSenha{ grid-column:2; justify-self:center; width:min(390px,78%)!important; max-width:none!important; box-sizing:border-box; padding:14px 16px!important; margin:7px auto!important; border:1px solid #d6deeb!important; background:#fff; border-radius:11px!important; box-shadow:0 2px 8px rgba(17,45,90,.04); }
+#loginScreen.login-screen #loginNome{ grid-row:1; margin-top:195px!important; }
+#loginScreen.login-screen #loginEmail{ grid-row:1; margin-top:195px!important; }
+#loginScreen.login-screen #loginSenha{ grid-row:1; margin-top:250px!important; }
+#loginScreen.login-screen #loginError,
+#loginScreen.login-screen #loginSucesso{ grid-column:2; justify-self:center; width:min(390px,78%); margin:4px auto; }
+#loginScreen.login-screen #loginError{ grid-row:1; margin-top:308px!important; }
+#loginScreen.login-screen #loginSucesso{ grid-row:1; margin-top:308px!important; }
+#loginScreen.login-screen #btnEntrar{ grid-column:2; grid-row:1; justify-self:center; width:min(390px,78%)!important; max-width:none!important; margin:338px auto 0!important; padding:14px!important; border-radius:11px!important; background:#173d86!important; box-shadow:0 8px 20px rgba(23,61,134,.2); }
+#loginScreen.login-screen #btnAlternarCadastro{ grid-column:2; grid-row:1; justify-self:center; align-self:start; margin:400px 0 0!important; }
+#loginScreen.login-screen .info{ grid-column:2; grid-row:1; justify-self:center; align-self:start; width:min(390px,78%); max-width:none!important; margin:445px auto 0!important; color:#718096!important; line-height:1.5; }
+#loginScreen.login-screen > div:last-child{ grid-column:2; grid-row:1; align-self:end; justify-self:center; margin-bottom:24px!important; }
+
+@media(max-width:850px){
+  #loginScreen.login-screen{grid-template-columns:1fr!important; overflow:auto; min-height:100vh!important; padding:28px 20px 24px!important; display:flex!important;}
+  #loginScreen.login-screen::before{display:none}
+  #loginScreen.login-screen::after{display:none}
+  #loginScreen.login-screen .logo-dinamica{margin:10px auto 8px!important; max-height:82px!important;}
+  #loginScreen.login-screen h1{margin:4px auto 18px!important; font-size:23px!important;}
+  #loginScreen.login-screen #loginNome,
+  #loginScreen.login-screen #loginEmail,
+  #loginScreen.login-screen #loginSenha,
+  #loginScreen.login-screen #loginError,
+  #loginScreen.login-screen #loginSucesso,
+  #loginScreen.login-screen #btnEntrar,
+  #loginScreen.login-screen #btnAlternarCadastro,
+  #loginScreen.login-screen .info{margin:6px auto!important; width:min(410px,100%)!important;}
+  #loginScreen.login-screen #btnEntrar{margin-top:12px!important}
+  #loginScreen.login-screen .info{margin-top:14px!important}
+  #loginScreen.login-screen > div:last-child{margin:18px auto 0!important}
+}
