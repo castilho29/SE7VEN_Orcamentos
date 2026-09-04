@@ -576,3 +576,79 @@ header{margin-left:0 !important}
   .tela-inicial-preview-wrap{height:52vh;min-height:220px}
   .tela-inicial-actions{flex-direction:column}
 }
+
+/* =========================================================
+   TELA INICIAL PERMANENTE — capa de fundo do sistema
+   ========================================================= */
+#telaInicialImagem{
+  position:fixed !important;
+  inset:0 !important;
+  z-index:2 !important;
+  display:none;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:96px 24px 24px 288px !important;
+  background:linear-gradient(135deg,#edf3fb,#f7f9fc) !important;
+  pointer-events:none;
+}
+#telaInicialImagem.permanente{display:flex !important}
+#telaInicialImagem.home-por-baixo{display:flex !important;z-index:1 !important}
+#telaInicialImagem .tela-inicial-card{
+  width:100% !important;
+  max-width:none !important;
+  height:100% !important;
+  padding:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  border-radius:18px !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+#telaInicialImagem .tela-inicial-brand,
+#telaInicialImagem .tela-inicial-actions,
+#telaInicialImagem .tela-inicial-hint{display:none !important}
+#telaInicialImagem .tela-inicial-preview-wrap{
+  flex:1 !important;
+  height:auto !important;
+  min-height:0 !important;
+  border:0 !important;
+  border-radius:22px !important;
+  overflow:hidden !important;
+  background:#dfe8f5 !important;
+  box-shadow:0 20px 55px rgba(15,40,88,.14) !important;
+  position:relative !important;
+}
+#telaInicialImagem .tela-inicial-preview{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  cursor:default !important;
+  display:block !important;
+}
+#telaInicialImagem .tela-inicial-placeholder{display:none !important}
+#telaInicialImagem .tela-inicial-change{display:none !important}
+#telaInicialImagem.sem-imagem .tela-inicial-preview-wrap{
+  background:linear-gradient(135deg,#eaf1fb,#f8fafc) !important;
+  border:1px dashed #c9d7eb !important;
+}
+#sistemaScreen{position:relative;z-index:3}
+#sistemaScreen .tab-content.active{position:relative;z-index:5}
+#sistemaScreen .tab-content.active section{position:relative;z-index:6}
+#sistemaScreen header,.tab-container,.status-bar,.sync-info{position:relative;z-index:8}
+
+/* Configuração da capa */
+#blocoTelaInicialConfig{
+  background:linear-gradient(180deg,#f7faff,#f1f6ff) !important;
+  border:1px solid #dce7f8 !important;
+  border-left:4px solid #2f80ed !important;
+  border-radius:14px !important;
+  box-shadow:0 5px 16px rgba(23,58,122,.06);
+}
+#previewTelaInicialConfig{box-shadow:0 5px 15px rgba(15,40,88,.12)}
+
+@media (max-width:900px){
+  #telaInicialImagem{
+    padding:84px 10px 10px !important;
+  }
+  #telaInicialImagem .tela-inicial-preview-wrap{border-radius:16px !important}
+}

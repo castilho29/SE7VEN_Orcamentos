@@ -303,7 +303,7 @@
 
         <!-- ABAS -->
         <div class="tab-container">
-            <button class="tab-btn active" onclick="abrirTab('tabDashboard')"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg></span><span class="nav-label">Resumo</span></button>
+            <button class="tab-btn" onclick="abrirTab('tabDashboard')"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg></span><span class="nav-label">Resumo</span></button>
             <button class="tab-btn" onclick="abrirTab('tabClientes')"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="nav-label">Clientes</span></button>
             <button class="tab-btn" onclick="abrirTab('tabProdutos')"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></svg></span><span class="nav-label">Produtos</span></button>
             <button class="tab-btn" onclick="abrirTab('tabOrcamento')"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></span><span class="nav-label">Orçamento</span></button>
@@ -319,7 +319,7 @@
         </div>
 
         <!-- TAB DASHBOARD -->
-        <div id="tabDashboard" class="tab-content active">
+        <div id="tabDashboard" class="tab-content">
             <section>
                 <h2>📊 Resumo do Negócio</h2>
                 <div id="dashboardGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -645,6 +645,18 @@
                     <p style="font-size:11px;color:#888;margin-top:5px;">Vale para todo mundo que usa o sistema — aparece no cabeçalho, PDF e recibo.</p>
                 </div>
 
+                <!-- Imagem da Tela Inicial -->
+                <div id="blocoTelaInicialConfig" style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #2f80ed;margin-bottom:15px;">
+                    <h3 style="color:#1a237e;font-size:15px;margin-bottom:8px;">🏠 Imagem da Tela Inicial</h3>
+                    <img id="previewTelaInicialConfig" src="" alt="Imagem da tela inicial" style="display:none;max-height:120px;width:100%;object-fit:cover;border-radius:10px;margin-bottom:8px;background:white;padding:4px;">
+                    <input type="file" id="uploadTelaInicialInput" accept="image/*" style="padding:8px 0;">
+                    <div style="display:flex;gap:8px;margin-top:5px;">
+                        <button type="button" id="btnSalvarTelaInicial" class="btn-primary" style="flex:1;">💾 Salvar Imagem</button>
+                        <button type="button" id="btnRemoverTelaInicial" class="btn-secondary" style="flex:1;">🗑️ Remover</button>
+                    </div>
+                    <p style="font-size:11px;color:#888;margin-top:7px;">A imagem fica como tela inicial permanente. Ao abrir Clientes, Produtos, Orçamento etc., a tela escolhida fica ao fundo e a nova tela aparece por cima.</p>
+                </div>
+
                 <!-- Configuração Financeira (admin) -->
                 <div id="blocoFinanceiroConfig" style="display:none;background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #e67e22;margin-bottom:15px;">
                     <h3 style="color:#e67e22;font-size:15px;margin-bottom:8px;">💰 Crediário — Juros e Multa</h3>
@@ -740,7 +752,7 @@
     <script src="config.js?v=8"></script>
     <script src="script.js?v=8"></script>
     <script>
-        /* ===== Tela inicial personalizável — somente apresentação ===== */
+        /* ===== Tela inicial permanente — imagem configurável em Configurações ===== */
         (function(){
             const STORAGE_KEY = 'se7ven_tela_inicial_imagem';
             const tela = document.getElementById('telaInicialImagem');
@@ -751,53 +763,67 @@
             const trocar = document.getElementById('btnTrocarImagemInicial');
             const entrar = document.getElementById('btnEntrarSistemaInicial');
             const sistema = document.getElementById('sistemaScreen');
-            if(!tela || !input || !sistema) return;
+            const configInput = document.getElementById('uploadTelaInicialInput');
+            const configPreview = document.getElementById('previewTelaInicialConfig');
+            const salvarConfig = document.getElementById('btnSalvarTelaInicial');
+            const removerConfig = document.getElementById('btnRemoverTelaInicial');
+            if(!tela || !sistema) return;
 
             function aplicarImagem(src){
-                if(!src){
-                    preview.style.display='none';
-                    placeholder.style.display='flex';
-                    trocar.style.display='none';
-                    return;
+                if(preview){
+                    preview.style.display=src?'block':'none';
+                    if(src) preview.src=src;
                 }
-                preview.src=src;
-                preview.style.display='block';
-                placeholder.style.display='none';
-                trocar.style.display='inline-flex';
+                if(placeholder) placeholder.style.display=src?'none':'flex';
+                if(trocar) trocar.style.display=src?'inline-flex':'none';
+                if(configPreview){
+                    configPreview.style.display=src?'block':'none';
+                    if(src) configPreview.src=src;
+                }
+                tela.classList.toggle('sem-imagem',!src);
             }
-
-            try { aplicarImagem(localStorage.getItem(STORAGE_KEY)); } catch(e){}
-
-            function abrirTela(){
+            function lerImagem(file, cb){
+                if(!file || !file.type || !file.type.startsWith('image/')) return;
+                const reader=new FileReader();
+                reader.onload=e=>cb(e.target.result);
+                reader.readAsDataURL(file);
+            }
+            function salvar(src){ try{ localStorage.setItem(STORAGE_KEY,src); }catch(err){ console.warn('Não foi possível salvar a imagem:',err); } aplicarImagem(src); }
+            function carregar(){ try{ aplicarImagem(localStorage.getItem(STORAGE_KEY)||''); }catch(e){ aplicarImagem(''); } }
+            function mostrarHome(){
                 if(sistema.style.display !== 'none' && getComputedStyle(sistema).display !== 'none'){
                     tela.style.display='flex';
+                    tela.classList.add('permanente');
                 }
             }
-            function fecharTela(){ tela.style.display='none'; }
+            function ocultarHome(){ tela.classList.add('home-por-baixo'); }
 
-            escolher.addEventListener('click',()=>input.click());
-            trocar.addEventListener('click',()=>input.click());
-            preview.addEventListener('click',()=>input.click());
-            entrar.addEventListener('click',fecharTela);
-            input.addEventListener('change',function(){
-                const file=this.files && this.files[0];
-                if(!file || !file.type.startsWith('image/')) return;
-                const reader=new FileReader();
-                reader.onload=function(e){
-                    aplicarImagem(e.target.result);
-                    try{ localStorage.setItem(STORAGE_KEY,e.target.result); }catch(err){ console.warn('Não foi possível salvar a imagem:',err); }
-                };
-                reader.readAsDataURL(file);
+            carregar();
+            if(escolher) escolher.addEventListener('click',()=>input && input.click());
+            if(trocar) trocar.addEventListener('click',()=>input && input.click());
+            if(preview) preview.addEventListener('click',()=>input && input.click());
+            if(entrar) entrar.addEventListener('click',()=>{ tela.classList.add('home-por-baixo'); });
+            if(input) input.addEventListener('change',function(){ lerImagem(this.files&&this.files[0],salvar); });
+            if(configInput) configInput.addEventListener('change',function(){
+                lerImagem(this.files&&this.files[0],src=>{ this.dataset.imagemPendente=src; if(configPreview){configPreview.src=src;configPreview.style.display='block';} });
             });
+            if(salvarConfig) salvarConfig.addEventListener('click',()=>{ if(configInput && configInput.dataset.imagemPendente){ salvar(configInput.dataset.imagemPendente); configInput.value=''; delete configInput.dataset.imagemPendente; } else { carregar(); } });
+            if(removerConfig) removerConfig.addEventListener('click',()=>{ try{localStorage.removeItem(STORAGE_KEY);}catch(e){} aplicarImagem(''); if(configInput) configInput.value=''; });
 
+            // O menu continua funcionando normalmente; ao selecionar uma aba, ela fica sobre a capa.
+            document.addEventListener('click',function(e){
+                const btn=e.target.closest && e.target.closest('.tab-btn');
+                if(btn) ocultarHome();
+            },true);
+
+            // Mantém a capa como base do sistema. Ela volta quando não houver uma aba ativa.
             const obs=new MutationObserver(()=>{
-                if(sistema.style.display !== 'none' && getComputedStyle(sistema).display !== 'none' && !window.__se7venTelaInicialFechada){
-                    abrirTela();
+                if(sistema.style.display !== 'none' && getComputedStyle(sistema).display !== 'none'){
+                    if(!document.querySelector('.tab-content.active')) mostrarHome();
                 }
             });
             obs.observe(sistema,{attributes:true,attributeFilter:['style','class']});
-            window.addEventListener('load',()=>setTimeout(()=>{ if(!window.__se7venTelaInicialFechada) abrirTela(); },350));
-            entrar.addEventListener('click',()=>{window.__se7venTelaInicialFechada=true;});
+            window.addEventListener('load',()=>setTimeout(mostrarHome,350));
         })();
     </script>
     <script>
